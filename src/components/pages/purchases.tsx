@@ -1289,11 +1289,16 @@ export function PurchasesPage() {
     <div className="p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Purchase Entry</h2>
-          <p className="text-sm text-muted-foreground">
-            Record new purchases from suppliers and manage purchase history
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/60 dark:to-emerald-900/40 shadow-sm">
+            <ShoppingCart className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight gradient-text-teal">Purchase Entry</h2>
+            <p className="text-sm text-muted-foreground">
+              Record new purchases from suppliers and manage purchase history
+            </p>
+          </div>
         </div>
       </div>
 

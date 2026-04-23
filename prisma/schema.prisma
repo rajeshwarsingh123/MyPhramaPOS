@@ -198,5 +198,6 @@ model StoreSetting {
   logoUrl    String?
   invoicePrefix String @default("INV")
   nextInvoiceNo Int @default(1)
+  dailySalesTarget Float @default(10000)
   updatedAt  DateTime @updatedAt
 }

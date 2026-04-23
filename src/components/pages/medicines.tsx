@@ -739,18 +739,23 @@ export function MedicinesPage() {
     <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Medicines</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your medicine inventory
-            {medicinesData && (
-              <span className="ml-2 font-medium text-foreground">
-                ({medicinesData.total} items)
-              </span>
-            )}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950/60 dark:to-teal-900/40 shadow-sm">
+            <Pill className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight gradient-text-teal">Medicines</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage your medicine inventory
+              {medicinesData && (
+                <span className="ml-2 font-medium text-foreground">
+                  ({medicinesData.total} items)
+                </span>
+              )}
+            </p>
+          </div>
         </div>
-        <Button onClick={openAddMedicineDialog} className="gap-2 shadow-sm">
+        <Button onClick={openAddMedicineDialog} className="btn-gradient-primary focus-ring-emerald gap-2 rounded-lg px-4">
           <Plus className="h-4 w-4" />
           Add Medicine
         </Button>

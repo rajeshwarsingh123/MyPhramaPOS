@@ -33,6 +33,8 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import { DailyTargetWidget } from '@/components/widgets/daily-target-widget'
+import { QuickActionsWidget } from '@/components/widgets/quick-actions-widget'
 import { toast } from 'sonner'
 import {
   Card,
@@ -852,36 +854,8 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions - Card-style buttons */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <button
-          onClick={() => setCurrentPage('billing')}
-          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
-        >
-          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm group-hover:shadow-emerald-500/30 transition-shadow duration-200">
-            <Receipt className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xs font-semibold text-foreground">New Bill</span>
-        </button>
-        <button
-          onClick={() => setCurrentPage('medicines')}
-          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
-        >
-          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-teal-500 to-teal-600 shadow-sm group-hover:shadow-teal-500/30 transition-shadow duration-200">
-            <Plus className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xs font-semibold text-foreground">Add Medicine</span>
-        </button>
-        <button
-          onClick={() => setCurrentPage('purchases')}
-          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
-        >
-          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 shadow-sm group-hover:shadow-orange-500/30 transition-shadow duration-200">
-            <ShoppingCart className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xs font-semibold text-foreground">New Purchase</span>
-        </button>
-      </div>
+      {/* Quick Actions Widget */}
+      <QuickActionsWidget />
 
       {/* Quick Sale Widget */}
       <Card className="card-elevated rounded-xl overflow-hidden">
@@ -1012,6 +986,9 @@ export function DashboardPage() {
           />
         </div>
       ) : null}
+
+      {/* Daily Sales Target Widget */}
+      <DailyTargetWidget />
 
       {/* Charts Row */}
       {salesTrendLoading || stockDistLoading ? (

@@ -307,8 +307,11 @@ export function Header() {
     medicines: 'Medicines',
     stock: 'Stock Management',
     purchases: 'Purchase Entry',
+    suppliers: 'Suppliers',
     reports: 'Reports',
     customers: 'Customers',
+    'sales-returns': 'Sales Returns',
+    'invoice-history': 'Invoice History',
     settings: 'Settings',
   }
 
