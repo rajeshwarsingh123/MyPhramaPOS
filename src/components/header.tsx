@@ -54,6 +54,9 @@ const mockAlerts: Alert[] = [
 ]
 
 function useTimeGreeting() {
+  // Must be called only after mount to avoid hydration mismatch
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
+  if (!mounted) return ''
   const hour = new Date().getHours()
   if (hour < 12) return 'Good Morning'
   if (hour < 17) return 'Good Afternoon'
@@ -76,11 +79,11 @@ export function Header() {
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
 
   const greeting = useTimeGreeting()
-  const currentDate = useMemo(() => format(new Date(), 'dd MMM yyyy'), [])
-
-  // Live clock
-  const [currentTime, setCurrentTime] = useState(() => format(new Date(), 'hh:mm a'))
+  const [currentTime, setCurrentTime] = useState('')
+  const currentDate = useMemo(() => mounted ? format(new Date(), 'dd MMM yyyy') : '', [mounted])
   useEffect(() => {
+    if (!mounted) return
+    setCurrentTime(format(new Date(), 'hh:mm a'))
     const timer = setInterval(() => {
       setCurrentTime(format(new Date(), 'hh:mm a'))
     }, 1000)
@@ -242,10 +245,12 @@ export function Header() {
 
       <div className="flex-1 min-w-0">
         <h1 className="text-lg font-semibold text-foreground">{pageTitles[currentPage] || 'PharmPOS'}</h1>
+        {mounted && greeting && (
         <p className="text-[11px] text-muted-foreground/70 -mt-0.5 hidden sm:block">
           {greeting} · <span className="font-medium text-muted-foreground/80">{currentDate}</span>
-          <span className="ml-2 font-mono text-muted-foreground/60 tabular-nums">{currentTime}</span>
+          {currentTime && <span className="ml-2 font-mono text-muted-foreground/60 tabular-nums">{currentTime}</span>}
         </p>
+        )}
       </div>
 
       <div className="hidden md:flex items-center gap-2 w-72">
