@@ -10,6 +10,7 @@ export type Page =
   | 'reports'
   | 'customers'
   | 'sales-returns'
+  | 'invoice-history'
   | 'settings'
 
 interface AppState {

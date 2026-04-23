@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, Fragment } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import {
@@ -1054,27 +1054,22 @@ export function StockPage() {
                   {items.map((item, idx) => {
                     const isExpanded = expandedRows.has(item.id)
                     return (
-                      <Collapsible
-                        key={item.id}
-                        open={isExpanded}
-                        onOpenChange={() => toggleRow(item.id)}
-                      >
+                      <Fragment key={item.id}>
                         <TableRow
                           className={cn(
                             'table-row-hover cursor-pointer transition-colors',
                             isExpanded && 'bg-muted/30',
                             !isExpanded && idx % 2 === 1 && 'bg-muted/20 dark:bg-muted/10'
                           )}
+                          onClick={() => toggleRow(item.id)}
                         >
-                          <CollapsibleTrigger asChild>
-                            <TableCell className="pl-6 pr-1 w-8">
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </TableCell>
-                          </CollapsibleTrigger>
+                          <TableCell className="pl-6 pr-1 w-8">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium text-sm">{item.name}</span>
@@ -1126,14 +1121,12 @@ export function StockPage() {
                             {expiryBadge(item.worstExpiryStatus)}
                           </TableCell>
                         </TableRow>
-                        <TableRow className={cn(isExpanded || 'hidden')}>
+                        <TableRow className={cn(!isExpanded && 'hidden')}>
                           <TableCell colSpan={10} className="p-0">
-                            <CollapsibleContent>
-                              <BatchSubTable batches={item.batches} medicineName={item.name} />
-                            </CollapsibleContent>
+                            <BatchSubTable batches={item.batches} medicineName={item.name} />
                           </TableCell>
                         </TableRow>
-                      </Collapsible>
+                      </Fragment>
                     )
                   })}
                 </TableBody>

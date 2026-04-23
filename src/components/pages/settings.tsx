@@ -232,12 +232,55 @@ export function SettingsPage() {
     updateInvoiceMutation.mutate({ invoicePrefix: prefix, nextInvoiceNo: nextNo })
   }
 
-  function handleExportData() {
-    toast.info('Export Data feature coming soon!')
+  const [exportingData, setExportingData] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
+
+  async function handleExportData() {
+    setExportingData(true)
+    try {
+      const res = await fetch('/api/export?type=medicines&format=csv')
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      downloadBlob(blob, getFilenameFromHeaders(res) || 'medicines-export.csv')
+      toast.success('Medicines data exported successfully!')
+    } catch {
+      toast.error('Failed to export data')
+    } finally {
+      setExportingData(false)
+    }
   }
 
-  function handleBackupDatabase() {
-    toast.info('Backup Database feature coming soon!')
+  async function handleBackupDatabase() {
+    setBackingUp(true)
+    try {
+      const res = await fetch('/api/backup')
+      if (!res.ok) throw new Error('Backup failed')
+      const blob = await res.blob()
+      downloadBlob(blob, getFilenameFromHeaders(res) || 'pharmpos-backup.db')
+      toast.success('Database backup downloaded successfully!')
+    } catch {
+      toast.error('Failed to backup database')
+    } finally {
+      setBackingUp(false)
+    }
+  }
+
+  function getFilenameFromHeaders(res: Response): string | null {
+    const disposition = res.headers.get('Content-Disposition')
+    if (!disposition) return null
+    const match = disposition.match(/filename="?([^";]+)"?/)
+    return match ? match[1] : null
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (isLoading) {
@@ -590,9 +633,14 @@ export function SettingsPage() {
                   size="sm"
                   className="w-full gap-2 table-view-btn"
                   onClick={handleExportData}
+                  disabled={exportingData}
                 >
-                  <FileText className="h-3.5 w-3.5" />
-                  Export Data
+                  {exportingData ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5" />
+                  )}
+                  {exportingData ? 'Exporting...' : 'Export Data'}
                 </Button>
               </div>
 
@@ -614,9 +662,14 @@ export function SettingsPage() {
                   size="sm"
                   className="w-full gap-2 table-view-btn"
                   onClick={handleBackupDatabase}
+                  disabled={backingUp}
                 >
-                  <Database className="h-3.5 w-3.5" />
-                  Backup Database
+                  {backingUp ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Database className="h-3.5 w-3.5" />
+                  )}
+                  {backingUp ? 'Backing up...' : 'Backup Database'}
                 </Button>
               </div>
             </div>

@@ -1509,11 +1509,11 @@ export function DashboardPage() {
                   <YAxis
                     type="category"
                     dataKey="medicineName"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 10 }}
                     className="text-muted-foreground"
                     tickLine={false}
                     axisLine={false}
-                    width={140}
+                    width={180}
                   />
                   <Tooltip
                     content={({ active, payload }) => {

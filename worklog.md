@@ -1647,3 +1647,127 @@ Added medicine category filter tabs to the Medicines page. This involved adding 
 - Categories API returns correct grouped counts
 - Medicines API correctly filters by category alongside search
 
+
+---
+
+## Round 7 — Bug Fixes, Data Export, Invoice History, Styling Polish (Cron Review)
+
+**Date**: 2026-04-24
+**Author**: Main Orchestrator
+
+---
+
+### Project Status: STABLE — Enhancement Round Complete ✅
+
+### Current State Assessment
+PharmPOS is fully functional with 11 pages (Dashboard, Billing, Medicines, Stock, Purchases, Suppliers, Reports, Customers, Sales Returns, Invoice History, Settings). All 14 API endpoints return 200. This round focused on bug fixes from QA, new features (Data Export, Invoice History page), and minor styling fixes.
+
+### QA Results (agent-browser)
+- Dashboard: ✅ PASS (minor chart label truncation → FIXED)
+- Billing: ✅ PASS
+- Medicines: ✅ PASS
+- Stock: ⚠️ FAIL → FIXED (4 hydration errors from Collapsible inside tbody)
+- Purchases: ✅ PASS
+- Suppliers: ✅ PASS
+- Reports: ✅ PASS
+- Customers: ✅ PASS
+- Sales Returns: ✅ PASS
+- Settings: ✅ PASS
+
+### Current Goals / Completed Modifications
+
+#### bugfix-1 — Stock Page Hydration Error (HIGH)
+- **File**: `src/components/pages/stock.tsx`
+- **Problem**: Radix `Collapsible` component renders a `<div>` inside `<tbody>`, which is invalid HTML. React hydration errors: "In HTML, <tr> cannot be a child of <div>"
+- **Fix**: Replaced `Collapsible` + `CollapsibleTrigger` + `CollapsibleContent` wrapper with React `Fragment`. Rows now expand/collapse using `hidden` CSS class toggled by `onClick` on the main row. Removed unused Collapsible imports.
+
+#### bugfix-2 — Dashboard Chart Label Truncation (LOW)
+- **File**: `src/components/pages/dashboard.tsx`
+- **Problem**: Top Selling Medicines horizontal bar chart truncated long medicine names (e.g., "Betadine Ointment15g" missing space)
+- **Fix**: Increased YAxis `width` from 140 to 180 and reduced `tick.fontSize` from 11 to 10
+
+#### bugfix-3 — Database Backup API 500 Error
+- **File**: `src/app/api/backup/route.ts`
+- **Problem**: Used `Bun.file()` which is unavailable in Next.js API routes (runs in Node.js, not Bun runtime)
+- **Fix**: Replaced with Node.js `fs` module (`existsSync`, `readFileSync`) for file reading
+
+#### feature-1 — Data Export API
+- **File**: `src/app/api/export/route.ts` (new)
+- Unified CSV export endpoint supporting 5 data types:
+  - `medicines`: Name, Generic Name, Company, Composition, Strength, Category, Unit, Price, GST, Stock, Status
+  - `stock`: Medicine, Batch #, Qty, Purchase Price, MRP, Expiry, Days Left, Status
+  - `customers`: Name, Phone, Email, Address, Doctor, Total Purchases, Orders, Last Visit, Status
+  - `sales`: Invoice #, Customer, Date, Subtotal, Discount, GST, Amount, Payment, Items
+  - `purchases`: Invoice #, Supplier, Date, Amount, GST, Items Count
+- Proper CSV escaping, Content-Disposition headers, timestamped filenames
+
+#### feature-2 — Database Backup API
+- **File**: `src/app/api/backup/route.ts` (rewritten)
+- Downloads the entire SQLite database file with timestamped filename
+- Uses Node.js `fs` module for file reading
+
+#### feature-3 — Settings Page Export/Backup Wired Up
+- **File**: `src/components/pages/settings.tsx` (modified by subagent)
+- "Export Data" button → triggers CSV download via `/api/export?type=medicines&format=csv`
+- "Backup Database" button → triggers `.db` file download via `/api/backup`
+- Loading spinners, disabled states, success/error toasts
+
+#### feature-4 — Invoice History Page
+- **File**: `src/components/pages/invoice-history.tsx` (new, ~550 lines)
+- Full invoice history page with search, date filter, payment mode filter
+- Stats row: Total Invoices, Total Revenue, This Month count
+- Desktop table + mobile card responsive layout
+- View dialog with full invoice details (items, batch info, totals)
+- Reprint dialog with print-ready receipt format
+- Uses existing CSS utilities: `card-spotlight`, `card-shadow-lg`, `hover-lift`, `gradient-text-teal`
+
+#### integration — Registered Invoice History in App
+- **Files modified**: `src/app-shell.tsx`, `src/lib/store.ts`, `src/components/sidebar.tsx`
+- Added `'invoice-history'` to Page type union
+- Added `FileText` icon nav item between Returns and Reports in sidebar
+
+### Styling Status
+The globals.css already contains 1768 lines of comprehensive styling including:
+- Glass-morphism (sidebar, header, footer, panel)
+- 15+ keyframe animations (pulse-ring, fade-up, shimmer, float, ripple, etc.)
+- Card system (pharmacy-card, card-elevated, card-shadow-lg, card-spotlight, card-3d-hover)
+- Data table system (data-table, data-table-hover, data-table-striped, data-table-compact)
+- Badge system (badge-success/warning/danger/info, badge-glow-*, badge-pulse-*)
+- Form enhancements (input-focus-smooth, form-input-enhanced, label-semibold)
+- Typography utilities (gradient-text-teal, text-display, text-title, text-label)
+- Button enhancements (btn-gradient-primary, btn-gradient-emerald, btn-glow, ripple-effect)
+- Special effects (card-spotlight, noise-bg, status-progress, pulse-dot)
+- Dark mode support throughout
+
+### Files Modified This Round
+1. `src/components/pages/stock.tsx` — Fixed hydration error (Collapsible → Fragment)
+2. `src/components/pages/dashboard.tsx` — Fixed chart label truncation
+3. `src/app/api/backup/route.ts` — Rewritten to use Node.js fs instead of Bun.file()
+4. `src/app/api/export/route.ts` — New: Unified CSV export API
+5. `src/components/pages/invoice-history.tsx` — New: Invoice History page
+6. `src/components/pages/settings.tsx` — Wired export/backup buttons
+7. `src/app-shell.tsx` — Registered InvoiceHistoryPage
+8. `src/lib/store.ts` — Added 'invoice-history' to Page type
+9. `src/components/sidebar.tsx` — Added Invoice History nav item
+
+### API Endpoints Verified (all return 200)
+- `/api/dashboard/stats`, `/api/dashboard/sales-trend`, `/api/dashboard/stock-distribution`
+- `/api/alerts`, `/api/medicines`, `/api/medicines/categories`
+- `/api/purchases`, `/api/customers`, `/api/suppliers`, `/api/settings`
+- `/api/reports/daily-sales`, `/api/reports/expiry`, `/api/reports/low-stock`
+- `/api/stock`, `/api/notifications`, `/api/quick-stats`
+- `/api/billing/invoices`
+- `/api/export?type=medicines|stock|customers|sales|purchases&format=csv`
+- `/api/backup`
+
+### Unresolved Issues / Risks
+1. **Turbopack stability**: Dev server occasionally dies after extended runs. Workaround: `setsid npx next dev` with `disown`.
+2. **No indigo/blue colors**: Design rule respected throughout.
+3. **Settings page "Export Data" currently only exports medicines**: Could add a type selector dropdown for other export types.
+
+### Priority Recommendations for Next Phase
+1. Add export type selector to Settings (CSV for all 5 data types)
+2. Add data import functionality (CSV → database)
+3. Enhanced dark mode testing (QA was only on light mode)
+4. Mobile-responsive QA pass (QA was desktop-only)
+5. Add keyboard shortcuts documentation to onboarding

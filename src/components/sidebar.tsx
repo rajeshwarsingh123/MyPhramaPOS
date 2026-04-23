@@ -21,6 +21,7 @@ import {
   Cross,
   Truck,
   RotateCcw,
+  FileText,
 } from 'lucide-react'
 
 const mainNavItems: { id: Page; label: string; icon: React.ElementType; badge?: string }[] = [
@@ -34,6 +35,7 @@ const secondaryNavItems: { id: Page; label: string; icon: React.ElementType; bad
   { id: 'purchases', label: 'Purchases', icon: ShoppingCart },
   { id: 'suppliers', label: 'Suppliers', icon: Truck },
   { id: 'sales-returns', label: 'Returns', icon: RotateCcw },
+  { id: 'invoice-history', label: 'Invoice History', icon: FileText },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'customers', label: 'Customers', icon: Users },
 ]
