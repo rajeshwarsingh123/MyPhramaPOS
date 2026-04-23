@@ -12,6 +12,7 @@ import { PurchasesPage } from '@/components/pages/purchases'
 import { SuppliersPage } from '@/components/pages/suppliers'
 import { ReportsPage } from '@/components/pages/reports'
 import { CustomersPage } from '@/components/pages/customers'
+import { SalesReturnsPage } from '@/components/pages/sales-returns'
 import { SettingsPage } from '@/components/pages/settings'
 import { useSyncExternalStore } from 'react'
 
@@ -24,6 +25,7 @@ const pages: Record<string, React.ComponentType> = {
   suppliers: SuppliersPage,
   reports: ReportsPage,
   customers: CustomersPage,
+  'sales-returns': SalesReturnsPage,
   settings: SettingsPage,
 }
 

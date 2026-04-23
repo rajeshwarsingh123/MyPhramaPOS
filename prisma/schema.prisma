@@ -140,6 +140,7 @@ model Sale {
 
   customer Customer?  @relation(fields: [customerId], references: [id])
   items    SaleItem[]
+  returns  Return[]
 
   @@index([customerId])
   @@index([saleDate])
@@ -161,9 +162,27 @@ model SaleItem {
   sale     Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
   batch    Batch  @relation(fields: [batchId], references: [id])
   medicine Medicine @relation(fields: [medicineId], references: [id])
+  returns  Return[]
 
   @@index([saleId])
   @@index([batchId])
+}
+
+// ==================== RETURNS ====================
+
+model Return {
+  id          String   @id @default(cuid())
+  saleId      String
+  saleItemId  String
+  returnQty   Int
+  reason      String
+  refundAmount Float
+  returnDate  DateTime @default(now())
+
+  sale     Sale     @relation(fields: [saleId], references: [id])
+  saleItem SaleItem @relation(fields: [saleItemId], references: [id])
+
+  @@index([saleId])
 }
 
 // ==================== SETTINGS ====================
