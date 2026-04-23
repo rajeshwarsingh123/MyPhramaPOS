@@ -325,7 +325,7 @@ export function CustomersPage() {
   const totalRevenue = customers?.reduce((sum, c) => sum + c.totalPurchases, 0) ?? 0
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -501,7 +501,7 @@ export function CustomersPage() {
                     {customers.map((customer) => (
                       <TableRow
                         key={customer.id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="table-row-hover cursor-pointer hover:bg-muted/50"
                         onClick={() => openDetailDialog(customer)}
                       >
                         <TableCell className="pl-6">

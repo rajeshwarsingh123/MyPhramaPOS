@@ -706,7 +706,7 @@ export function MedicinesPage() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -825,7 +825,7 @@ export function MedicinesPage() {
                       <>
                         <TableRow
                           key={med.id}
-                          className="cursor-pointer hover:bg-muted/50"
+                          className="table-row-hover cursor-pointer hover:bg-muted/50"
                           onClick={() => toggleExpand(med.id)}
                         >
                           <TableCell className="w-8 px-2">

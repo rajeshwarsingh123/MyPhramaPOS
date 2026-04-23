@@ -1127,3 +1127,144 @@ PharmPOS v2.1 is fully functional with all 8 core modules + enhanced features. V
 4. Multi-user authentication + role-based access
 5. Advanced analytics (YoY comparison, CLV, movement tracking)
 6. Notifications system for low stock/expiry alerts
+
+---
+
+Task ID: 4-b
+Agent: features-agent
+Task: Real notifications, top sellers grid, PDF export
+
+Work Log:
+- Read worklog, schema, and existing components to understand codebase patterns
+- Modified header.tsx: Replaced hardcoded mockAlerts with TanStack Query fetch to /api/alerts (refetchInterval: 30s)
+- Updated header alert badge to show actual alerts.length (with 99+ cap)
+- Changed alert dot colors: expiry=amber, low_stock=orange per spec
+- Changed empty state text from "All clear" to "No new alerts"
+- Updated badge labels: "Expiry" / "Low Stock" with amber/orange border colors
+- Created /api/dashboard/top-medicines/route.ts - aggregates SaleItem by medicineId, returns top 8 by quantitySold
+- Added "Top Selling Medicines Quick Grid" section to dashboard between Charts and Payment Modes
+- Grid uses 2-col mobile, 4-col desktop with pharmacy-card class and card-elevated container
+- Each item shows: rank number, medicine name, units sold, revenue with color-coded top-3 badges
+- Changed topSellers sort from revenue to qtySold, expanded slice to 8
+- Created /api/export/sales-pdf/route.ts - HTML print-friendly report with pharmacy header, tables, totals
+- Supports type=daily&date=YYYY-MM-DD and type=monthly&month=YYYY-MM query params
+- Added ExportPdfButton component to reports.tsx with FileDown icon and sonner toast
+- Added "Export PDF" button next to existing "Export CSV" on Daily Sales tab
+- Added "Export PDF" button next to existing "Export CSV" on Monthly Sales tab
+- ESLint: Zero errors. Dev server compiles successfully. All APIs return 200.
+
+Stage Summary:
+- Modified: src/components/header.tsx (real-time alerts via TanStack Query)
+- Modified: src/components/pages/dashboard.tsx (top sellers quick grid section)
+- Modified: src/components/pages/reports.tsx (PDF export buttons)
+- Created: src/app/api/dashboard/top-medicines/route.ts
+- Created: src/app/api/export/sales-pdf/route.ts
+
+---
+Task ID: 4-a
+Agent: styling-agent
+Task: CSS utility enhancements and component styling polish
+
+Work Log:
+- Added 12 new CSS utility classes to globals.css (card-elevated, stat-card-accent, text-display, text-title, text-label, btn-glow, table-row-hover, shimmer-bg, section-divider, focus-teal, page-enter, badge-dot variants)
+- Applied card-elevated to StatCard in dashboard.tsx and StatCard in reports.tsx and OverviewCard in stock.tsx
+- Applied stat-card-accent to dashboard StatCard component
+- Applied page-enter to 6 page components: dashboard, medicines, stock, reports, customers, and billing main containers
+- Applied table-row-hover to table body rows in: dashboard (recent sales), medicines, stock, customers
+- Applied btn-glow to Complete Sale button in billing.tsx
+- Applied focus-teal to 3 input fields in billing.tsx (medicine search, customer search, doctor name)
+- Applied card-elevated to cart section in billing.tsx
+
+Stage Summary:
+- Visual polish improved with enhanced card depth, page transitions, table row hover effects, button glow, and focus ring styling
+- All 7 page components updated with new utility classes
+- ESLint passes cleanly (zero errors)
+- No existing CSS rules modified — all changes are additive
+
+---
+
+## Round 4 — Hydration Fix, Styling Polish & Feature Additions (Cron Review #3)
+
+**Date**: 2026-04-23
+**Author**: Main Orchestrator
+
+---
+
+### Project Status: STABLE — Enhancement Round Complete ✅
+
+### Current State Assessment
+PharmPOS v2.1 is fully functional with all 8 core modules, enhanced styling, and additional features. VLM assessment improved visual polish from 6/10 to 8/10. All changes verified via browser QA testing with agent-browser. Zero lint errors, zero runtime errors.
+
+### Current Goals / Completed Modifications
+
+#### fix-1 — Hydration Mismatch Fix (Dashboard)
+- **Problem**: Server/client time difference caused "Good Afternoon" vs "Good Evening" mismatch
+- **Solution**: Added `useSyncExternalStore` hydration-safe mounted check to `DashboardPage`
+- Server renders static "Welcome" text; client renders time-based greeting after hydration
+- Also renders formatted date only after mount
+- File: `/home/z/my-project/src/components/pages/dashboard.tsx` (lines 498-510, 593-600)
+
+#### style-4 — CSS Utility Enhancements (~200 new lines)
+Added 12 new utility classes to `globals.css`:
+- **card-elevated**: Enhanced shadow depth with translateY hover animation + dark mode
+- **stat-card-accent**: Gradient bottom border reveal on hover for stat cards
+- **text-display / text-title / text-label**: Typography hierarchy utilities with muted-foreground variants
+- **btn-glow**: Soft teal glow halo on button hover (blurred gradient behind button)
+- **table-row-hover**: Left teal border accent + subtle background on row hover
+- **shimmer-bg**: Loading shimmer animation for skeleton placeholders
+- **section-divider**: Gradient fade horizontal divider
+- **focus-teal**: Teal focus ring for inputs (focus-visible)
+- **page-enter**: Fade-up entrance animation for page containers
+- **badge-dot-***: Dot indicator variants (success/warning/danger/info)
+
+#### style-5 — Component Styling Updates (7 pages)
+Applied new utility classes across all page components:
+- **Dashboard**: `card-elevated stat-card-accent` on StatCard, `page-enter` on main div, `table-row-hover` on recent sales rows
+- **Billing**: `card-elevated` on cart section, `btn-glow` on Complete Sale button, `focus-teal` on input fields
+- **Medicines**: `page-enter` on main container, `table-row-hover` on table body rows
+- **Stock**: `page-enter` on main container, `card-elevated` on OverviewCard, `table-row-hover` on table rows
+- **Reports**: `page-enter` on main container, `card-elevated` on StatCard
+- **Customers**: `page-enter` on main container, `table-row-hover` on table rows
+
+#### feature-4 — Expiry Timeline View (Stock Page)
+New interactive timeline feature in Stock Management page:
+- Toggle button "Expiry Timeline" in page header
+- Fetches all stock data (limit=999) when timeline is enabled
+- Groups batches expiring within 90 days by month (sorted chronologically)
+- Each month shows: month name, batch count, total units, total value at risk
+- Individual batch cards show: medicine name, batch number, expiry date, qty, expiry badge
+- Color-coded by severity: red (≤7d), amber (≤30d), yellow (≤90d)
+- Responsive grid: 1 col mobile, 2 cols tablet, 3 cols desktop
+- File: `/home/z/my-project/src/components/pages/stock.tsx`
+
+#### api-new — Top Medicines API Route
+Created `/api/dashboard/top-medicines/route.ts`:
+- GET endpoint returning top 8 medicines by quantity sold
+- Groups SaleItem by medicineId and medicineName
+- Aggregates quantity and totalRevenue
+- Sorted by quantitySold descending
+
+### Verification Results
+- ✅ ESLint: Zero errors across entire project
+- ✅ Dev Server: Compiles successfully with no errors
+- ✅ Agent-Browser QA: All 8 pages render without JS console errors
+- ✅ VLM Assessment: **8/10** visual polish (up from 6/10)
+- ✅ Hydration mismatch: Fixed, no more server/client mismatch
+- ✅ All API routes return 200
+
+### Unresolved Issues or Risks
+1. Settings page "Export Data" and "Backup Database" are placeholder toasts — not implemented yet
+2. No user authentication system (all users are "Admin")
+3. No audit trail for CRUD operations
+4. No barcode scanning support for medicines
+5. Notifications don't persist between sessions (stateless)
+
+### Priority Recommendations for Next Phase
+1. **User Authentication** — Add login/role-based access control
+2. **Audit Trail** — Log all CRUD operations with timestamps
+3. **Barcode Support** — Scan medicine barcodes for quick billing
+4. **Real-time Dashboard** — WebSocket-based live stock/sales updates
+5. **Invoice Templates** — Multiple invoice layout options
+6. **Mobile App Optimization** — PWA support for tablet-based POS
+7. **Advanced Analytics** — YoY comparison, customer lifetime value, movement analysis
+8. **Notification Persistence** — Database-backed notification system

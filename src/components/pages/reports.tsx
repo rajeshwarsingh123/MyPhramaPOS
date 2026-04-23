@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -72,6 +73,25 @@ function ExportCsvButton({ url, label }: { url: string; label: string }) {
     >
       <Download className="h-3.5 w-3.5" />
       Export CSV
+    </Button>
+  )
+}
+
+// ── Export PDF Button ────────────────────────────────────────────────────
+
+function ExportPdfButton({ url }: { url: string }) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      onClick={() => {
+        window.open(url, '_blank', 'noopener')
+        toast.success('PDF export opened', { description: 'Use browser print dialog to save as PDF.' })
+      }}
+    >
+      <FileDown className="h-3.5 w-3.5" />
+      Export PDF
     </Button>
   )
 }
@@ -210,7 +230,7 @@ function StatCard({
   suffix?: string
 }) {
   return (
-    <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <Card className="card-elevated group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <CardContent className="p-4 lg:p-5">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
@@ -380,6 +400,7 @@ function DailySalesTab() {
           Today
         </Button>
         <ExportCsvButton url={`/api/export/sales-csv?fromDate=${dateStr}&toDate=${dateStr}`} label="Daily Sales" />
+        <ExportPdfButton url={`/api/export/sales-pdf?type=daily&date=${dateStr}`} />
       </div>
 
       {/* Summary Cards */}
@@ -540,6 +561,7 @@ function MonthlySalesTab() {
           Current
         </Button>
         <ExportCsvButton url={`/api/export/sales-csv?fromDate=${format(startOfMonth(selectedMonth), 'yyyy-MM-dd')}&toDate=${format(endOfMonth(selectedMonth), 'yyyy-MM-dd')}`} label="Monthly Sales" />
+        <ExportPdfButton url={`/api/export/sales-pdf?type=monthly&month=${monthStr}`} />
       </div>
 
       {/* Summary Cards */}
@@ -1241,7 +1263,7 @@ function ExpiryTable({ items, title }: { items: ExpiryItem[]; title: string }) {
 
 export function ReportsPage() {
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

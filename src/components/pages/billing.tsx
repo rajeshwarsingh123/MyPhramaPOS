@@ -599,7 +599,7 @@ export function BillingPage() {
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search medicine by name, composition, or generic..."
-              className="h-11 pl-10 pr-10 text-base lg:text-sm"
+              className="focus-teal h-11 pl-10 pr-10 text-base lg:text-sm"
               onFocus={() => {
                 if (searchResults.length > 0) setShowSearchDropdown(true)
               }}
@@ -956,7 +956,7 @@ export function BillingPage() {
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
                       placeholder="Search customer or type new name..."
-                      className="h-9 pl-8 text-sm"
+                      className="focus-teal h-9 pl-8 text-sm"
                     />
                     {showCustomerDropdown && filteredCustomers.length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-lg max-h-40 overflow-auto">
@@ -989,7 +989,7 @@ export function BillingPage() {
                   value={doctorName}
                   onChange={(e) => setDoctorName(e.target.value)}
                   placeholder="Doctor name (optional)"
-                  className="h-9 pl-8 text-sm"
+                  className="focus-teal h-9 pl-8 text-sm"
                 />
               </div>
 
@@ -1016,7 +1016,7 @@ export function BillingPage() {
             </div>
 
             {/* Cart Items */}
-            <div className="rounded-lg border bg-card p-3 space-y-3">
+            <div className="card-elevated rounded-lg border bg-card p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium flex items-center gap-1.5">
                   <ShoppingCart className="h-3.5 w-3.5" />
@@ -1087,7 +1087,7 @@ export function BillingPage() {
             <Button
               onClick={() => setShowConfirmDialog(true)}
               disabled={cartItems.length === 0}
-              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base"
+              className="btn-glow flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base"
             >
               <Check className="h-4 w-4 mr-2" />
               Complete Sale

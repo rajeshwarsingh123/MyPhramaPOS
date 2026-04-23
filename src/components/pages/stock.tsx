@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import {
@@ -15,6 +15,8 @@ import {
   ChevronDown,
   RefreshCw,
   X,
+  Calendar,
+  TrendingDown,
 } from 'lucide-react'
 import {
   Card,
@@ -194,7 +196,7 @@ function OverviewCard({
   iconBg: string
 }) {
   return (
-    <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <Card className="card-elevated group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <CardContent className="p-4 lg:p-5">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
@@ -413,6 +415,7 @@ export function StockPage() {
   const [lowStockOnly, setLowStockOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [showTimeline, setShowTimeline] = useState(false)
   const limit = 15
 
   // Debounced search — use search directly with queryKey for simplicity
@@ -484,8 +487,41 @@ export function StockPage() {
 
   const filterActive = search || expiryFilter !== 'all' || lowStockOnly
 
+  // Build expiry timeline data from all items across pages
+  const { data: allStockData } = useQuery<StockData>({
+    queryKey: ['stock-all', 'all'],
+    queryFn: () => fetch('/api/stock?limit=999').then((r) => r.json()),
+    enabled: showTimeline,
+    refetchOnWindowFocus: false,
+  })
+
+  const expiryTimeline = useMemo(() => {
+    if (!allStockData?.items) return []
+    const groups: Record<string, { month: string; items: Array<{ name: string; batchNumber: string; expiryDate: string; daysLeft: number; qty: number; mrp: number; status: ExpiryStatus }> }> = {}
+    for (const item of allStockData.items) {
+      for (const batch of item.batches) {
+      if (batch.daysUntilExpiry > 0 && batch.daysUntilExpiry <= 90 && batch.quantity > 0) {
+        const monthKey = format(parseISO(batch.expiryDate), 'MMMM yyyy')
+        if (!groups[monthKey]) {
+          groups[monthKey] = { month: monthKey, items: [] }
+        }
+        groups[monthKey].items.push({
+          name: item.name,
+          batchNumber: batch.batchNumber,
+          expiryDate: batch.expiryDate,
+          daysLeft: batch.daysUntilExpiry,
+          qty: batch.quantity,
+          mrp: batch.mrp,
+          status: batch.expiryStatus,
+        })
+      }
+      }
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+  }, [allStockData])
+
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -495,6 +531,15 @@ export function StockPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTimeline(!showTimeline)}
+            className={cn('gap-1.5', showTimeline && 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800')}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Expiry Timeline
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -641,6 +686,83 @@ export function StockPage() {
         </CardContent>
       </Card>
 
+      {/* Expiry Timeline */}
+      {showTimeline && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                  <Calendar className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Expiry Timeline</CardTitle>
+                  <CardDescription>Batches expiring within 90 days, grouped by month</CardDescription>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowTimeline(false)} className="gap-1.5">
+                <X className="h-3.5 w-3.5" />
+                Close
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {!expiryTimeline.length ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <TrendingDown className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No batches expiring within 90 days</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {expiryTimeline.map(([monthKey, group]) => {
+                  const totalItems = group.items.reduce((s, i) => s + i.qty, 0)
+                  const totalValue = group.items.reduce((s, i) => s + i.qty * i.mrp, 0)
+                  return (
+                    <div key={monthKey} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-amber-500" />
+                          <h4 className="text-sm font-semibold">{monthKey}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {group.items.length} batches · {formatNumber(totalItems)} units · {formatCurrency(totalValue)} at risk
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {group.items.map((batch) => (
+                          <div
+                            key={batch.batchNumber}
+                            className={cn(
+                              'flex items-center justify-between rounded-lg border px-3 py-2 text-xs',
+                              batch.daysLeft <= 7
+                                ? 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/30'
+                                : batch.daysLeft <= 30
+                                  ? 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30'
+                                  : 'border-yellow-200 bg-yellow-50/50 dark:border-yellow-800 dark:bg-yellow-950/30'
+                            )}
+                          >
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium truncate">{batch.name}</span>
+                              <span className="text-muted-foreground text-[11px]">
+                                {batch.batchNumber} · {format(parseISO(batch.expiryDate), 'dd MMM')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-muted-foreground">{formatNumber(batch.qty)} pcs</span>
+                              {expiryBadge(batch.status)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stock Table */}
       {isLoading ? (
         <TableSkeleton />
@@ -726,7 +848,7 @@ export function StockPage() {
                       >
                         <TableRow
                           className={cn(
-                            'cursor-pointer transition-colors',
+                            'table-row-hover cursor-pointer transition-colors',
                             isExpanded && 'bg-muted/30'
                           )}
                         >

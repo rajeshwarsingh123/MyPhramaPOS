@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -185,7 +185,7 @@ function StatCard({
   return (
     <Card
       className={cn(
-        'group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
+        'card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
         borderClass
       )}
       style={{ animationDelay: `${delayMs}ms` }}
@@ -496,6 +496,13 @@ function AlertGroup({
 export function DashboardPage() {
   const { setCurrentPage } = useAppStore()
 
+  // Hydration-safe mounted check
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+
   // Date helpers
   const today = useMemo(() => new Date(), [])
   const thirtyDaysAgo = useMemo(() => subDays(today, 30), [today])
@@ -561,8 +568,8 @@ export function DashboardPage() {
   const topSellers = useMemo(() => {
     if (!profitData?.items) return []
     return [...profitData.items]
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
+      .sort((a, b) => b.qtySold - a.qtySold)
+      .slice(0, 8)
   }, [profitData])
 
   const hasAlerts = alertsData && alertsData.alerts.length > 0
@@ -578,19 +585,19 @@ export function DashboardPage() {
   }, [alertsData])
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="page-enter p-4 lg:p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">
             <span className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {greeting}, Admin
+              {mounted ? greeting : 'Welcome'}, Admin
             </span>{' '}
             <Sparkles className="inline h-6 w-6 text-amber-400 ml-1" />
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5" />
-            {formattedDate}
+            {mounted ? formattedDate : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -861,6 +868,76 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* Top Selling Medicines Quick Grid */}
+      <div className="card-elevated rounded-xl p-4 lg:p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-emerald-50 dark:bg-emerald-950/50">
+              <Trophy className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold">Top Selling Medicines</h3>
+              <CardDescription className="text-xs">By units sold — all time</CardDescription>
+            </div>
+          </div>
+        </div>
+        {topSellersLoading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="pharmacy-card rounded-lg p-4">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-3 w-16 mb-1" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
+        ) : topSellers.length > 0 ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {topSellers.slice(0, 8).map((item, index) => {
+              const rank = index + 1
+              const rankColors = {
+                1: 'text-amber-500',
+                2: 'text-slate-400',
+                3: 'text-orange-500',
+              }
+              const rankBg = {
+                1: 'bg-amber-50 dark:bg-amber-950/40',
+                2: 'bg-slate-50 dark:bg-slate-900/40',
+                3: 'bg-orange-50 dark:bg-orange-950/40',
+              }
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    'pharmacy-card rounded-lg p-4 flex flex-col gap-2 hover:scale-[1.02] transition-all duration-200',
+                  rank <= 3 && 'ring-1 ring-emerald-200/50 dark:ring-emerald-800/30'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      'text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full',
+                      rank <= 3 ? `${rankBg[rank] ?? ''} ${rankColors[rank]}` : 'bg-muted text-muted-foreground'
+                    )}>
+                      {rank}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{item.qtySold} sold</span>
+                  </div>
+                  <p className="text-sm font-semibold truncate leading-tight">{item.medicineName}</p>
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(item.revenue)}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Trophy className="h-8 w-8 opacity-30 mb-2" />
+            <p className="text-sm">No sales data yet</p>
+          </div>
+        )}
+      </div>
+
       {/* Sales by Payment Mode + Top Selling Medicines */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Payment Modes Breakdown */}
@@ -1057,7 +1134,7 @@ export function DashboardPage() {
                     <TableRow
                       key={sale.id}
                       className={cn(
-                        'transition-all duration-200 border-l-[3px] border-l-transparent hover:border-l-teal-500 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
+                        'table-row-hover transition-all duration-200 border-l-[3px] border-l-transparent hover:border-l-teal-500 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
                         idx % 2 === 1 && 'bg-muted/30'
                       )}
                     >

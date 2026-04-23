@@ -2,6 +2,7 @@
 
 import { useAppStore } from '@/lib/store'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
@@ -32,7 +33,7 @@ import { useEffect, useState, useMemo, useRef, useCallback, useSyncExternalStore
 
 interface Alert {
   id: string
-  type: 'expiry' | 'low_stock'
+  type: 'expiry' | 'expiring' | 'low_stock' | 'expired'
   title: string
   description: string
   time: string
@@ -46,12 +47,6 @@ interface MedicineResult {
   totalStock: number
   batches: { mrp: number }[]
 }
-
-const mockAlerts: Alert[] = [
-  { id: '1', type: 'expiry', title: 'Paracetamol 500mg expiring soon', description: 'Batch BN2024-001 expires in 7 days', time: format(new Date(), 'HH:mm') },
-  { id: '2', type: 'low_stock', title: 'Amoxicillin 250mg low stock', description: 'Only 5 units remaining', time: format(new Date(), 'HH:mm') },
-  { id: '3', type: 'expiry', title: 'Cough Syrup 100ml expired', description: 'Batch BN2023-015 expired 3 days ago', time: format(new Date(), 'HH:mm') },
-]
 
 function useTimeGreeting() {
   // Must be called only after mount to avoid hydration mismatch
@@ -76,7 +71,26 @@ export function Header() {
   const isMobile = useIsMobile()
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
+
+  // Fetch alerts with TanStack Query - auto-refresh every 30s
+  const { data: alertsApiData } = useQuery<{ alerts: Array<{ id: string; type: 'expired' | 'expiring' | 'low_stock'; title: string; description: string }> }>({
+    queryKey: ['header-alerts'],
+    queryFn: () => fetch('/api/alerts').then((r) => r.json()),
+    refetchInterval: 30000,
+  })
+
+  // Transform API alerts to header format
+  const alerts: Alert[] = useMemo(() => {
+    if (!alertsApiData?.alerts) return []
+    const now = format(new Date(), 'HH:mm')
+    return alertsApiData.alerts.slice(0, 20).map((a) => ({
+      id: a.id,
+      type: a.type === 'expired' ? 'expiry' : a.type === 'expiring' ? 'expiry' : a.type,
+      title: a.title,
+      description: a.description,
+      time: now,
+    }))
+  }, [alertsApiData])
 
   const greeting = useTimeGreeting()
   const [currentTime, setCurrentTime] = useState('')
@@ -115,17 +129,6 @@ export function Header() {
         .catch(() => {})
     }, 60000)
     return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/alerts')
-      .then(r => r.json())
-      .then(data => {
-        if (data.alerts && data.alerts.length > 0) {
-          setAlerts(data.alerts)
-        }
-      })
-      .catch(() => {})
   }, [])
 
   // Debounced search
@@ -322,7 +325,7 @@ export function Header() {
                 <span className="relative flex h-4 w-4 items-center justify-center">
                   <span className="absolute inset-0 rounded-full bg-destructive animate-pulse-ring" />
                   <span className="relative flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm shadow-destructive/30">
-                    {quickStats ? quickStats.lowStockCount + quickStats.expiredCount : alerts.length}
+                    {alerts.length > 99 ? '99+' : alerts.length}
                   </span>
                 </span>
               )}
@@ -338,7 +341,7 @@ export function Header() {
                 {alerts.map((alert) => (
                   <div key={alert.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
                     <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                      alert.type === 'expiry' ? 'bg-destructive' : 'bg-warning'
+                      alert.type === 'expiry' ? 'bg-amber-500' : 'bg-orange-500'
                     }`} />
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="text-sm font-medium truncate">{alert.title}</span>
@@ -348,11 +351,11 @@ export function Header() {
                           variant="outline"
                           className={`text-[9px] px-1.5 h-4 w-fit ${
                             alert.type === 'expiry'
-                              ? 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400'
-                              : 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400'
+                              ? 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400'
+                              : 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400'
                           }`}
                         >
-                          {alert.type === 'expiry' ? 'Expiry' : 'Stock'}
+                          {alert.type === 'expiry' ? 'Expiry' : 'Low Stock'}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground/50">{alert.time}</span>
                       </div>
@@ -362,7 +365,7 @@ export function Header() {
                 {alerts.length === 0 && (
                   <div className="flex flex-col items-center gap-2 py-8">
                     <ShieldCheck className="h-8 w-8 text-emerald-500" />
-                    <p className="text-sm text-muted-foreground">All clear</p>
+                    <p className="text-sm text-muted-foreground">No new alerts</p>
                   </div>
                 )}
               </div>

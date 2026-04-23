@@ -775,3 +775,155 @@
     display: none !important;
   }
 }
+
+/* ============ Enhanced Card Depth ============ */
+.card-elevated {
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.07), 0 10px 15px -3px oklch(0 0 0 / 0.05), 0 0 0 1px oklch(0.91 0.01 155 / 0.5);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-elevated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px oklch(0 0 0 / 0.08), 0 20px 30px -10px oklch(0 0 0 / 0.06), 0 0 0 1px oklch(0.51 0.118 163 / 0.15);
+}
+.dark .card-elevated {
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.2), 0 10px 15px -3px oklch(0 0 0 / 0.15), 0 0 0 1px oklch(0.28 0.03 163 / 0.5);
+}
+.dark .card-elevated:hover {
+  box-shadow: 0 10px 25px -5px oklch(0 0 0 / 0.25), 0 20px 30px -10px oklch(0 0 0 / 0.2), 0 0 0 1px oklch(0.6 0.15 163 / 0.2);
+}
+
+/* ============ Stat Card Enhancements ============ */
+.stat-card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, oklch(0.51 0.118 163), oklch(0.65 0.17 145));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.stat-card-accent:hover::after {
+  opacity: 1;
+}
+
+/* ============ Typography Utilities ============ */
+.text-display {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.text-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.text-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: oklch(0.5 0.02 260);
+}
+.dark .text-label {
+  color: oklch(0.65 0.02 155);
+}
+
+/* ============ Button Enhancements ============ */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, oklch(0.51 0.118 163), oklch(0.65 0.17 145), oklch(0.51 0.118 163));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  filter: blur(8px);
+}
+.btn-glow:hover::before {
+  opacity: 0.6;
+}
+
+/* ============ Table Row Hover ============ */
+.table-row-hover {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.table-row-hover:hover {
+  background-color: oklch(0.97 0.008 163 / 0.6);
+  box-shadow: inset 3px 0 0 oklch(0.51 0.118 163);
+}
+.dark .table-row-hover:hover {
+  background-color: oklch(0.22 0.025 163 / 0.6);
+  box-shadow: inset 3px 0 0 oklch(0.6 0.15 163);
+}
+
+/* ============ Shimmer Loading ============ */
+.shimmer-bg {
+  background: linear-gradient(90deg, oklch(0.95 0.005 155) 25%, oklch(0.92 0.005 155) 50%, oklch(0.95 0.005 155) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.dark .shimmer-bg {
+  background: linear-gradient(90deg, oklch(0.22 0.02 163) 25%, oklch(0.26 0.025 163) 50%, oklch(0.22 0.02 163) 75%);
+  background-size: 200% 100%;
+}
+
+/* ============ Section Divider ============ */
+.section-divider {
+  position: relative;
+}
+.section-divider::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.91 0.01 155 / 0.8), transparent);
+}
+.dark .section-divider::after {
+  background: linear-gradient(90deg, transparent, oklch(0.28 0.03 163 / 0.8), transparent);
+}
+
+/* ============ Focus Ring Enhancements ============ */
+.focus-teal:focus-visible {
+  outline: 2px solid oklch(0.51 0.118 163);
+  outline-offset: 2px;
+}
+.dark .focus-teal:focus-visible {
+  outline-color: oklch(0.6 0.15 163);
+}
+
+/* ============ Smooth Page Transitions ============ */
+.page-enter {
+  animation: fade-up 0.4s ease-out forwards;
+}
+
+/* ============ Badge Dot Indicator ============ */
+.badge-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.badge-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.badge-dot-success::before { background: oklch(0.6 0.15 145); }
+.badge-dot-warning::before { background: oklch(0.75 0.183 55); }
+.badge-dot-danger::before { background: oklch(0.577 0.245 27.325); }
+.badge-dot-info::before { background: oklch(0.55 0.15 250); }
