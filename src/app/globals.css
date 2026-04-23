@@ -177,6 +177,15 @@
   background: oklch(0.6 0 0 / 30%);
 }
 
+/* No-scrollbar utility for horizontal scroll tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ============ Keyframe Animations ============ */
 
 @keyframes pulse-ring {

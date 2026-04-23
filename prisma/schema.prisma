@@ -16,6 +16,7 @@ model Medicine {
   companyName String?
   composition String?
   strength    String?
+  category    String?  // Pain/Fever, Antibiotics, Diabetes, etc.
   unitType    String   @default("tablet") // tablet, capsule, syrup, injection, cream, drops, inhaler, powder
   packSize    String?
   gstPercent  Float    @default(5)

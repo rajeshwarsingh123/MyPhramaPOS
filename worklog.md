@@ -1472,3 +1472,178 @@ PharmPOS v2.1 is fully functional with all 8 core modules, rich feature set, and
 6. **Invoice Templates** — Multiple invoice layout options
 7. **PWA Support** — Mobile tablet-based POS optimization
 8. **Advanced Analytics** — YoY comparison, customer lifetime value
+
+---
+
+## Task 4-a — AI Prescription Scanner Feature
+
+**Date**: 2026-04-23
+**Author**: Agent (Task ID: 4-a)
+
+---
+
+### Summary
+Implemented the full AI-powered prescription scanner feature for PharmPOS. Includes a backend API route using z-ai-web-dev-sdk VLM (Vision Language Model) to analyze prescription images and extract medicine data, a beautiful dialog component with drag-and-drop upload, image preview, animated scanning effect, and medicine selection with cart integration. Connected the existing "Scan Prescription" buttons on the billing page to the new dialog.
+
+### Files Created
+
+#### API Route (1 file)
+1. **`src/app/api/ai/scan-prescription/route.ts`** — POST endpoint:
+   - Accepts image file via FormData (JPEG, PNG, GIF, WebP, BMP)
+   - File validation: type check + 10MB size limit
+   - Converts image to base64 and sends to VLM (z-ai-web-dev-sdk)
+   - Structured prompt instructs VLM to extract: medicine name, dosage, quantity, notes, doctor name, patient name, prescription date
+   - Response parsing: extracts JSON from VLM response (handles markdown code blocks), normalizes medicine fields
+   - Returns structured JSON: `{ success, medicines[], doctor_name, patient_name, prescription_date, raw }`
+   - Graceful error handling with proper HTTP status codes (400, 500)
+
+#### Frontend Component (1 file)
+2. **`src/components/features/prescription-scanner.tsx`** — Full prescription scanner dialog (~400 lines):
+
+**Dialog Design**:
+- Teal-to-emerald gradient header with Sparkles icon and descriptive subtitle
+- Glass-morphism footer with muted background
+
+**Upload Area** (initial state):
+- Large drag-and-drop zone with hover/active visual feedback
+- Animated border color change on drag (teal highlight)
+- Two action buttons: "Browse Files" and "Take Photo" (camera capture)
+- Hidden file inputs for browse (accept="image/*") and camera (capture="environment")
+
+**Preview State** (image uploaded):
+- Centered image preview with rounded corners and shadow
+- Remove button (red circle with X) in top-right corner
+- File name and size display
+- Full-width gradient "Scan Prescription" button with Sparkles icon
+- Animated scanning overlay: spinning ring + pulsing Sparkles icon + status text
+
+**Results State** (after scan):
+- Doctor name and patient name metadata display (if detected)
+- Select All toggle with selection counter badge
+- Scrollable medicine list (max 280px) with checkbox cards
+- Each medicine card shows: Pill icon, name, dosage badge (monospace), quantity, notes (italic), index number
+- Selected items get teal border/background highlight
+- "No results" state with AlertCircle icon and retry suggestion
+
+**Footer Actions**:
+- Before scan: "Different Image" button + "AI-powered analysis" label
+- After scan: "Re-scan", "New Image", and "Add N to Bill" (gradient teal-emerald, disabled when none selected)
+
+### Files Modified
+3. **`src/components/pages/billing.tsx`** — Integration changes:
+   - Added import for `PrescriptionScanner` and `ScannedMedicine` type
+   - Removed unused scan state variables (scanFile, scanPreview, isScanning, scanResults, scanInputRef)
+   - Simplified scan dialog open handlers (single `setShowScanDialog(true)`)
+   - Added `handleScannedMedicines` callback that:
+     - Iterates over each scanned medicine
+     - Searches billing API for matching medicine by name
+     - Auto-adds found medicines to cart via existing `addToCart`
+     - Shows toast warnings for medicines not found in inventory
+     - Shows toast errors for network failures
+   - Rendered `<PrescriptionScanner>` dialog component in JSX (between Confirm Dialog and Invoice Dialog)
+
+### Tech Stack Used
+- **Backend**: z-ai-web-dev-sdk (`ZAI.create()` + `createVision()`) for VLM image analysis
+- **Frontend**: React hooks (useState, useCallback, useRef), FileReader API for image preview
+- **UI**: shadcn/ui (Dialog, Button, Badge, Checkbox, ScrollArea), lucide-react icons
+- **UX**: sonner toast notifications, drag-and-drop API, camera capture (input capture attribute)
+- **Styling**: Tailwind CSS with teal/emerald gradient accents, glass-morphism, smooth animations
+
+### Design Decisions
+- Separate API route (`/api/ai/scan-prescription`) rather than extending existing `/api/ai/scan-bill` — prescriptions and bills have fundamentally different data structures
+- Prescription-specific prompt focuses on dosage, quantity, instructions, and optional doctor/patient metadata
+- Self-contained scanner component with all state management internal — billing page only needs to provide open/close control and a callback
+- Camera capture uses `capture="environment"` for rear camera (optimal for document scanning on mobile)
+- Auto-select all medicines by default after successful scan (user can deselect before adding)
+- Medicine matching uses existing billing search API — only adds medicines that exist in inventory, warns for missing ones
+- Gradient teal-to-emerald color scheme consistent with pharmacy/medical theme
+
+### Verification
+- ESLint passes with zero errors on all 3 files (scan-prescription route, scanner component, billing page)
+- Pre-existing error in app-shell.tsx is unrelated to this change
+- Dev server compiles successfully
+- All new imports properly used (no unused imports)
+
+
+
+---
+
+## Task 4-b — Medicine Category Filter Tabs
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: 4-b)
+
+---
+
+### Summary
+Added medicine category filter tabs to the Medicines page. This involved adding a `category` field to the database schema, updating seed data with categories for all 28 medicines, rewriting the categories API endpoint to use the new field, enhancing the medicines API with category filtering, and building an interactive horizontally-scrollable pill tab bar on the medicines page.
+
+### Files Modified
+
+#### 1. Prisma Schema — `prisma/schema.prisma`
+- Added `category String?` field to the `Medicine` model (between `strength` and `unitType`)
+- Optional field to allow uncategorized medicines
+- Comment: `// Pain/Fever, Antibiotics, Diabetes, etc.`
+
+#### 2. Seed Data — `prisma/seed.ts`
+- Added `category` property to all 28 medicine entries
+- Categories used: Pain/Fever (4), Antibiotics (5), Diabetes (2), Blood Pressure (3), Vitamins (3), Digestive (4), Cough/Cold (3), Skin (2), Eye (1), Other (1)
+- Database re-seeded after schema change
+
+#### 3. Categories API — `src/app/api/medicines/categories/route.ts`
+- Rewrote to use `db.medicine.groupBy({ by: ['category'] })` instead of keyword matching
+- Returns `{ categories: [{ name: "Pain/Fever", count: 4 }, ...] }` sorted by count descending
+- Filters out null categories
+- Much simpler and more accurate than previous keyword-based approach
+
+#### 4. Medicines API — `src/app/api/medicines/route.ts`
+- Added `category` query parameter support to GET handler
+- Case-insensitive partial match via `category: { contains: category, mode: 'insensitive' }`
+- Works alongside existing `search`, `unitType`, `compositionKeyword`, `page`, `limit` parameters
+- Added `category` to POST handler for creating medicines with category
+
+#### 5. Medicines Page — `src/components/pages/medicines.tsx`
+- Added `selectedCategory` state, `categoryScrollRef` for scroll-into-view behavior
+- Added categories fetch via `useQuery` with 60s staleTime
+- Added `useEffect` to auto-scroll active tab into view on selection
+- **Category Filter Tabs** (above search bar):
+  - Horizontal scrollable row with `no-scrollbar` utility (webkit + Firefox)
+  - "All Medicines" pill (default selected) showing total count
+  - Category pills showing name + count badge
+  - Active tab: `bg-gradient-to-r from-teal-500 to-emerald-500 text-white` with shadow
+  - Inactive: bordered pill with muted text, hover effects
+  - Toggle behavior: clicking active category deselects it
+  - Clicking category resets pagination to page 1
+- Updated query key to include `selectedCategory`
+- Updated fetch URL to include category as query parameter
+- Category column added to table view (replacing Composition column on large screens)
+- Category shown in grid view cards (replacing composition subtitle)
+- Updated empty state message to mention category filter
+
+#### 6. Global CSS — `src/app/globals.css`
+- Added `.no-scrollbar` utility class (webkit + Firefox scrollbar hiding)
+- Used by the horizontal scroll category tabs
+
+### Tech Stack Used
+- Prisma `groupBy` for category aggregation
+- Prisma `mode: 'insensitive'` for case-insensitive search
+- TanStack Query with `staleTime` for category data caching
+- `useRef` + `useEffect` + `scrollIntoView` for auto-scrolling active tab
+- `URLSearchParams` for building query strings
+- Tailwind CSS gradient: `bg-gradient-to-r from-teal-500 to-emerald-500`
+
+### Design Decisions
+- Used a database `category` field instead of keyword matching for accuracy and simplicity
+- Toggle behavior on category click (click again to deselect) for easy clearing
+- Category tabs placed above search bar for discoverability
+- "All Medicines" pill always visible as the first tab with total count
+- Category replaces Composition in table header (composition still visible on medicine detail)
+- `staleTime: 60_000` for categories query to avoid refetching on every interaction
+- Teal-to-emerald gradient for active tabs matches the pharmacy color scheme
+
+### Verification
+- ESLint passes on all changed files (only pre-existing error in app-shell.tsx)
+- Prisma schema pushed and database re-seeded successfully with 28 medicines
+- Categories API returns correct grouped counts
+- Medicines API correctly filters by category alongside search
+

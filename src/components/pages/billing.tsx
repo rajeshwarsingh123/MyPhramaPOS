@@ -60,6 +60,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PrescriptionScanner, type ScannedMedicine } from '@/components/features/prescription-scanner'
 
 // ==================== Types ====================
 
@@ -238,11 +239,6 @@ export function BillingPage() {
   const [isCompletingSale, setIsCompletingSale] = useState(false)
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
   const [showScanDialog, setShowScanDialog] = useState(false)
-  const [scanFile, setScanFile] = useState<File | null>(null)
-  const [scanPreview, setScanPreview] = useState<string | null>(null)
-  const [isScanning, setIsScanning] = useState(false)
-  const [scanResults, setScanResults] = useState<Array<Record<string, unknown>> | null>(null)
-  const scanInputRef = useRef<HTMLInputElement>(null)
 
   // Mobile
   const [mobileView, setMobileView] = useState<'search' | 'cart'>('search')
@@ -582,6 +578,26 @@ export function BillingPage() {
     printWindow.print()
   }, [completedSale])
 
+  // Handle medicines selected from prescription scanner
+  const handleScannedMedicines = useCallback(
+    async (medicines: ScannedMedicine[]) => {
+      for (const med of medicines) {
+        try {
+          const res = await fetch(`/api/billing/search?q=${encodeURIComponent(med.name)}`)
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            addToCart(data[0])
+          } else {
+            toast.warning(`"${med.name}" not found in inventory`)
+          }
+        } catch {
+          toast.error(`Error searching for "${med.name}"`)
+        }
+      }
+    },
+    [addToCart]
+  )
+
   // Customer filtered
   const filteredCustomers = useMemo(() => {
     if (!customerQuery) return customers
@@ -772,12 +788,7 @@ export function BillingPage() {
                 variant="ghost"
                 size="icon"
                 className="absolute right-12 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setShowScanDialog(true)
-                  setScanFile(null)
-                  setScanPreview(null)
-                  setScanResults(null)
-                }}
+                onClick={() => setShowScanDialog(true)}
                 title="Scan Prescription"
               >
                 <Camera className="h-4 w-4" />
@@ -787,12 +798,7 @@ export function BillingPage() {
               variant="outline"
               size="icon"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-              onClick={() => {
-                setShowScanDialog(true)
-                setScanFile(null)
-                setScanPreview(null)
-                setScanResults(null)
-              }}
+              onClick={() => setShowScanDialog(true)}
               title="Scan Prescription / Bill"
             >
               <Upload className="h-3.5 w-3.5" />
@@ -1348,6 +1354,13 @@ export function BillingPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ==================== PRESCRIPTION SCANNER DIALOG ==================== */}
+      <PrescriptionScanner
+        open={showScanDialog}
+        onOpenChange={setShowScanDialog}
+        onMedicinesSelected={handleScannedMedicines}
+      />
+
       {/* ==================== INVOICE DIALOG ==================== */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30">
@@ -1404,7 +1417,7 @@ function CartItemRow({
   const lineTotal = item.mrp * item.quantity * (1 - item.discount / 100)
 
   return (
-    <div className="p-2.5 rounded-lg border text-sm space-y-1.5 bg-background animate-in fade-in-0 slide-in-from-bottom-1 duration-200 hover:bg-muted/30 transition-colors shadow-sm shadow-black/[0.02]"
+    <div className="p-2.5 rounded-lg border text-sm space-y-1.5 bg-background animate-in fade-in-0 slide-in-from-bottom-1 duration-200 hover:bg-muted/30 transition-colors shadow-sm shadow-black/[0.02]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{item.medicineName}</p>

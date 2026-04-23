@@ -127,155 +127,155 @@ async function main() {
     // ── Pain / Fever ──
     {
       name: 'Paracetamol 500mg', genericName: 'Paracetamol', companyName: 'Cipla Ltd',
-      composition: 'Paracetamol', strength: '500mg', unitType: 'tablet', packSize: '15 tablets/strip',
+      composition: 'Paracetamol', strength: '500mg', category: 'Pain/Fever', unitType: 'tablet', packSize: '15 tablets/strip',
       gstPercent: 5, sellingPrice: 28, marginPercent: 22,
     },
     {
       name: 'Ibuprofen 400mg', genericName: 'Ibuprofen', companyName: 'Abbott India Ltd',
-      composition: 'Ibuprofen', strength: '400mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Ibuprofen', strength: '400mg', category: 'Pain/Fever', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 12, sellingPrice: 35, marginPercent: 20,
     },
     {
       name: 'Aspirin 150mg', genericName: 'Aspirin', companyName: 'Bayer',
-      composition: 'Aspirin', strength: '150mg', unitType: 'tablet', packSize: '14 tablets/strip',
+      composition: 'Aspirin', strength: '150mg', category: 'Pain/Fever', unitType: 'tablet', packSize: '14 tablets/strip',
       gstPercent: 12, sellingPrice: 22, marginPercent: 25,
     },
     {
       name: 'Crocin Advance 500mg', genericName: 'Paracetamol', companyName: 'GSK',
-      composition: 'Paracetamol', strength: '500mg', unitType: 'tablet', packSize: '15 tablets/strip',
+      composition: 'Paracetamol', strength: '500mg', category: 'Pain/Fever', unitType: 'tablet', packSize: '15 tablets/strip',
       gstPercent: 5, sellingPrice: 35, marginPercent: 24,
     },
     // ── Antibiotics ──
     {
       name: 'Amoxicillin 500mg', genericName: 'Amoxicillin', companyName: 'Sun Pharmaceutical Industries',
-      composition: 'Amoxicillin Trihydrate', strength: '500mg', unitType: 'capsule', packSize: '10 capsules/strip',
+      composition: 'Amoxicillin Trihydrate', strength: '500mg', category: 'Antibiotics', unitType: 'capsule', packSize: '10 capsules/strip',
       gstPercent: 5, sellingPrice: 58, marginPercent: 20,
     },
     {
       name: 'Azithromycin 500mg', genericName: 'Azithromycin', companyName: 'Cipla Ltd',
-      composition: 'Azithromycin Dihydrate', strength: '500mg', unitType: 'tablet', packSize: '3 tablets/strip',
+      composition: 'Azithromycin Dihydrate', strength: '500mg', category: 'Antibiotics', unitType: 'tablet', packSize: '3 tablets/strip',
       gstPercent: 5, sellingPrice: 95, marginPercent: 18,
     },
     {
       name: 'Ciprofloxacin 500mg', genericName: 'Ciprofloxacin', companyName: 'Dr. Reddy\'s Laboratories',
-      composition: 'Ciprofloxacin Hydrochloride', strength: '500mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Ciprofloxacin Hydrochloride', strength: '500mg', category: 'Antibiotics', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 45, marginPercent: 22,
     },
     {
       name: 'Metronidazole 400mg', genericName: 'Metronidazole', companyName: 'Lupin Ltd',
-      composition: 'Metronidazole', strength: '400mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Metronidazole', strength: '400mg', category: 'Antibiotics', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 30, marginPercent: 25,
     },
     {
       name: 'Doxycycline 100mg', genericName: 'Doxycycline', companyName: 'Sun Pharmaceutical Industries',
-      composition: 'Doxycycline Hyclate', strength: '100mg', unitType: 'capsule', packSize: '10 capsules/strip',
+      composition: 'Doxycycline Hyclate', strength: '100mg', category: 'Antibiotics', unitType: 'capsule', packSize: '10 capsules/strip',
       gstPercent: 5, sellingPrice: 52, marginPercent: 20,
     },
     // ── Diabetes ──
     {
       name: 'Metformin 500mg', genericName: 'Metformin', companyName: 'Dr. Reddy\'s Laboratories',
-      composition: 'Metformin Hydrochloride', strength: '500mg', unitType: 'tablet', packSize: '20 tablets/strip',
+      composition: 'Metformin Hydrochloride', strength: '500mg', category: 'Diabetes', unitType: 'tablet', packSize: '20 tablets/strip',
       gstPercent: 5, sellingPrice: 18, marginPercent: 28,
     },
     {
       name: 'Glimepiride 2mg', genericName: 'Glimepiride', companyName: 'Sun Pharmaceutical Industries',
-      composition: 'Glimepiride', strength: '2mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Glimepiride', strength: '2mg', category: 'Diabetes', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 42, marginPercent: 22,
     },
     // ── Blood Pressure ──
     {
       name: 'Amlodipine 5mg', genericName: 'Amlodipine', companyName: 'Cipla Ltd',
-      composition: 'Amlodipine Besylate', strength: '5mg', unitType: 'tablet', packSize: '14 tablets/strip',
+      composition: 'Amlodipine Besylate', strength: '5mg', category: 'Blood Pressure', unitType: 'tablet', packSize: '14 tablets/strip',
       gstPercent: 5, sellingPrice: 38, marginPercent: 25,
     },
     {
       name: 'Telmisartan 40mg', genericName: 'Telmisartan', companyName: 'Lupin Ltd',
-      composition: 'Telmisartan', strength: '40mg', unitType: 'tablet', packSize: '15 tablets/strip',
+      composition: 'Telmisartan', strength: '40mg', category: 'Blood Pressure', unitType: 'tablet', packSize: '15 tablets/strip',
       gstPercent: 5, sellingPrice: 85, marginPercent: 20,
     },
     {
       name: 'Losartan 50mg', genericName: 'Losartan', companyName: 'Abbott India Ltd',
-      composition: 'Losartan Potassium', strength: '50mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Losartan Potassium', strength: '50mg', category: 'Blood Pressure', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 65, marginPercent: 22,
     },
     // ── Vitamins ──
     {
       name: 'Vitamin D3 60K IU', genericName: 'Cholecalciferol', companyName: 'Abbott India Ltd',
-      composition: 'Cholecalciferol', strength: '60,000 IU', unitType: 'capsule', packSize: '4 capsules/pack',
+      composition: 'Cholecalciferol', strength: '60,000 IU', category: 'Vitamins', unitType: 'capsule', packSize: '4 capsules/pack',
       gstPercent: 12, sellingPrice: 135, marginPercent: 25,
     },
     {
       name: 'Vitamin B12 500mcg', genericName: 'Methylcobalamin', companyName: 'Sun Pharmaceutical Industries',
-      composition: 'Methylcobalamin', strength: '500mcg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Methylcobalamin', strength: '500mcg', category: 'Vitamins', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 12, sellingPrice: 32, marginPercent: 30,
     },
     {
       name: 'Supradyn Multivitamin', genericName: 'Multivitamin', companyName: 'Bayer',
       composition: 'Vit A, B1, B2, B6, B12, C, D3, E, Niacinamide, Folic Acid, Calcium Pantothenate',
-      strength: '', unitType: 'tablet', packSize: '15 tablets/strip',
+      strength: '', category: 'Vitamins', unitType: 'tablet', packSize: '15 tablets/strip',
       gstPercent: 12, sellingPrice: 68, marginPercent: 22,
     },
     // ── Digestive ──
     {
       name: 'Omeprazole 20mg', genericName: 'Omeprazole', companyName: 'Cipla Ltd',
-      composition: 'Omeprazole', strength: '20mg', unitType: 'capsule', packSize: '15 capsules/strip',
+      composition: 'Omeprazole', strength: '20mg', category: 'Digestive', unitType: 'capsule', packSize: '15 capsules/strip',
       gstPercent: 5, sellingPrice: 48, marginPercent: 25,
     },
     {
       name: 'Pantoprazole 40mg', genericName: 'Pantoprazole', companyName: 'Dr. Reddy\'s Laboratories',
-      composition: 'Pantoprazole Sodium', strength: '40mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Pantoprazole Sodium', strength: '40mg', category: 'Digestive', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 55, marginPercent: 20,
     },
     {
       name: 'Domperidone 10mg', genericName: 'Domperidone', companyName: 'Lupin Ltd',
-      composition: 'Domperidone', strength: '10mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Domperidone', strength: '10mg', category: 'Digestive', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 22, marginPercent: 26,
     },
     {
       name: 'Digene Antacid Syrup', genericName: 'Antacid', companyName: 'Abbott India Ltd',
       composition: 'Dried Aluminium Hydroxide, Magnesium Hydroxide, Simethicone',
-      strength: '170ml', unitType: 'syrup', packSize: '170ml bottle',
+      strength: '170ml', category: 'Digestive', unitType: 'syrup', packSize: '170ml bottle',
       gstPercent: 5, sellingPrice: 115, marginPercent: 22,
     },
     // ── Cough / Cold ──
     {
       name: 'Cetirizine 10mg', genericName: 'Cetirizine', companyName: 'Dr. Reddy\'s Laboratories',
-      composition: 'Cetirizine Hydrochloride', strength: '10mg', unitType: 'tablet', packSize: '10 tablets/strip',
+      composition: 'Cetirizine Hydrochloride', strength: '10mg', category: 'Cough/Cold', unitType: 'tablet', packSize: '10 tablets/strip',
       gstPercent: 5, sellingPrice: 25, marginPercent: 28,
     },
     {
       name: 'Dextromethorphan Syrup', genericName: 'Dextromethorphan', companyName: 'Cipla Ltd',
       composition: 'Dextromethorphan HBr, Chlorpheniramine, Phenylephrine',
-      strength: '60ml', unitType: 'syrup', packSize: '60ml bottle',
+      strength: '60ml', category: 'Cough/Cold', unitType: 'syrup', packSize: '60ml bottle',
       gstPercent: 5, sellingPrice: 72, marginPercent: 25,
     },
     {
       name: 'Ambroxol Syrup', genericName: 'Ambroxol', companyName: 'Sun Pharmaceutical Industries',
-      composition: 'Ambroxol Hydrochloride', strength: '30mg/5ml, 100ml', unitType: 'syrup', packSize: '100ml bottle',
+      composition: 'Ambroxol Hydrochloride', strength: '30mg/5ml, 100ml', category: 'Cough/Cold', unitType: 'syrup', packSize: '100ml bottle',
       gstPercent: 5, sellingPrice: 88, marginPercent: 22,
     },
     // ── Skin ──
     {
       name: 'Betadine Ointment 15g', genericName: 'Povidone-Iodine', companyName: 'Win-Medicare',
-      composition: 'Povidone-Iodine 5% w/w', strength: '5%', unitType: 'cream', packSize: '15g tube',
+      composition: 'Povidone-Iodine 5% w/w', strength: '5%', category: 'Skin', unitType: 'cream', packSize: '15g tube',
       gstPercent: 5, sellingPrice: 62, marginPercent: 24,
     },
     {
       name: 'Clotrimazole Cream 15g', genericName: 'Clotrimazole', companyName: 'Lupin Ltd',
-      composition: 'Clotrimazole 1% w/w', strength: '1%', unitType: 'cream', packSize: '15g tube',
+      composition: 'Clotrimazole 1% w/w', strength: '1%', category: 'Skin', unitType: 'cream', packSize: '15g tube',
       gstPercent: 5, sellingPrice: 55, marginPercent: 26,
     },
     // ── Eye ──
     {
       name: 'Ciprofloxacin Eye Drops 5ml', genericName: 'Ciprofloxacin', companyName: 'Cipla Ltd',
-      composition: 'Ciprofloxacin Hydrochloride', strength: '0.3% w/v', unitType: 'drops', packSize: '5ml bottle',
+      composition: 'Ciprofloxacin Hydrochloride', strength: '0.3% w/v', category: 'Eye', unitType: 'drops', packSize: '5ml bottle',
       gstPercent: 5, sellingPrice: 42, marginPercent: 30,
     },
     // ── Other ──
     {
       name: 'ORS Powder (Electral)', genericName: 'ORS', companyName: 'Abbott India Ltd',
       composition: 'Sodium Chloride, Potassium Chloride, Sodium Citrate, Dextrose',
-      strength: '21.8g', unitType: 'powder', packSize: '4 sachets/pack',
+      strength: '21.8g', category: 'Other', unitType: 'powder', packSize: '4 sachets/pack',
       gstPercent: 5, sellingPrice: 30, marginPercent: 28,
     },
   ];

@@ -619,17 +619,19 @@ function MonthlySalesTab() {
       ) : null}
 
       {/* Sales Trend Chart */}
-      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <CardTitle className="text-base">Sales Trend</CardTitle>
-            <CardDescription className="mt-0.5">Daily sales for {format(selectedMonth, 'MMMM yyyy')}</CardDescription>
+      <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+        <CardHeader className="p-4 dark:p-5 pb-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <CardTitle className="text-base">Sales Trend</CardTitle>
+              <CardDescription className="mt-0.5">Daily sales for {format(selectedMonth, 'MMMM yyyy')}</CardDescription>
+            </div>
+            <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
+              <TrendingUp className="h-4 w-4 text-primary" />
+            </div>
           </div>
-          <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </div>
-        </div>
-        <CardContent>
+        </CardHeader>
+        <CardContent className="p-4 dark:p-5 pt-0">
           {isLoading ? (
             <ChartSkeleton />
           ) : chartData.length > 0 ? (
@@ -674,12 +676,13 @@ function MonthlySalesTab() {
       </Card>
 
       {/* Breakdown Table */}
-      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
-        <CardTitle className="text-base">Daily Breakdown</CardTitle>
-        <CardDescription className="mb-3">
+      <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+        <CardHeader className="p-4 dark:p-5 pb-0">
+          <CardTitle className="text-base">Daily Breakdown</CardTitle>
+          <CardDescription className="mb-3">
             {data ? `${data.dailyBreakdown.length} day${data.dailyBreakdown.length !== 1 ? 's' : ''} with sales` : ''}
           </CardDescription>
-        </div>
+        </CardHeader>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={8} />
@@ -829,18 +832,19 @@ function ProfitReportTab() {
       ) : null}
 
       {/* Profit Chart */}
-      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <CardTitle className="text-base">Revenue vs Cost vs Profit</CardTitle>
-            <CardDescription className="mt-0.5">Top 15 medicines by profit</CardDescription>
+      <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+        <CardHeader className="p-4 dark:p-5 pb-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <CardTitle className="text-base">Revenue vs Cost vs Profit</CardTitle>
+              <CardDescription className="mt-0.5">Top 15 medicines by profit</CardDescription>
+            </div>
+            <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </div>
           </div>
-          <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
-            <BarChart3 className="h-4 w-4 text-primary" />
-          </div>
-        </div>
-      </CardHeader>
-        <CardContent>
+        </CardHeader>
+        <CardContent className="p-4 dark:p-5 pt-0">
           {isLoading ? (
             <ChartSkeleton />
           ) : chartData.length > 0 ? (
@@ -885,12 +889,13 @@ function ProfitReportTab() {
       </Card>
 
       {/* Items Table */}
-      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
-        <CardTitle className="text-base">Medicine-wise Profit</CardTitle>
-        <CardDescription className="mb-3">
+      <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+        <CardHeader className="p-4 dark:p-5 pb-0">
+          <CardTitle className="text-base">Medicine-wise Profit</CardTitle>
+          <CardDescription className="mb-3">
             {data ? `${data.items.length} medicine${data.items.length !== 1 ? 's' : ''} sold` : ''}
           </CardDescription>
-        </div>
+        </CardHeader>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={8} cols={6} />

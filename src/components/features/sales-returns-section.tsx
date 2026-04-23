@@ -376,18 +376,15 @@ export function SalesReturnsSection() {
                               setReturnItems((prev) => {
                                 const newQty = (prev[item.id] ?? item.quantity) - 1
                                 if (newQty <= 0) {
-                                  setReturnItems((prev) => {
-                                    const next = { ...prev }
-                                    delete next[item.id]
-                                    return next
-                                  })
+                                  const next = { ...prev }
+                                  delete next[item.id]
+                                  return next
                                 } else {
-                                  setReturnItems((prev) => ({ ...prev, [item.id]: newQty }))
+                                  return { ...prev, [item.id]: newQty }
                                 }
                               })
                             }
                             disabled={currentQty <= 0}
-                            className="h-7 w-7"
                           >
                             <Minus className="h-3 w-3" />
                           </Button>

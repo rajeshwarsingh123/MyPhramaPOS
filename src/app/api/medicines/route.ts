@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
     const unitType = searchParams.get('unitType') || ''
     const compositionKeyword = searchParams.get('compositionKeyword') || ''
+    const category = searchParams.get('category') || ''
 
     const where: Prisma.MedicineWhereInput = {
       isActive: true,
@@ -39,6 +40,12 @@ export async function GET(request: NextRequest) {
           { genericName: { contains: compositionKeyword } },
           { name: { contains: compositionKeyword } },
         ],
+      })
+    }
+
+    if (category) {
+      conditions.push({
+        category: { contains: category, mode: 'insensitive' },
       })
     }
 
@@ -112,6 +119,7 @@ export async function POST(request: NextRequest) {
       companyName,
       composition,
       strength,
+      category,
       unitType,
       packSize,
       gstPercent,
@@ -131,6 +139,7 @@ export async function POST(request: NextRequest) {
         companyName: companyName?.trim() || null,
         composition: composition?.trim() || null,
         strength: strength?.trim() || null,
+        category: category?.trim() || null,
         unitType: unitType || 'tablet',
         packSize: packSize?.trim() || null,
         gstPercent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -107,6 +107,7 @@ interface MedicineInfo {
   companyName: string | null
   composition: string | null
   strength: string | null
+  category: string | null
   unitType: string
   packSize: string | null
   gstPercent: number
@@ -285,7 +286,9 @@ export function MedicinesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [page, setPage] = useState(1)
+  const categoryScrollRef = useRef<HTMLDivElement>(null)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [expandedMedicineId, setExpandedMedicineId] = useState<string | null>(null)
   const [showMedicineDialog, setShowMedicineDialog] = useState(false)
@@ -311,6 +314,15 @@ export function MedicinesPage() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Fetch categories
+  const { data: categoriesData } = useQuery<{ categories: { name: string; count: number }[] }>({
+    queryKey: ['medicine-categories'],
+    queryFn: () => fetch('/api/medicines/categories').then((r) => r.json()),
+    staleTime: 60_000,
+  })
+
+  const categories = categoriesData?.categories || []
+
   // Fetch medicines
   const {
     data: medicinesData,
@@ -318,12 +330,30 @@ export function MedicinesPage() {
     error,
     refetch,
   } = useQuery<MedicinesResponse>({
-    queryKey: ['medicines', debouncedSearch, page],
-    queryFn: () =>
-      fetch(
-        `/api/medicines?search=${encodeURIComponent(debouncedSearch)}&page=${page}&limit=20`,
-      ).then((r) => r.json()),
+    queryKey: ['medicines', debouncedSearch, selectedCategory, page],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (selectedCategory) params.set('category', selectedCategory)
+      params.set('page', String(page))
+      params.set('limit', '20')
+      return fetch(`/api/medicines?${params.toString()}`).then((r) => r.json())
+    },
   })
+
+  // Scroll category tab into view when selected
+  useEffect(() => {
+    if (!selectedCategory || !categoryScrollRef.current) return
+    const activeTab = categoryScrollRef.current.querySelector(`[data-category="${selectedCategory}"]`)
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [selectedCategory])
+
+  function handleCategoryClick(categoryName: string) {
+    setSelectedCategory((prev) => (prev === categoryName ? '' : categoryName))
+    setPage(1)
+  }
 
   // Medicine form
   const medicineForm = useForm({
@@ -726,6 +756,47 @@ export function MedicinesPage() {
         </Button>
       </div>
 
+      {/* Category Filter Tabs */}
+      <div
+        ref={categoryScrollRef}
+        className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1"
+      >
+        <button
+          onClick={() => { setSelectedCategory(''); setPage(1) }}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer border
+            ${!selectedCategory
+              ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white border-teal-500 shadow-sm'
+              : 'border-muted bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20'
+            }`
+        }
+        >
+          All Medicines
+          {medicinesData && (
+            <span className={`ml-1.5 text-xs ${!selectedCategory ? 'text-white/80' : 'text-muted-foreground'}`}>
+              {medicinesData.total}
+            </span>
+          )}
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat.name}
+            data-category={cat.name}
+            onClick={() => handleCategoryClick(cat.name)}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer border
+              ${selectedCategory === cat.name
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white border-teal-500 shadow-sm'
+                : 'border-muted bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20'
+              }`
+            }
+          >
+            {cat.name}
+            <span className={`ml-1.5 text-xs ${selectedCategory === cat.name ? 'text-white/80' : 'text-muted-foreground'}`}>
+              {cat.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Search & View Toggle */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
@@ -786,12 +857,12 @@ export function MedicinesPage() {
             <div>
               <p className="font-medium">No medicines found</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {debouncedSearch
-                  ? 'Try adjusting your search query'
+                {debouncedSearch || selectedCategory
+                  ? 'Try adjusting your search or category filter'
                   : 'Start by adding your first medicine'}
               </p>
             </div>
-            {!debouncedSearch && (
+            {!debouncedSearch && !selectedCategory && (
               <Button onClick={openAddMedicineDialog} className="gap-2 mt-2">
                 <Plus className="h-4 w-4" />
                 Add Medicine
@@ -810,8 +881,8 @@ export function MedicinesPage() {
                     <TableRow>
                       <TableHead className="w-8"></TableHead>
                       <TableHead>Medicine</TableHead>
-                      <TableHead className="hidden md:table-cell">Composition</TableHead>
-                      <TableHead className="hidden lg:table-cell">Company</TableHead>
+                      <TableHead className="hidden lg:table-cell">Category</TableHead>
+                      <TableHead className="hidden md:table-cell">Company</TableHead>
                       <TableHead className="hidden sm:table-cell">Unit</TableHead>
                       <TableHead className="text-right">Stock</TableHead>
                       <TableHead className="text-right hidden sm:table-cell">Price</TableHead>
@@ -843,12 +914,12 @@ export function MedicinesPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <p className="text-sm text-muted-foreground truncate max-w-[150px]">
-                              {med.composition || '—'}
-                            </p>
-                          </TableCell>
                           <TableCell className="hidden lg:table-cell">
+                            <span className="text-sm text-muted-foreground">
+                              {med.category || '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <p className="text-sm text-muted-foreground truncate max-w-[120px]">
                               {med.companyName || '—'}
                             </p>
@@ -982,9 +1053,9 @@ export function MedicinesPage() {
                               {med.strength} · {med.unitType}
                             </p>
                           )}
-                          {med.composition && (
+                          {med.category && (
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {med.composition}
+                              {med.category}
                             </p>
                           )}
                         </div>
