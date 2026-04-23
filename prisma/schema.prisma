@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== MEDICINE ====================
+
+model Medicine {
+  id          String   @id @default(cuid())
+  name        String
+  genericName String?
+  companyName String?
+  composition String?
+  strength    String?
+  unitType    String   @default("tablet") // tablet, capsule, syrup, injection, cream, drops, inhaler, powder
+  packSize    String?
+  gstPercent  Float    @default(5)
+  sellingPrice Float   @default(0)
+  marginPercent Float  @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  batches Batch[]
+  saleItems SaleItem[]
+}
+
+model Batch {
+  id              String   @id @default(cuid())
+  medicineId      String
+  batchNumber     String
+  expiryDate      DateTime
+  mfgDate         DateTime?
+  purchasePrice   Float
+  mrp             Float
+  quantity        Int      @default(0)
+  initialQuantity Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  medicine     Medicine        @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  purchaseItem PurchaseItem[]
+  saleItems    SaleItem[]
+
+  @@index([medicineId])
+  @@index([expiryDate])
+  @@index([batchNumber])
+}
+
+// ==================== SUPPLIER ====================
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  gstNumber String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+}
+
+// ==================== CUSTOMER ====================
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  doctorName String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+}
+
+// ==================== PURCHASE ====================
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  supplierId  String
+  invoiceNo   String?
+  invoiceDate DateTime @default(now())
+  totalAmount Float    @default(0)
+  totalGst    Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier Supplier       @relation(fields: [supplierId], references: [id])
+  items    PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([invoiceDate])
+}
+
+model PurchaseItem {
+  id             String @id @default(cuid())
+  purchaseOrderId String
+  batchId        String @unique
+  quantity       Int
+  purchasePrice  Float
+  mrp            Float
+  gstPercent     Float @default(5)
+  totalAmount    Float @default(0)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  batch         Batch         @relation(fields: [batchId], references: [id])
+
+  @@index([purchaseOrderId])
+}
+
+// ==================== SALES ====================
+
+model Sale {
+  id           String   @id @default(cuid())
+  customerId   String?
+  doctorName   String?
+  invoiceNo    String   @unique
+  saleDate     DateTime @default(now())
+  subtotal     Float    @default(0)
+  totalGst     Float    @default(0)
+  totalDiscount Float   @default(0)
+  totalAmount  Float    @default(0)
+  paymentMode  String   @default("cash") // cash, card, upi, credit
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer Customer?  @relation(fields: [customerId], references: [id])
+  items    SaleItem[]
+
+  @@index([customerId])
+  @@index([saleDate])
+}
+
+model SaleItem {
+  id         String @id @default(cuid())
+  saleId     String
+  batchId    String
+  medicineId String
+  medicineName String
+  quantity   Int
+  mrp        Float
+  discount   Float @default(0)
+  gstPercent Float @default(5)
+  gstAmount  Float @default(0)
+  totalAmount Float @default(0)
+
+  sale     Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  batch    Batch  @relation(fields: [batchId], references: [id])
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+
+  @@index([saleId])
+  @@index([batchId])
+}
+
+// ==================== SETTINGS ====================
+
+model StoreSetting {
+  id         String @id @default(cuid())
+  storeName  String @default("My Pharmacy")
+  phone      String?
+  email      String?
+  address    String?
+  gstNumber  String?
+  licenseNo  String?
+  logoUrl    String?
+  invoicePrefix String @default("INV")
+  nextInvoiceNo Int @default(1)
+  updatedAt  DateTime @updatedAt
+}
