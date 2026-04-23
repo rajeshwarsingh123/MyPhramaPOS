@@ -78,6 +78,15 @@ export function Header() {
   const greeting = useTimeGreeting()
   const currentDate = useMemo(() => format(new Date(), 'dd MMM yyyy'), [])
 
+  // Live clock
+  const [currentTime, setCurrentTime] = useState(() => format(new Date(), 'hh:mm a'))
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(format(new Date(), 'hh:mm a'))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   // Quick search state
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -86,6 +95,24 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Quick stats for notification badge
+  const [quickStats, setQuickStats] = useState<{ todaySales: number; lowStockCount: number; expiredCount: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/quick-stats')
+      .then(r => r.json())
+      .then(setQuickStats)
+      .catch(() => {})
+    // Refresh every 60s
+    const timer = setInterval(() => {
+      fetch('/api/quick-stats')
+        .then(r => r.json())
+        .then(setQuickStats)
+        .catch(() => {})
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     fetch('/api/alerts')
@@ -217,6 +244,7 @@ export function Header() {
         <h1 className="text-lg font-semibold text-foreground">{pageTitles[currentPage] || 'PharmPOS'}</h1>
         <p className="text-[11px] text-muted-foreground/70 -mt-0.5 hidden sm:block">
           {greeting} · <span className="font-medium text-muted-foreground/80">{currentDate}</span>
+          <span className="ml-2 font-mono text-muted-foreground/60 tabular-nums">{currentTime}</span>
         </p>
       </div>
 
@@ -289,7 +317,7 @@ export function Header() {
                 <span className="relative flex h-4 w-4 items-center justify-center">
                   <span className="absolute inset-0 rounded-full bg-destructive animate-pulse-ring" />
                   <span className="relative flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm shadow-destructive/30">
-                    {alerts.length}
+                    {quickStats ? quickStats.lowStockCount + quickStats.expiredCount : alerts.length}
                   </span>
                 </span>
               )}

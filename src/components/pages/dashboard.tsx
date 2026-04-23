@@ -23,6 +23,11 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Calendar,
+  FileText,
+  Banknote,
+  CreditCard,
+  Smartphone,
 } from 'lucide-react'
 import {
   Card,
@@ -124,14 +129,19 @@ function formatCurrency(amount: number): string {
 }
 
 function paymentBadge(mode: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-    cash: { label: 'Cash', variant: 'default' },
-    card: { label: 'Card', variant: 'secondary' },
-    upi: { label: 'UPI', variant: 'outline' },
-    credit: { label: 'Credit', variant: 'secondary' },
+  const map: Record<string, { label: string; dotColor: string }> = {
+    cash: { label: 'Cash', dotColor: 'bg-emerald-500' },
+    card: { label: 'Card', dotColor: 'bg-blue-500' },
+    upi: { label: 'UPI', dotColor: 'bg-violet-500' },
+    credit: { label: 'Credit', dotColor: 'bg-amber-500' },
   }
-  const info = map[mode] ?? { label: mode, variant: 'outline' as const }
-  return <Badge variant={info.variant}>{info.label}</Badge>
+  const info = map[mode] ?? { label: mode, dotColor: 'bg-muted-foreground' }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+      <span className={cn('h-1.5 w-1.5 rounded-full', info.dotColor)} />
+      {info.label}
+    </span>
+  )
 }
 
 function getGreeting(): string {
@@ -153,6 +163,7 @@ function StatCard({
   gradientFrom,
   gradientTo,
   borderClass,
+  accentColor,
   trend,
   trendLabel,
   delayMs = 0,
@@ -166,6 +177,7 @@ function StatCard({
   gradientFrom: string
   gradientTo: string
   borderClass: string
+  accentColor: string
   trend?: 'up' | 'down'
   trendLabel?: string
   delayMs?: number
@@ -173,7 +185,7 @@ function StatCard({
   return (
     <Card
       className={cn(
-        'group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-fade-up',
+        'group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
         borderClass
       )}
       style={{ animationDelay: `${delayMs}ms` }}
@@ -188,6 +200,16 @@ function StatCard({
         <div className={cn('absolute top-0 left-0 w-full h-full rounded-inherit bg-gradient-to-br', gradientFrom, gradientTo)} />
       </div>
 
+      {/* Decorative dot pattern overlay */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.03] dark:opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id={`dots-${label.replace(/\s/g, '')}`} x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1" fill="currentColor" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#dots-${label.replace(/\s/g, '')})`} className="text-foreground" />
+      </svg>
+
       {/* Decorative blob in top-right corner */}
       <div className={cn(
         'absolute -top-4 -right-4 w-20 h-20 rounded-full opacity-[0.07] dark:opacity-[0.12] pointer-events-none blur-sm transition-transform duration-500 group-hover:scale-125',
@@ -198,18 +220,18 @@ function StatCard({
         colorClass.replace('text-', 'bg-')
       )} />
 
-      <CardContent className="relative p-4 lg:p-5">
+      <CardContent className="relative p-5 lg:p-6 pb-6 lg:pb-7">
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               {label}
             </p>
-            <p className={cn('text-xl lg:text-2xl font-bold tracking-tight', colorClass)}>
+            <p className={cn('text-3xl font-bold tracking-tight', colorClass)}>
               {isCurrency ? formatCurrency(value) : value.toLocaleString('en-IN')}
             </p>
             {trend && trendLabel && (
               <div className={cn(
-                'flex items-center gap-1 mt-1',
+                'flex items-center gap-1 mt-0.5',
                 trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
               )}>
                 {trend === 'up' ? (
@@ -221,11 +243,20 @@ function StatCard({
               </div>
             )}
           </div>
-          <div className={cn('flex items-center justify-center rounded-xl p-2.5 shrink-0 transition-transform duration-300 group-hover:scale-110', iconBg)}>
-            <Icon className="h-5 w-5" />
+          <div className={cn(
+            'flex items-center justify-center rounded-2xl w-12 h-12 shrink-0 transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br shadow-sm',
+            iconBg
+          )}>
+            <Icon className="h-6 w-6" />
           </div>
         </div>
       </CardContent>
+
+      {/* Bottom accent bar */}
+      <div className={cn(
+        'absolute bottom-0 left-0 h-[3px] w-3/4 transition-all duration-500 group-hover:w-full rounded-full',
+        accentColor
+      )} />
     </Card>
   )
 }
@@ -236,14 +267,14 @@ function StatsSkeleton() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i} className="overflow-hidden">
-          <CardContent className="p-4 lg:p-5">
+        <Card key={i} className="overflow-hidden rounded-xl">
+          <CardContent className="p-5 lg:p-6 pb-6 lg:pb-7">
             <div className="flex items-start justify-between">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2.5">
                 <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-8 w-28" />
               </div>
-              <Skeleton className="h-10 w-10 rounded-xl" />
+              <Skeleton className="h-12 w-12 rounded-2xl" />
             </div>
           </CardContent>
         </Card>
@@ -307,33 +338,42 @@ function StockTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 function TopSellerCard({ item, rank }: { item: TopSellingItem; rank: number }) {
   const rankStyles = {
-    1: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700',
-    2: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-600',
-    3: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700',
+    1: 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-800 border-amber-400 shadow-amber-200/50 dark:from-amber-900/60 dark:to-amber-800/40 dark:text-amber-200 dark:border-amber-600',
+    2: 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 border-slate-400 shadow-slate-200/50 dark:from-slate-700/50 dark:to-slate-600/40 dark:text-slate-200 dark:border-slate-500',
+    3: 'bg-gradient-to-br from-orange-100 to-orange-200 text-orange-800 border-orange-400 shadow-orange-200/50 dark:from-orange-900/50 dark:to-orange-800/40 dark:text-orange-200 dark:border-orange-600',
+  }
+
+  const rankIcons = {
+    1: '🥇',
+    2: '🥈',
+    3: '🥉',
   }
 
   const rankLabels: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th', 5: '5th' }
 
   return (
-    <Card className="min-w-[200px] shrink-0 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-muted/60">
-      <CardContent className="p-4">
+    <Card className="min-w-[210px] shrink-0 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-muted/60 rounded-xl">
+      <CardContent className="p-5">
         <div className="flex items-center gap-3">
           <Badge
             variant="outline"
             className={cn(
-              'h-7 w-7 flex items-center justify-center p-0 text-xs font-bold shrink-0',
+              'h-8 w-8 flex items-center justify-center p-0 text-xs font-bold shrink-0 shadow-sm',
               rankStyles[rank] ?? 'bg-muted text-muted-foreground border-muted-foreground/20'
             )}
           >
-            {rank}
+            {rankIcons[rank] ?? rank}
           </Badge>
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{item.medicineName}</p>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <Pill className="h-3 w-3 text-muted-foreground shrink-0" />
+              <p className="text-sm font-semibold truncate">{item.medicineName}</p>
+            </div>
             <p className="text-xs text-muted-foreground">{item.qtySold} units sold</p>
           </div>
         </div>
         <div className="mt-3 pt-3 border-t border-border/60">
-          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+          <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
             {formatCurrency(item.revenue)}
           </p>
           <p className="text-[11px] text-muted-foreground">revenue</p>
@@ -341,7 +381,7 @@ function TopSellerCard({ item, rank }: { item: TopSellingItem; rank: number }) {
         {rank <= 3 && (
           <div className="mt-2 flex items-center gap-1">
             <Trophy className={cn(
-              'h-3 w-3',
+              'h-3.5 w-3.5',
               rank === 1 ? 'text-amber-500' : rank === 2 ? 'text-slate-400' : 'text-orange-400'
             )} />
             <span className={cn(
@@ -400,13 +440,14 @@ function AlertGroup({
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger className="w-full">
         <div className={cn(
-          'flex items-center justify-between rounded-lg px-3 py-2 mb-2 transition-colors cursor-pointer',
-          headerBg
+          'flex items-center justify-between rounded-lg px-3 py-2.5 mb-2 transition-colors cursor-pointer border-l-[4px]',
+          headerBg,
+          borderClass.replace('border-l-', 'border-l-')
         )}>
           <div className="flex items-center gap-2">
-            <div className={cn('h-2 w-2 rounded-full', dotColor)} />
-            <span className="text-xs font-semibold">{title}</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold">
+            <div className={cn('h-2.5 w-2.5 rounded-full shadow-sm', dotColor)} />
+            <span className="text-xs font-bold">{title}</span>
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold tabular-nums">
               {alerts.length}
             </Badge>
           </div>
@@ -418,22 +459,22 @@ function AlertGroup({
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-3 ml-1">
           {alerts.map((alert) => {
             const styles = severityStyles[alert.severity] ?? severityStyles.info
             return (
               <div
                 key={alert.id}
                 className={cn(
-                  'rounded-lg border p-3 transition-all duration-200 hover:shadow-sm border-l-4',
+                  'rounded-lg border p-3 transition-all duration-200 hover:shadow-sm border-l-[4px]',
                   styles.card,
                   borderClass
                 )}
               >
                 <div className="flex items-start gap-2.5">
                   <div className={cn('mt-0.5 h-2 w-2 rounded-full shrink-0', dotColor)} />
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <p className={cn('text-xs font-semibold truncate', styles.titleText)}>
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                    <p className={cn('text-xs font-bold truncate', styles.titleText)}>
                       {alert.title}
                     </p>
                     <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
@@ -507,6 +548,16 @@ export function DashboardPage() {
     refetchInterval: 120000,
   })
 
+  // Fetch payment modes for current month
+  const { data: paymentModes } = useQuery<{
+    modes: Record<string, number>
+    totals: number
+  }>({
+    queryKey: ['payment-modes'],
+    queryFn: () => fetch('/api/dashboard/payment-modes').then((r) => r.json()),
+    refetchInterval: 60000,
+  })
+
   const topSellers = useMemo(() => {
     if (!profitData?.items) return []
     return [...profitData.items]
@@ -529,12 +580,16 @@ export function DashboardPage() {
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">
-            {greeting}, Admin <Sparkles className="inline h-6 w-6 text-amber-400 ml-1" />
+            <span className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              {greeting}, Admin
+            </span>{' '}
+            <Sparkles className="inline h-6 w-6 text-amber-400 ml-1" />
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" />
             {formattedDate}
           </p>
         </div>
@@ -551,34 +606,34 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions - Pill-shaped cards */}
-      <div className="flex flex-wrap gap-3">
+      {/* Quick Actions - Card-style buttons */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <button
           onClick={() => setCurrentPage('billing')}
-          className="flex items-center gap-3 rounded-full border bg-card px-5 py-2.5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.03] hover:border-primary/40 active:scale-[0.98]"
+          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
         >
-          <div className="flex items-center justify-center rounded-full bg-primary/10 p-1.5">
-            <Receipt className="h-4 w-4 text-primary" />
+          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm group-hover:shadow-emerald-500/30 transition-shadow duration-200">
+            <Receipt className="h-5 w-5 text-white" />
           </div>
-          <span className="text-sm font-medium">New Bill</span>
+          <span className="text-xs font-semibold text-foreground">New Bill</span>
         </button>
         <button
           onClick={() => setCurrentPage('medicines')}
-          className="flex items-center gap-3 rounded-full border bg-card px-5 py-2.5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.03] hover:border-primary/40 active:scale-[0.98]"
+          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
         >
-          <div className="flex items-center justify-center rounded-full bg-teal-500/10 p-1.5">
-            <Plus className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-teal-500 to-teal-600 shadow-sm group-hover:shadow-teal-500/30 transition-shadow duration-200">
+            <Plus className="h-5 w-5 text-white" />
           </div>
-          <span className="text-sm font-medium">Add Medicine</span>
+          <span className="text-xs font-semibold text-foreground">Add Medicine</span>
         </button>
         <button
           onClick={() => setCurrentPage('purchases')}
-          className="flex items-center gap-3 rounded-full border bg-card px-5 py-2.5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.03] hover:border-primary/40 active:scale-[0.98]"
+          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
         >
-          <div className="flex items-center justify-center rounded-full bg-orange-500/10 p-1.5">
-            <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 shadow-sm group-hover:shadow-orange-500/30 transition-shadow duration-200">
+            <ShoppingCart className="h-5 w-5 text-white" />
           </div>
-          <span className="text-sm font-medium">New Purchase</span>
+          <span className="text-xs font-semibold text-foreground">New Purchase</span>
         </button>
       </div>
 
@@ -602,10 +657,11 @@ export function DashboardPage() {
             icon={IndianRupee}
             isCurrency
             colorClass="text-emerald-600 dark:text-emerald-400"
-            iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            iconBg="bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 dark:from-emerald-950 dark:to-emerald-900 dark:text-emerald-400"
             gradientFrom="from-emerald-500"
-            gradientTo="to-transparent"
+            gradientTo="to-emerald-300"
             borderClass="border-emerald-200/60 dark:border-emerald-800/40"
+            accentColor="bg-emerald-500"
             trend="up"
             trendLabel="Sales today"
             delayMs={0}
@@ -616,10 +672,11 @@ export function DashboardPage() {
             icon={TrendingUp}
             isCurrency
             colorClass="text-emerald-600 dark:text-emerald-400"
-            iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            iconBg="bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-600 dark:from-emerald-950 dark:to-teal-900 dark:text-emerald-400"
             gradientFrom="from-emerald-500"
             gradientTo="to-teal-300"
             borderClass="border-emerald-200/60 dark:border-emerald-800/40"
+            accentColor="bg-emerald-500"
             trend="up"
             trendLabel="This month"
             delayMs={40}
@@ -629,10 +686,11 @@ export function DashboardPage() {
             value={stats.totalMedicines}
             icon={Pill}
             colorClass="text-teal-600 dark:text-teal-400"
-            iconBg="bg-teal-50 text-teal-600 dark:bg-teal-950 dark:text-teal-400"
+            iconBg="bg-gradient-to-br from-teal-50 to-teal-100 text-teal-600 dark:from-teal-950 dark:to-teal-900 dark:text-teal-400"
             gradientFrom="from-teal-500"
-            gradientTo="to-transparent"
+            gradientTo="to-teal-300"
             borderClass="border-teal-200/60 dark:border-teal-800/40"
+            accentColor="bg-teal-500"
             delayMs={80}
           />
           <StatCard
@@ -640,10 +698,11 @@ export function DashboardPage() {
             value={stats.lowStockCount}
             icon={AlertTriangle}
             colorClass="text-amber-600 dark:text-amber-400"
-            iconBg="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+            iconBg="bg-gradient-to-br from-amber-50 to-amber-100 text-amber-600 dark:from-amber-950 dark:to-amber-900 dark:text-amber-400"
             gradientFrom="from-amber-500"
-            gradientTo="to-transparent"
+            gradientTo="to-amber-300"
             borderClass="border-amber-200/60 dark:border-amber-800/40"
+            accentColor="bg-amber-500"
             trend={stats.lowStockCount > 0 ? 'down' : undefined}
             trendLabel={stats.lowStockCount > 0 ? 'Needs attention' : undefined}
             delayMs={120}
@@ -653,10 +712,11 @@ export function DashboardPage() {
             value={stats.expiringSoonCount}
             icon={Clock}
             colorClass="text-orange-600 dark:text-orange-400"
-            iconBg="bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400"
+            iconBg="bg-gradient-to-br from-orange-50 to-orange-100 text-orange-600 dark:from-orange-950 dark:to-orange-900 dark:text-orange-400"
             gradientFrom="from-orange-500"
-            gradientTo="to-transparent"
+            gradientTo="to-orange-300"
             borderClass="border-orange-200/60 dark:border-orange-800/40"
+            accentColor="bg-orange-500"
             trend={stats.expiringSoonCount > 0 ? 'down' : undefined}
             trendLabel={stats.expiringSoonCount > 0 ? 'Check expiry' : undefined}
             delayMs={160}
@@ -666,10 +726,11 @@ export function DashboardPage() {
             value={stats.expiredCount}
             icon={XCircle}
             colorClass="text-red-600 dark:text-red-400"
-            iconBg="bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+            iconBg="bg-gradient-to-br from-red-50 to-red-100 text-red-600 dark:from-red-950 dark:to-red-900 dark:text-red-400"
             gradientFrom="from-red-500"
-            gradientTo="to-transparent"
+            gradientTo="to-red-300"
             borderClass="border-red-200/60 dark:border-red-800/40"
+            accentColor="bg-red-500"
             trend={stats.expiredCount > 0 ? 'down' : undefined}
             trendLabel={stats.expiredCount > 0 ? 'Remove from shelf' : undefined}
             delayMs={200}
@@ -683,19 +744,21 @@ export function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Sales Trend Chart */}
-          <Card className="transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5">
+          <Card className="rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5 hover:border-emerald-300/50 dark:hover:border-emerald-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Sales Trend</CardTitle>
-                  <CardDescription>Last 7 days daily sales</CardDescription>
-                </div>
-                <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/40">
-                  <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/50">
+                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">Sales Trend</CardTitle>
+                    <CardDescription className="text-xs">Last 7 days daily sales</CardDescription>
+                  </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pb-5">
+            <CardContent className="p-5">
               {salesTrend && salesTrend.data.length > 0 ? (
                 <div className="rounded-lg bg-muted/30 p-2">
                   <ResponsiveContainer width="100%" height={280}>
@@ -743,19 +806,21 @@ export function DashboardPage() {
           </Card>
 
           {/* Stock Distribution Chart */}
-          <Card className="transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/5">
+          <Card className="rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/5 hover:border-teal-300/50 dark:hover:border-teal-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Stock Distribution</CardTitle>
-                  <CardDescription>By unit type</CardDescription>
-                </div>
-                <div className="rounded-lg bg-teal-50 p-2 dark:bg-teal-950/40">
-                  <Package className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-lg bg-teal-50 p-2 dark:bg-teal-950/50">
+                    <Package className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">Stock Distribution</CardTitle>
+                    <CardDescription className="text-xs">By unit type</CardDescription>
+                  </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pb-5">
+            <CardContent className="p-5">
               {stockDist && stockDist.data.length > 0 ? (
                 <div className="rounded-lg bg-muted/30 p-2">
                   <ResponsiveContainer width="100%" height={280}>
@@ -796,14 +861,109 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Top Selling Medicines */}
-      <div className="animate-fade-up">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-500" />
-            <h3 className="text-base font-semibold">Top Selling Medicines</h3>
-            <span className="text-xs text-muted-foreground">Last 30 days</span>
-          </div>
+      {/* Sales by Payment Mode + Top Selling Medicines */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Payment Modes Breakdown */}
+        <Card className="rounded-xl transition-all duration-300 hover:shadow-lg">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-violet-50 dark:bg-violet-950/50">
+                <Receipt className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Payment Modes</CardTitle>
+                <CardDescription className="text-xs">This month</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {paymentModes && paymentModes.totals > 0 ? (
+              <>
+                {/* Stacked progress bar */}
+                <div className="flex rounded-full h-3 overflow-hidden bg-muted/50">
+                  {Object.entries(paymentModes.modes).map(([mode, amount]) => {
+                    const pct = Math.round((amount / paymentModes.totals) * 100)
+                    if (pct === 0) return null
+                    const colorMap: Record<string, string> = {
+                      cash: 'bg-emerald-500',
+                      card: 'bg-blue-500',
+                      upi: 'bg-violet-500',
+                      credit: 'bg-amber-500',
+                    }
+                    return (
+                      <div
+                        key={mode}
+                        className={cn('h-full transition-all duration-500', colorMap[mode] ?? 'bg-gray-500')}
+                        style={{ width: `${pct}%` }}
+                        title={`${mode}: ${formatCurrency(amount)}`}
+                      />
+                    )
+                  })}
+                </div>
+                {/* Mode details */}
+                <div className="space-y-2.5 pt-1">
+                  {([
+                    { key: 'cash', label: 'Cash', icon: Banknote, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
+                    { key: 'card', label: 'Card', icon: CreditCard, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+                    { key: 'upi', label: 'UPI', icon: Smartphone, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/40' },
+                    { key: 'credit', label: 'Credit', icon: Receipt, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/40' },
+                  ] as const).map(({ key, label, icon: Icon, color, bg }) => {
+                    const amount = paymentModes.modes[key] ?? 0
+                    const pct = paymentModes.totals > 0 ? Math.round((amount / paymentModes.totals) * 100) : 0
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <div className={cn('flex items-center justify-center rounded-lg w-8 h-8 shrink-0', bg)}>
+                          <Icon className={cn('h-4 w-4', color)} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{label}</span>
+                            <span className="text-sm font-bold tabular-nums">{formatCurrency(amount)}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                              <div
+                                className={cn('h-full rounded-full transition-all duration-700', 
+                                  key === 'cash' ? 'bg-emerald-500' : key === 'card' ? 'bg-blue-500' : key === 'upi' ? 'bg-violet-500' : 'bg-amber-500'
+                                )}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-semibold text-muted-foreground w-8 text-right tabular-nums">{pct}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="pt-2 mt-1 border-t">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Total</span>
+                    <span className="text-sm font-bold tabular-nums">{formatCurrency(paymentModes.totals)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-6 flex flex-col items-center gap-2 text-muted-foreground">
+                <Receipt className="h-6 w-6 opacity-30" />
+                <p className="text-xs">No payment data this month</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Selling Medicines - takes 2 cols */}
+        <div className="lg:col-span-2 animate-fade-up">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-amber-50 dark:bg-amber-950/50">
+                <Trophy className="h-4 w-4 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">Top Selling Medicines</h3>
+                <span className="text-xs text-muted-foreground">Last 30 days</span>
+              </div>
+            </div>
           {topSellers.length > 0 && (
             <Button
               variant="ghost"
@@ -819,8 +979,8 @@ export function DashboardPage() {
         {topSellersLoading ? (
           <div className="flex gap-4 overflow-x-auto pb-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i} className="min-w-[200px] shrink-0">
-                <CardContent className="p-4 space-y-3">
+              <Card key={i} className="min-w-[210px] shrink-0 rounded-xl">
+                <CardContent className="p-5 space-y-3">
                   <Skeleton className="h-4 w-28" />
                   <Skeleton className="h-3 w-20" />
                   <Skeleton className="h-6 w-24" />
@@ -838,24 +998,30 @@ export function DashboardPage() {
             </div>
           </ScrollArea>
         ) : (
-          <Card>
+          <Card className="rounded-xl">
             <CardContent className="py-8 flex flex-col items-center gap-2 text-muted-foreground">
               <Package className="h-8 w-8 opacity-30" />
               <p className="text-sm">No sales data in the last 30 days</p>
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
 
       {/* Bottom Section: Recent Sales + Alerts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Recent Sales Table */}
-        <Card className="xl:col-span-2">
+        <Card className="xl:col-span-2 rounded-xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Recent Sales</CardTitle>
-                <CardDescription>Latest 5 transactions</CardDescription>
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-emerald-50 dark:bg-emerald-950/50">
+                  <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">Recent Sales</CardTitle>
+                  <CardDescription className="text-xs">Latest 5 transactions</CardDescription>
+                </div>
               </div>
               <Button
                 variant="ghost"
@@ -878,12 +1044,12 @@ export function DashboardPage() {
             ) : stats && stats.recentSales.length > 0 ? (
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="pl-6">Invoice #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="hidden sm:table-cell">Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right pr-6">Payment</TableHead>
+                  <TableRow className="hover:bg-transparent border-b-2">
+                    <TableHead className="pl-6 text-xs font-bold uppercase tracking-wider">Invoice #</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Customer</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs font-bold uppercase tracking-wider">Date</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Amount</TableHead>
+                    <TableHead className="text-right pr-6 text-xs font-bold uppercase tracking-wider">Payment</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -891,18 +1057,18 @@ export function DashboardPage() {
                     <TableRow
                       key={sale.id}
                       className={cn(
-                        'transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary hover:bg-primary/[0.03] dark:hover:bg-primary/[0.05]',
+                        'transition-all duration-200 border-l-[3px] border-l-transparent hover:border-l-teal-500 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
                         idx % 2 === 1 && 'bg-muted/30'
                       )}
                     >
                       <TableCell className="pl-6 font-mono text-xs font-medium">
                         {sale.invoiceNo}
                       </TableCell>
-                      <TableCell className="text-sm">{sale.customerName}</TableCell>
+                      <TableCell className="text-sm font-medium">{sale.customerName}</TableCell>
                       <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
                         {format(parseISO(sale.saleDate), 'dd MMM yyyy, hh:mm a')}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                      <TableCell className="text-right font-bold text-base text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(sale.totalAmount)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
@@ -921,20 +1087,25 @@ export function DashboardPage() {
         </Card>
 
         {/* Alerts Panel - Grouped by Type */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Alerts</CardTitle>
-                <CardDescription>
-                  {hasAlerts
-                    ? `${alertsData.alerts.length} active alert${alertsData.alerts.length !== 1 ? 's' : ''}`
-                    : 'All clear'}
-                </CardDescription>
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-amber-50 dark:bg-amber-950/50">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">Alerts</CardTitle>
+                  <CardDescription className="text-xs">
+                    {hasAlerts
+                      ? `${alertsData.alerts.length} active alert${alertsData.alerts.length !== 1 ? 's' : ''}`
+                      : 'All clear'}
+                  </CardDescription>
+                </div>
               </div>
-              <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/40">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              </div>
+              <Badge variant="secondary" className="h-6 px-2 text-[10px] font-bold tabular-nums">
+                {hasAlerts ? alertsData.alerts.length : 0}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>

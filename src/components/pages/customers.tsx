@@ -21,6 +21,7 @@ import {
   IndianRupee,
   ShoppingCart,
   UserCircle,
+  Download,
 } from 'lucide-react'
 import {
   Card,
@@ -346,6 +347,18 @@ export function CustomersPage() {
           <Button onClick={openAddDialog} className="gap-2 shadow-sm">
             <Plus className="h-4 w-4" />
             Add Customer
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              window.open('/api/export/customers-csv', '_blank')
+              toast.success('Customers export started', { description: 'Your CSV file will download shortly.' })
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Export CSV</span>
           </Button>
         </div>
       </div>

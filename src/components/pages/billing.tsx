@@ -51,6 +51,7 @@ import {
   RotateCcw,
   Check,
   Loader2,
+  ArrowRight,
 } from 'lucide-react'
 
 // ==================== Types ====================
@@ -76,6 +77,7 @@ interface MedicineSearchResult {
   gstPercent: number
   totalStock: number
   nearestExpiry: string
+  category?: string
   batches: BatchInfo[]
 }
 
@@ -205,6 +207,31 @@ export function BillingPage() {
   // Mobile
   const [mobileView, setMobileView] = useState<'search' | 'cart'>('search')
 
+  // Recently searched medicines (localStorage)
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [showRecentSearches, setShowRecentSearches] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('pharmpos-recent-searches')
+      if (stored) setRecentSearches(JSON.parse(stored))
+    } catch {}
+  }, [])
+
+  const addRecentSearch = useCallback((medicineName: string) => {
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((n) => n !== medicineName)
+      const updated = [medicineName, ...filtered].slice(0, 3)
+      try { localStorage.setItem('pharmpos-recent-searches', JSON.stringify(updated)) } catch {}
+      return updated
+    })
+  }, [])
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([])
+    try { localStorage.removeItem('pharmpos-recent-searches') } catch {}
+  }, [])
+
   // Consume pending search query from header
   const { pendingSearchQuery, setPendingSearchQuery } = useAppStore()
   useEffect(() => {
@@ -307,11 +334,23 @@ export function BillingPage() {
     [searchMedicines]
   )
 
+  // Show recent searches when input is focused and empty
+  useEffect(() => {
+    if (searchQuery.length < 2 && !isSearching) {
+      setShowRecentSearches(true)
+    } else {
+      setShowRecentSearches(false)
+    }
+  }, [searchQuery, isSearching])
+
   // Add medicine to cart (FIFO: first batch = nearest expiry)
   const addToCart = useCallback(
     (medicine: MedicineSearchResult) => {
       const firstBatch = medicine.batches[0] // Already sorted by nearest expiry
       if (!firstBatch) return
+
+      // Track recent search
+      addRecentSearch(medicine.name)
 
       // Check if same batch already in cart
       const existingIdx = cartItems.findIndex((item) => item.batchId === firstBatch.id)
@@ -598,11 +637,17 @@ export function BillingPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{med.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-medium text-sm truncate">{med.name}</p>
+                              {med.category && (
+                                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 shrink-0 capitalize">
+                                  {med.category}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground truncate">
                               {med.composition}
                               {med.strength ? ` • ${med.strength}` : ''}
-                              {med.unitType ? ` • ${med.unitType}` : ''}
                             </p>
                             {med.genericName && (
                               <p className="text-[10px] text-muted-foreground truncate">
@@ -645,6 +690,37 @@ export function BillingPage() {
                     )}
                   </ScrollArea>
                 )}
+              </div>
+            )}
+            {/* Recent Searches Dropdown */}
+            {showRecentSearches && recentSearches.length > 0 && !showSearchDropdown && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+                  <span className="text-[11px] font-medium text-muted-foreground">Recently Searched</span>
+                  <button
+                    onClick={clearRecentSearches}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Clear recent searches"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {recentSearches.map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setSearchQuery(name)
+                      searchMedicines(name)
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-accent/50 border-b last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{name}</span>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground/40 ml-auto shrink-0" />
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>

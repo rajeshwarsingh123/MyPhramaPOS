@@ -19,31 +19,52 @@ export async function GET(request: NextRequest) {
           { composition: { contains: q } },
         ],
       },
-      include: {
-        batches: {
-          where: {
-            isActive: true,
-            quantity: { gt: 0 },
-          },
-          orderBy: { expiryDate: 'asc' },
-          select: {
-            id: true,
-            batchNumber: true,
-            quantity: true,
-            purchasePrice: true,
-            mrp: true,
-            expiryDate: true,
-          },
-        },
+      select: {
+        id: true,
+        name: true,
+        genericName: true,
+        companyName: true,
+        composition: true,
+        strength: true,
+        unitType: true,
+        packSize: true,
+        gstPercent: true,
       },
       take: 20,
     })
 
-    // Filter out medicines with no available batches
+    // Fetch batches separately for medicines with available stock
+    const batches = await db.batch.findMany({
+      where: {
+        medicine: { id: { in: medicines.map(m => m.id) } },
+        isActive: true,
+        quantity: { gt: 0 },
+      },
+      orderBy: { expiryDate: 'asc' },
+      select: {
+        id: true,
+        medicineId: true,
+        batchNumber: true,
+        quantity: true,
+        purchasePrice: true,
+        mrp: true,
+        expiryDate: true,
+      },
+    })
+
+    // Group batches by medicine
+    const batchMap = new Map<string, typeof batches>()
+    for (const b of batches) {
+      const list = batchMap.get(b.medicineId) ?? []
+      list.push(b)
+      batchMap.set(b.medicineId, list)
+    }
+
     const available = medicines
-      .filter((m) => m.batches.length > 0)
+      .filter((m) => (batchMap.get(m.id) ?? []).length > 0)
       .map((m) => {
-        const totalStock = m.batches.reduce((sum, b) => sum + b.quantity, 0)
+        const medBatches = batchMap.get(m.id)!
+        const totalStock = medBatches.reduce((sum, b) => sum + b.quantity, 0)
         return {
           id: m.id,
           name: m.name,
@@ -54,9 +75,10 @@ export async function GET(request: NextRequest) {
           unitType: m.unitType,
           packSize: m.packSize,
           gstPercent: m.gstPercent,
+          category: m.unitType,
           totalStock,
-          nearestExpiry: m.batches[0]?.expiryDate,
-          batches: m.batches.map((b) => ({
+          nearestExpiry: medBatches[0]?.expiryDate,
+          batches: medBatches.map((b) => ({
             id: b.id,
             batchNumber: b.batchNumber,
             qty: b.quantity,

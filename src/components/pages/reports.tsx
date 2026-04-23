@@ -18,7 +18,9 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Card,
   CardContent,
@@ -54,6 +56,25 @@ import {
   Legend,
 } from 'recharts'
 import { useAppStore } from '@/lib/store'
+
+// ── Export CSV Button ────────────────────────────────────────────────────
+
+function ExportCsvButton({ url, label }: { url: string; label: string }) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      onClick={() => {
+        window.open(url, '_blank')
+        toast.success(`${label} export started`, { description: 'Your CSV file will download shortly.' })
+      }}
+    >
+      <Download className="h-3.5 w-3.5" />
+      Export CSV
+    </Button>
+  )
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -358,6 +379,7 @@ function DailySalesTab() {
           <RefreshCw className="h-3.5 w-3.5" />
           Today
         </Button>
+        <ExportCsvButton url={`/api/export/sales-csv?fromDate=${dateStr}&toDate=${dateStr}`} label="Daily Sales" />
       </div>
 
       {/* Summary Cards */}
@@ -517,6 +539,7 @@ function MonthlySalesTab() {
           <RefreshCw className="h-3.5 w-3.5" />
           Current
         </Button>
+        <ExportCsvButton url={`/api/export/sales-csv?fromDate=${format(startOfMonth(selectedMonth), 'yyyy-MM-dd')}&toDate=${format(endOfMonth(selectedMonth), 'yyyy-MM-dd')}`} label="Monthly Sales" />
       </div>
 
       {/* Summary Cards */}
@@ -722,6 +745,7 @@ function ProfitReportTab() {
           <RefreshCw className="h-3.5 w-3.5" />
           This Month
         </Button>
+        <ExportCsvButton url={`/api/export/sales-csv?fromDate=${fromStr}&toDate=${toStr}`} label="Profit Data" />
       </div>
 
       {/* Summary Cards */}
@@ -920,6 +944,11 @@ function ExpiryReportTab() {
 
   return (
     <div className="space-y-4">
+      {/* Header with export */}
+      <div className="flex items-center justify-end">
+        <ExportCsvButton url="/api/export/stock-csv?expiryFilter=all" label="Expiry Stock" />
+      </div>
+
       {/* Summary Cards */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1001,6 +1030,11 @@ function LowStockTab() {
 
   return (
     <div className="space-y-4">
+      {/* Header with export */}
+      <div className="flex items-center justify-end">
+        <ExportCsvButton url="/api/export/stock-csv?lowStock=true" label="Low Stock" />
+      </div>
+
       {/* Summary Card */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
