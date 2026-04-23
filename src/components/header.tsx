@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Zap,
   AlertTriangle,
+  Package,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +49,12 @@ interface MedicineResult {
   batches: { mrp: number }[]
 }
 
+interface PageResult {
+  key: string
+  label: string
+  icon: string
+}
+
 function useTimeGreeting() {
   // Must be called only after mount to avoid hydration mismatch
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
@@ -64,6 +71,17 @@ const shortcuts = [
   { key: 'F8', label: 'Complete Sale', desc: 'Finalize current bill' },
   { key: '?', label: 'Show Shortcuts', desc: 'This help panel' },
   { key: 'Esc', label: 'Close / Cancel', desc: 'Close dialog or cancel' },
+]
+
+const navPages = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { key: 'billing', label: 'Billing', icon: 'Receipt' },
+  { key: 'medicines', label: 'Medicines', icon: 'Pill' },
+  { key: 'stock', label: 'Stock Management', icon: 'Package' },
+  { key: 'purchases', label: 'Purchase Entry', icon: 'ShoppingBag' },
+  { key: 'reports', label: 'Reports', icon: 'BarChart3' },
+  { key: 'customers', label: 'Customers', icon: 'Users' },
+  { key: 'settings', label: 'Settings', icon: 'Settings' },
 ]
 
 export function Header() {
@@ -108,6 +126,7 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<MedicineResult[]>([])
+  const [matchedPages, setMatchedPages] = useState<PageResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -135,6 +154,7 @@ export function Header() {
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([])
+      setMatchedPages([])
       setSearchOpen(false)
       setIsSearching(false)
       return
@@ -142,12 +162,20 @@ export function Header() {
 
     setIsSearching(true)
     try {
-      const res = await fetch(`/api/medicines?search=${encodeURIComponent(query)}&limit=5`)
-      const data = await res.json()
-      setSearchResults(data.medicines || [])
+      const [medRes, pages] = await Promise.all([
+        fetch(`/api/medicines?search=${encodeURIComponent(query)}&limit=3`).then((r) => r.json()),
+        Promise.resolve(
+          navPages.filter((p) =>
+            p.label.toLowerCase().includes(query.toLowerCase())
+          )
+        ),
+      ])
+      setSearchResults(medRes.medicines || [])
+      setMatchedPages(pages)
       setSearchOpen(true)
     } catch {
       setSearchResults([])
+      setMatchedPages([])
     } finally {
       setIsSearching(false)
     }
@@ -158,6 +186,7 @@ export function Header() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (!value.trim()) {
       setSearchResults([])
+      setMatchedPages([])
       setSearchOpen(false)
       return
     }
@@ -167,10 +196,10 @@ export function Header() {
   }, [performSearch])
 
   const handleSearchFocus = useCallback(() => {
-    if (searchQuery.trim() && searchResults.length > 0) {
+    if (searchQuery.trim() && (searchResults.length > 0 || matchedPages.length > 0)) {
       setSearchOpen(true)
     }
-  }, [searchQuery, searchResults])
+  }, [searchQuery, searchResults, matchedPages])
 
   const navigateToBilling = useCallback((query?: string) => {
     setSearchOpen(false)
@@ -179,8 +208,17 @@ export function Header() {
     }
     setSearchQuery('')
     setSearchResults([])
+    setMatchedPages([])
     setCurrentPage('billing')
   }, [setCurrentPage, setPendingSearchQuery])
+
+  const navigateToPage = useCallback((pageKey: string) => {
+    setSearchOpen(false)
+    setSearchQuery('')
+    setSearchResults([])
+    setMatchedPages([])
+    setCurrentPage(pageKey as 'dashboard' | 'billing' | 'medicines' | 'stock' | 'purchases' | 'reports' | 'customers' | 'settings')
+  }, [setCurrentPage])
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -261,7 +299,7 @@ export function Header() {
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             ref={searchInputRef}
-            placeholder="Quick search medicines..."
+            placeholder="Search medicines, pages..."
             className="pl-9 h-9 text-sm bg-muted/50 border-transparent focus-visible:border-ring/30"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -274,35 +312,77 @@ export function Header() {
                 <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                   <span className="animate-pulse">Searching...</span>
                 </div>
-              ) : searchResults.length > 0 ? (
-                <div className="py-1">
-                  {searchResults.map((med) => (
+              ) : searchResults.length > 0 || matchedPages.length > 0 ? (
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {/* Medicines Section */}
+                  {searchResults.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b">
+                        <Package className="h-3 w-3 text-teal-600" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Medicines</span>
+                      </div>
+                      {searchResults.map((med) => (
+                        <button
+                          key={med.id}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors"
+                          onClick={() => navigateToBilling(med.name)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{med.name}</p>
+                            {med.composition && (
+                              <p className="text-xs text-muted-foreground truncate">{med.composition}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold">
+                              ₹{(med.batches.length > 0 ? med.batches[0].mrp : med.sellingPrice).toFixed(2)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {med.totalStock} in stock
+                            </p>
+                          </div>
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Navigate Section */}
+                  {matchedPages.length > 0 && (
+                    <div className={searchResults.length > 0 ? 'border-t' : ''}>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b">
+                        <Search className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Navigate</span>
+                      </div>
+                      {matchedPages.map((page) => (
+                        <button
+                          key={page.key}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                          onClick={() => navigateToPage(page.key)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{page.label}</p>
+                          </div>
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Go to Billing link */}
+                  <div className="border-t">
                     <button
-                      key={med.id}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors"
-                      onClick={() => navigateToBilling(med.name)}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs text-primary hover:bg-accent/50 transition-colors"
+                      onClick={() => navigateToBilling(searchQuery)}
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{med.name}</p>
-                        {med.composition && (
-                          <p className="text-xs text-muted-foreground truncate">{med.composition}</p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold">
-                          ₹{(med.batches.length > 0 ? med.batches[0].mrp : med.sellingPrice).toFixed(2)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {med.totalStock} in stock
-                        </p>
-                      </div>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                      <ArrowRight className="h-3 w-3" />
+                      Go to Billing for more results
                     </button>
-                  ))}
+                  </div>
                 </div>
               ) : searchQuery.trim() ? (
                 <div className="flex flex-col items-center gap-2 py-4 text-sm text-muted-foreground">
-                  <span>No medicines found</span>
+                  <span>No results found</span>
                   <button
                     className="flex items-center gap-1 text-xs text-primary hover:underline"
                     onClick={() => navigateToBilling(searchQuery)}

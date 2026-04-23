@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import {
   Package,
@@ -17,6 +17,9 @@ import {
   X,
   Calendar,
   TrendingDown,
+  Plus,
+  Minus,
+  Loader2,
 } from 'lucide-react'
 import {
   Card,
@@ -25,6 +28,14 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -45,6 +56,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -196,7 +208,7 @@ function OverviewCard({
   iconBg: string
 }) {
   return (
-    <Card className="card-elevated group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <Card className="card-shadow-lg group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <CardContent className="p-4 lg:p-5">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
@@ -263,67 +275,222 @@ function TableSkeleton() {
 
 // ── Batch Sub-table ─────────────────────────────────────────────────────────
 
-function BatchSubTable({ batches }: { batches: BatchInfo[] }) {
+// ── Adjust Stock Dialog ────────────────────────────────────────────────────
+
+function AdjustStockDialog({
+  batch,
+  open,
+  onOpenChange,
+  medicineName,
+}: {
+  batch: BatchInfo
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  medicineName: string
+}) {
+  const [newQuantity, setNewQuantity] = useState(batch.quantity)
+  const queryClient = useQueryClient()
+
+  // Reset when dialog opens
+  const adjustedQuantity = newQuantity - batch.quantity
+
+  const adjustMutation = useMutation({
+    mutationFn: async ({ batchId, adjustment }: { batchId: string; adjustment: number }) => {
+      const res = await fetch(`/api/batches/${batchId}/adjust`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adjustment }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to adjust stock')
+      return data
+    },
+    onSuccess: (data) => {
+      toast.success(`Stock adjusted for ${medicineName}`, {
+        description: `${batch.quantity} → ${data.newQuantity} (${data.adjustment > 0 ? '+' : ''}${data.adjustment})`,
+      })
+      queryClient.invalidateQueries({ queryKey: ['stock'] })
+      onOpenChange(false)
+    },
+    onError: (error) => {
+      toast.error('Stock adjustment failed', {
+        description: error.message,
+      })
+    },
+  })
+
+  const handleSave = () => {
+    if (adjustedQuantity === 0) {
+      onOpenChange(false)
+      return
+    }
+    adjustMutation.mutate({ batchId: batch.id, adjustment: adjustedQuantity })
+  }
+
   return (
-    <div className="mx-4 mb-4 rounded-lg border bg-muted/30 overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="text-xs font-semibold">Batch #</TableHead>
-            <TableHead className="text-xs font-semibold">Qty</TableHead>
-            <TableHead className="text-xs font-semibold hidden sm:table-cell">Purchase Price</TableHead>
-            <TableHead className="text-xs font-semibold">MRP</TableHead>
-            <TableHead className="text-xs font-semibold hidden md:table-cell">Expiry Date</TableHead>
-            <TableHead className="text-xs font-semibold hidden md:table-cell">Days Left</TableHead>
-            <TableHead className="text-xs font-semibold text-right">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {batches.map((batch) => (
-            <TableRow key={batch.id} className="text-sm">
-              <TableCell className="font-mono text-xs font-medium">{batch.batchNumber}</TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className={cn(
-                    'font-medium',
-                    batch.quantity < 5
-                      ? 'text-red-600 dark:text-red-400'
-                      : batch.quantity < 10
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-foreground'
-                  )}>
-                    {batch.quantity}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">/ {batch.initialQuantity}</span>
-                </div>
-              </TableCell>
-              <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
-                {formatCurrency(batch.purchasePrice)}
-              </TableCell>
-              <TableCell className="text-xs font-medium">{formatCurrency(batch.mrp)}</TableCell>
-              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                {format(parseISO(batch.expiryDate), 'dd MMM yyyy')}
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <span className={cn(
-                  'text-xs font-medium',
-                  batch.daysUntilExpiry <= 0
-                    ? 'text-red-600 dark:text-red-400'
-                    : batch.daysUntilExpiry <= 7
-                      ? 'text-red-600 dark:text-red-400'
-                      : batch.daysUntilExpiry <= 30
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-foreground'
-                )}>
-                  {batch.daysUntilExpiry <= 0 ? 'Expired' : `${batch.daysUntilExpiry}d`}
-                </span>
-              </TableCell>
-              <TableCell className="text-right">{expiryBadge(batch.expiryStatus)}</TableCell>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onOpenChange(false) }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-primary" />
+            Adjust Stock
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-medium">{medicineName}</span>
+            <span className="text-muted-foreground ml-1">· Batch {batch.batchNumber}</span>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 text-sm">
+            <span className="text-muted-foreground">Current Stock</span>
+            <span className="font-semibold">{batch.quantity}</span>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">New Quantity</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setNewQuantity((v) => Math.max(0, v - 1))}
+                disabled={newQuantity <= 0}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <Input
+                type="number"
+                value={newQuantity}
+                onChange={(e) => setNewQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                className="h-9 text-center font-mono text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                min={0}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setNewQuantity((v) => v + 1)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          {adjustedQuantity !== 0 && (
+            <div className={cn(
+              'flex items-center justify-between p-2.5 rounded-lg text-sm font-medium',
+              adjustedQuantity > 0
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+            )}>
+              <span>Adjustment</span>
+              <span>{adjustedQuantity > 0 ? '+' : ''}{adjustedQuantity}</span>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={adjustMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={adjustedQuantity === 0 || adjustMutation.isPending}
+          >
+            {adjustMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Save Adjustment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Batch Sub-table ─────────────────────────────────────────────────────────
+
+function BatchSubTable({ batches, medicineName }: { batches: BatchInfo[]; medicineName: string }) {
+  const [adjustDialogBatch, setAdjustDialogBatch] = useState<BatchInfo | null>(null)
+
+  return (
+    <>
+      <div className="mx-4 mb-4 rounded-lg border bg-muted/30 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="text-xs font-semibold">Batch #</TableHead>
+              <TableHead className="text-xs font-semibold">Qty</TableHead>
+              <TableHead className="text-xs font-semibold hidden sm:table-cell">Purchase Price</TableHead>
+              <TableHead className="text-xs font-semibold">MRP</TableHead>
+              <TableHead className="text-xs font-semibold hidden md:table-cell">Expiry Date</TableHead>
+              <TableHead className="text-xs font-semibold hidden md:table-cell">Days Left</TableHead>
+              <TableHead className="text-xs font-semibold text-right">Status</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {batches.map((batch) => (
+              <TableRow key={batch.id} className="text-sm">
+                <TableCell className="font-mono text-xs font-medium">{batch.batchNumber}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex flex-col">
+                      <span className={cn(
+                        'font-medium',
+                        batch.quantity < 5
+                          ? 'text-red-600 dark:text-red-400'
+                          : batch.quantity < 10
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-foreground'
+                      )}>
+                        {batch.quantity}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">/ {batch.initialQuantity}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      onClick={() => setAdjustDialogBatch(batch)}
+                      title="Adjust stock"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <Minus className="h-3 w-3 -ml-1.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
+                  {formatCurrency(batch.purchasePrice)}
+                </TableCell>
+                <TableCell className="text-xs font-medium">{formatCurrency(batch.mrp)}</TableCell>
+                <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                  {format(parseISO(batch.expiryDate), 'dd MMM yyyy')}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className={cn(
+                    'text-xs font-medium',
+                    batch.daysUntilExpiry <= 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : batch.daysUntilExpiry <= 7
+                        ? 'text-red-600 dark:text-red-400'
+                        : batch.daysUntilExpiry <= 30
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-foreground'
+                  )}>
+                    {batch.daysUntilExpiry <= 0 ? 'Expired' : `${batch.daysUntilExpiry}d`}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">{expiryBadge(batch.expiryStatus)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {adjustDialogBatch && (
+        <AdjustStockDialog
+          batch={adjustDialogBatch}
+          open={!!adjustDialogBatch}
+          onOpenChange={(open) => { if (!open) setAdjustDialogBatch(null) }}
+          medicineName={medicineName}
+        />
+      )}
+    </>
   )
 }
 
@@ -783,7 +950,9 @@ export function StockPage() {
       ) : items.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+            <div className="rounded-full bg-muted p-4 mx-auto mb-3 w-fit">
+              <Package className="h-10 w-10 text-muted-foreground/40" />
+            </div>
             <p className="text-sm font-medium text-muted-foreground">No medicines found</p>
             <p className="text-xs text-muted-foreground mt-1">
               {filterActive
@@ -915,7 +1084,7 @@ export function StockPage() {
                         <TableRow className={cn(isExpanded || 'hidden')}>
                           <TableCell colSpan={10} className="p-0">
                             <CollapsibleContent>
-                              <BatchSubTable batches={item.batches} />
+                              <BatchSubTable batches={item.batches} medicineName={item.name} />
                             </CollapsibleContent>
                           </TableCell>
                         </TableRow>

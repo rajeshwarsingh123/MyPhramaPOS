@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +53,8 @@ import {
   Check,
   Loader2,
   ArrowRight,
+  Zap,
+  ChevronDown,
 } from 'lucide-react'
 
 // ==================== Types ====================
@@ -174,7 +177,34 @@ function generateCartItemId(): string {
 
 // ==================== Component ====================
 
+// ==================== Quick Sale Types ====================
+
+interface QuickSaleMedicine {
+  id: string
+  name: string
+  composition: string | null
+  strength: string | null
+  unitType: string
+  mrp: number
+  totalStock: number
+  quantitySold: number
+}
+
+// ==================== Component ====================
+
 export function BillingPage() {
+  // Quick Sale state
+  const [quickSaleOpen, setQuickSaleOpen] = useState(true)
+
+  // Quick Sale query
+  const { data: quickSaleData, isLoading: quickSaleLoading } = useQuery<{ medicines: QuickSaleMedicine[] }>({
+    queryKey: ['quick-sale-medicines'],
+    queryFn: () => fetch('/api/billing/quick-sale').then((r) => r.json()),
+    refetchInterval: 60000,
+  })
+
+  const quickSaleMedicines = quickSaleData?.medicines ?? []
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<MedicineSearchResult[]>([])
@@ -577,6 +607,114 @@ export function BillingPage() {
     <div className="h-full flex flex-col lg:flex-row gap-0">
       {/* ==================== LEFT PANEL: Search ==================== */}
       <div className="flex-1 lg:w-[60%] flex flex-col min-h-0 border-r">
+        {/* Quick Sale Section */}
+        <div className="border-b bg-gradient-to-r from-amber-50/80 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10">
+          <button
+            onClick={() => setQuickSaleOpen(!quickSaleOpen)}
+            className="w-full flex items-center justify-between px-3 lg:px-4 py-2 hover:bg-accent/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Quick Sale
+              </span>
+              {quickSaleMedicines.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                  Top {quickSaleMedicines.length}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${quickSaleOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {quickSaleOpen && (
+            <div className="px-3 lg:px-4 pb-3">
+              {quickSaleLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="relative rounded-xl border bg-card p-2.5 overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer -translate-x-full" />
+                      <Skeleton className="h-3.5 w-20 mb-1.5" />
+                      <Skeleton className="h-2.5 w-16 mb-2" />
+                      <div className="flex justify-between">
+                        <Skeleton className="h-3 w-10" />
+                        <Skeleton className="h-3 w-8" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : quickSaleMedicines.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {quickSaleMedicines.map((med) => (
+                    <button
+                      key={med.id}
+                      onClick={() => {
+                        // Build a minimal MedicineSearchResult from QuickSale data and add to cart
+                        const fakeMed: MedicineSearchResult = {
+                          id: med.id,
+                          name: med.name,
+                          composition: med.composition || undefined,
+                          strength: med.strength || undefined,
+                          unitType: med.unitType,
+                          gstPercent: 5,
+                          totalStock: med.totalStock,
+                          nearestExpiry: '',
+                          batches: [{
+                            id: '',
+                            batchNumber: '',
+                            qty: med.totalStock,
+                            purchasePrice: 0,
+                            mrp: med.mrp,
+                            expiryDate: '',
+                          }],
+                        }
+                        // Fetch real billing search data for this medicine to get proper batch info
+                        fetch(`/api/billing/search?q=${encodeURIComponent(med.name)}&exact=true`)
+                          .then((res) => res.json())
+                          .then((data) => {
+                            if (Array.isArray(data) && data.length > 0) {
+                              addToCart(data[0])
+                            }
+                          })
+                          .catch(() => {})
+                      }}
+                      disabled={med.totalStock === 0}
+                      className="action-card-hover rounded-xl border bg-card p-2.5 text-left hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed group"
+                    >
+                      <p className="text-xs font-semibold text-foreground truncate group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+                        {med.name}
+                      </p>
+                      {med.composition && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                          {med.composition.length > 30 ? med.composition.substring(0, 30) + '...' : med.composition}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          ₹{med.mrp.toFixed(2)}
+                        </span>
+                        <span className={`text-[10px] font-medium ${med.totalStock < 10 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                          {med.totalStock} in stock
+                        </span>
+                      </div>
+                      {med.quantitySold > 0 && (
+                        <div className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
+                          <Zap className="h-2.5 w-2.5 text-amber-500" />
+                          {med.quantitySold} sold
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-3 text-xs text-muted-foreground">
+                  No sales data yet. Start billing to see top medicines here.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Search Header */}
         <div className="p-3 lg:p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex items-center gap-3 mb-2">
@@ -599,7 +737,7 @@ export function BillingPage() {
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search medicine by name, composition, or generic..."
-              className="focus-teal h-11 pl-10 pr-10 text-base lg:text-sm"
+              className="input-focus-smooth focus-teal h-11 pl-10 pr-10 text-base lg:text-sm"
               onFocus={() => {
                 if (searchResults.length > 0) setShowSearchDropdown(true)
               }}
@@ -956,7 +1094,7 @@ export function BillingPage() {
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
                       placeholder="Search customer or type new name..."
-                      className="focus-teal h-9 pl-8 text-sm"
+                      className="input-focus-smooth focus-teal h-9 pl-8 text-sm"
                     />
                     {showCustomerDropdown && filteredCustomers.length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-lg max-h-40 overflow-auto">
@@ -989,7 +1127,7 @@ export function BillingPage() {
                   value={doctorName}
                   onChange={(e) => setDoctorName(e.target.value)}
                   placeholder="Doctor name (optional)"
-                  className="focus-teal h-9 pl-8 text-sm"
+                  className="input-focus-smooth focus-teal h-9 pl-8 text-sm"
                 />
               </div>
 

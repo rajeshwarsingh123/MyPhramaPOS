@@ -1268,3 +1268,91 @@ Created `/api/dashboard/top-medicines/route.ts`:
 6. **Mobile App Optimization** — PWA support for tablet-based POS
 7. **Advanced Analytics** — YoY comparison, customer lifetime value, movement analysis
 8. **Notification Persistence** — Database-backed notification system
+
+---
+
+## Task 5-a — Deep CSS & Styling Polish
+
+**Date**: 2026-04-23
+**Author**: Agent (Task ID: 5-a)
+
+---
+
+### Summary
+Applied comprehensive CSS polish across all 8 page components of PharmPOS. Added utility classes to globals.css for deep card shadows, table row hover, smooth form input focus, action card hover, report tab hover, customer card scale, section spacing, strong labels, and subtle separators. Applied these classes selectively to enhance visual feedback and consistency.
+
+### Files Modified
+
+#### 1. **`src/app/globals.css`** — Appended 12 new utility classes:
+- `.card-shadow-lg` — Deep multi-layer shadow with translateY(-2px) hover, dark mode support
+- `.rounded-xl` — Unified 12px border radius
+- `.table-row-interactive` — Table row hover with translateX(2px) slide effect
+- `.input-focus-smooth` — Smooth teal focus ring (3px offset + 8px glow) on form inputs
+- `.action-card-hover` — Action card translateY(-2px) + border-color change on hover
+- `.tab-hover` — Tab button hover with green-tinted background
+- `.card-hover-scale` — Subtle scale(1.01) + shadow on hover for cards
+- `.section-gap-lg` — Flex column with 1.5rem gap for section containers
+- `.label-semibold` — Medium weight + slight letter-spacing for form labels
+- `.separator-subtle` — Gradient fade-in/out horizontal separator
+
+#### 2. **`src/components/pages/dashboard.tsx`**
+- Added `card-shadow-lg` to StatCard container
+- Added `action-card-hover` to all 3 Quick Action buttons (New Bill, Add Medicine, New Purchase)
+
+#### 3. **`src/components/pages/billing.tsx`**
+- Added `input-focus-smooth` to 3 Input elements (medicine search, customer search, doctor name)
+
+#### 4. **`src/components/pages/medicines.tsx`**
+- Added `table-row-interactive` to main medicine table body TableRow
+
+#### 5. **`src/components/pages/stock.tsx`**
+- Replaced `card-elevated` with `card-shadow-lg` on OverviewCard
+- Improved empty state with rounded icon container
+
+#### 6. **`src/components/pages/purchases.tsx`**
+- Added `input-focus-smooth` to 11 Input elements (5 supplier dialog + 5 item row + 1 history search)
+
+#### 7. **`src/components/pages/reports.tsx`**
+- Added `tab-hover` to all 5 TabsTrigger buttons
+- Added `section-gap-lg` to all 8 StatCard grid containers
+
+#### 8. **`src/components/pages/customers.tsx`**
+- Added `card-hover-scale` to mobile customer cards
+- Added `section-gap-lg` to overview cards grid
+
+#### 9. **`src/components/pages/settings.tsx`**
+- Added `input-focus-smooth` to all 7 Input elements
+- Added `label-semibold` to all 8 form Label elements
+
+### Design Principles
+- All transitions use cubic-bezier(0.4, 0, 0.2, 1) for natural feel
+- Dark mode fully supported with appropriate shadow/opacity values
+- Hover effects are subtle (2px translate, 1.01 scale) — informative without being distracting
+- Focus rings use the pharmacy teal brand color (oklch 0.51 0.118 163)
+- No component logic was changed — only CSS class additions
+
+### Verification
+- ESLint passes with zero errors
+- All edits are purely additive (CSS classes only, no logic changes)
+- Dev server compiles successfully
+
+---
+Task ID: 5-b
+Agent: features-agent
+Task: Quick Sale mode, enhanced header search, batch stock adjustment
+
+Work Log:
+- Read existing project context: prisma schema, billing.tsx, header.tsx, stock.tsx, store.ts, db.ts
+- Created API route `GET /api/billing/quick-sale` — aggregates SaleItem by medicineId, joins Medicine for unit info, gets latest MRP from Batch, returns top 10 most-selling medicines with stock info
+- Added Quick Sale collapsible section to top of billing.tsx — amber-themed toggle with grid of clickable medicine cards (5 per row on desktop, 2 on mobile), shimmer loading skeleton, shows name/composition/MRP/stock/sold-count, clicking fetches real billing search data and adds to cart
+- Enhanced header search in header.tsx — added `navPages` constant for all app pages, parallel-fetches medicines (limit 3) + matches nav pages by label, displays categorized dropdown with "Medicines" section and "Navigate" section, added "Go to Billing for more results" link at bottom, added `navigateToPage` callback
+- Created API route `PUT /api/batches/[id]/adjust` — accepts integer adjustment (positive/negative), validates non-negative resulting quantity, updates batch quantity, returns old/new quantity + adjustment delta
+- Added Adjust Stock dialog to stock.tsx BatchSubTable — ± icon button next to each batch quantity, opens dialog with current stock display, +/- buttons and number input for new quantity, color-coded adjustment indicator (green for increase, red for decrease), TanStack mutation with toast notifications, auto-invalidates stock query cache
+
+Stage Summary:
+- 3 new features implemented across 5 files (2 API routes + 3 frontend component edits)
+- Quick Sale: top 10 best-selling medicines shown as compact clickable cards above billing search bar
+- Header Search: categorized results (Medicines + Navigate pages) with smart page matching
+- Stock Adjustment: quick ± button in batch sub-table rows with dialog UI and toast feedback
+- ESLint passes with zero errors
+- Dev server compiles successfully with no new errors

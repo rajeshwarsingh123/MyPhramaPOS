@@ -365,7 +365,7 @@ export function CustomersPage() {
 
       {/* Overview Cards */}
       {!isLoading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 md:grid-cols-3 gap-4">
           <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
             <CardContent className="p-4 lg:p-5">
               <div className="flex items-start justify-between">
@@ -583,7 +583,7 @@ export function CustomersPage() {
                 {customers.map((customer) => (
                   <Card
                     key={customer.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    className="card-hover-scale cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => openDetailDialog(customer)}
                   >
                     <CardContent className="p-3">

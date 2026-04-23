@@ -185,7 +185,7 @@ function StatCard({
   return (
     <Card
       className={cn(
-        'card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
+        'card-shadow-lg card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
         borderClass
       )}
       style={{ animationDelay: `${delayMs}ms` }}
@@ -617,7 +617,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <button
           onClick={() => setCurrentPage('billing')}
-          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
+          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm group-hover:shadow-emerald-500/30 transition-shadow duration-200">
             <Receipt className="h-5 w-5 text-white" />
@@ -626,7 +626,7 @@ export function DashboardPage() {
         </button>
         <button
           onClick={() => setCurrentPage('medicines')}
-          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
+          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-teal-500 to-teal-600 shadow-sm group-hover:shadow-teal-500/30 transition-shadow duration-200">
             <Plus className="h-5 w-5 text-white" />
@@ -635,7 +635,7 @@ export function DashboardPage() {
         </button>
         <button
           onClick={() => setCurrentPage('purchases')}
-          className="flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
+          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 shadow-sm group-hover:shadow-orange-500/30 transition-shadow duration-200">
             <ShoppingCart className="h-5 w-5 text-white" />

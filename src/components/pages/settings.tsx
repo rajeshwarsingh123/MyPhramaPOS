@@ -297,11 +297,12 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="storeName">
+                <Label htmlFor="storeName" className="label-semibold">
                   Store Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="storeName"
+                  className="input-focus-smooth"
                   placeholder="My Pharmacy"
                   value={storeName}
                   onChange={(e) => {
@@ -312,9 +313,10 @@ export function SettingsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone" className="label-semibold">Phone</Label>
                 <Input
                   id="phone"
+                  className="input-focus-smooth"
                   placeholder="Phone number"
                   value={phone}
                   onChange={(e) => {
@@ -327,9 +329,10 @@ export function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="label-semibold">Email</Label>
                 <Input
                   id="email"
+                  className="input-focus-smooth"
                   type="email"
                   placeholder="pharmacy@email.com"
                   value={email}
@@ -341,9 +344,10 @@ export function SettingsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="gstNumber">GST Number</Label>
+                <Label htmlFor="gstNumber" className="label-semibold">GST Number</Label>
                 <Input
                   id="gstNumber"
+                  className="input-focus-smooth"
                   placeholder="22AAAAA0000A1Z5"
                   value={gstNumber}
                   onChange={(e) => {
@@ -355,9 +359,10 @@ export function SettingsPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address" className="label-semibold">Address</Label>
               <Input
                 id="address"
+                className="input-focus-smooth"
                 placeholder="Full address"
                 value={address}
                 onChange={(e) => {
@@ -368,9 +373,10 @@ export function SettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="licenseNo">Drug License Number</Label>
+              <Label htmlFor="licenseNo" className="label-semibold">Drug License Number</Label>
               <Input
                 id="licenseNo"
+                className="input-focus-smooth"
                 placeholder="DL-XXXX-XXXX"
                 value={licenseNo}
                 onChange={(e) => {
@@ -422,9 +428,10 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="invoicePrefix">Invoice Prefix</Label>
+              <Label htmlFor="invoicePrefix" className="label-semibold">Invoice Prefix</Label>
               <Input
                 id="invoicePrefix"
+                className="input-focus-smooth"
                 placeholder="INV"
                 value={invoicePrefix}
                 onChange={(e) => {
@@ -438,9 +445,10 @@ export function SettingsPage() {
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nextInvoiceNo">Next Invoice Number</Label>
+              <Label htmlFor="nextInvoiceNo" className="label-semibold">Next Invoice Number</Label>
               <Input
                 id="nextInvoiceNo"
+                className="input-focus-smooth"
                 type="number"
                 min={1}
                 value={nextInvoiceNo}
@@ -533,9 +541,10 @@ export function SettingsPage() {
 
             {/* Display Name */}
             <div className="space-y-1.5">
-              <Label htmlFor="displayName">Display Name</Label>
+              <Label htmlFor="displayName" className="label-semibold">Display Name</Label>
               <Input
                 id="displayName"
+                className="input-focus-smooth"
                 placeholder="PharmPOS"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}

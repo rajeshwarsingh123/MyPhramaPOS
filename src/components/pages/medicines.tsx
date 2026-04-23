@@ -825,7 +825,7 @@ export function MedicinesPage() {
                       <>
                         <TableRow
                           key={med.id}
-                          className="table-row-hover cursor-pointer hover:bg-muted/50"
+                          className="table-row-interactive table-row-hover cursor-pointer hover:bg-muted/50"
                           onClick={() => toggleExpand(med.id)}
                         >
                           <TableCell className="w-8 px-2">

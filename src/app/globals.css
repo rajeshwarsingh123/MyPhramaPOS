@@ -927,3 +927,105 @@
 .badge-dot-warning::before { background: oklch(0.75 0.183 55); }
 .badge-dot-danger::before { background: oklch(0.577 0.245 27.325); }
 .badge-dot-info::before { background: oklch(0.55 0.15 250); }
+
+/* ============ Deep Card Shadows ============ */
+.card-shadow-lg {
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.06), 0 10px 15px -3px oklch(0 0 0 / 0.05), 0 0 0 1px oklch(0 0 0 / 0.04);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-shadow-lg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px oklch(0 0 0 / 0.1), 0 16px 24px -12px oklch(0 0 0 / 0.06), 0 0 0 1px oklch(0 0 0 / 0.04);
+}
+.dark .card-shadow-lg {
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.2), 0 10px 15px -3px oklch(0 0 0 / 0.15), 0 0 0 1px oklch(0 0 0 / 0.12);
+}
+.dark .card-shadow-lg:hover {
+  box-shadow: 0 12px 28px -8px oklch(0 0 0 / 0.3), 0 16px 24px -12px oklch(0 0 0 / 0.2), 0 0 0 1px oklch(0 0 0 / 0.15);
+}
+
+/* ============ Unified Border Radius ============ */
+.rounded-xl {
+  border-radius: 12px;
+}
+
+/* ============ Table Row Interactive Hover ============ */
+.table-row-interactive {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+.table-row-interactive:hover {
+  background-color: oklch(0.96 0.01 163 / 0.4);
+  transform: translateX(2px);
+}
+.dark .table-row-interactive:hover {
+  background-color: oklch(0.22 0.025 163 / 0.4);
+}
+
+/* ============ Smooth Form Input Focus ============ */
+.input-focus-smooth {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-focus-smooth:focus {
+  border-color: oklch(0.51 0.118 163);
+  box-shadow: 0 0 0 3px oklch(0.51 0.118 163 / 0.12), 0 0 8px oklch(0.51 0.118 163 / 0.06);
+}
+.dark .input-focus-smooth:focus {
+  border-color: oklch(0.6 0.15 163);
+  box-shadow: 0 0 0 3px oklch(0.6 0.15 163 / 0.15), 0 0 8px oklch(0.6 0.15 163 / 0.08);
+}
+
+/* ============ Action Card Hover ============ */
+.action-card-hover {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
+}
+.action-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px oklch(0 0 0 / 0.08), 0 12px 24px -8px oklch(0 0 0 / 0.04);
+  border-color: oklch(0.51 0.118 163 / 0.3);
+}
+.dark .action-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px oklch(0 0 0 / 0.25), 0 12px 24px -8px oklch(0 0 0 / 0.15);
+  border-color: oklch(0.6 0.15 163 / 0.3);
+}
+
+/* ============ Report Tab Hover ============ */
+.tab-hover {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.tab-hover:hover {
+  background-color: oklch(0.95 0.03 145 / 0.5);
+  color: oklch(0.25 0.08 145);
+}
+
+/* ============ Customer Card Hover Scale ============ */
+.card-hover-scale {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-hover-scale:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 12px -1px oklch(0 0 0 / 0.06), 0 8px 16px -4px oklch(0 0 0 / 0.04);
+}
+
+/* ============ Section Spacing ============ */
+.section-gap-lg {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ============ Strong Label ============ */
+.label-semibold {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ============ Subtle Separator ============ */
+.separator-subtle {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.91 0.01 155 / 0.5), transparent);
+}
+.dark .separator-subtle {
+  background: linear-gradient(90deg, transparent, oklch(0.28 0.03 163 / 0.5), transparent);
+}

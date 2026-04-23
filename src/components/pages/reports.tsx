@@ -405,7 +405,7 @@ function DailySalesTab() {
 
       {/* Summary Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16" /></CardContent></Card>
           ))}
@@ -418,7 +418,7 @@ function DailySalesTab() {
           </CardContent>
         </Card>
       ) : data ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Sales"
             value={data.totalSales}
@@ -566,7 +566,7 @@ function MonthlySalesTab() {
 
       {/* Summary Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16" /></CardContent></Card>
           ))}
@@ -579,7 +579,7 @@ function MonthlySalesTab() {
           </CardContent>
         </Card>
       ) : data ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Sales"
             value={data.totalSales}
@@ -772,7 +772,7 @@ function ProfitReportTab() {
 
       {/* Summary Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16" /></CardContent></Card>
           ))}
@@ -785,7 +785,7 @@ function ProfitReportTab() {
           </CardContent>
         </Card>
       ) : data ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Revenue"
             value={data.totalRevenue}
@@ -973,7 +973,7 @@ function ExpiryReportTab() {
 
       {/* Summary Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-16" /></CardContent></Card>
           ))}
@@ -986,7 +986,7 @@ function ExpiryReportTab() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="section-gap-lg grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Expired"
             value={totalExpired}
@@ -1281,27 +1281,27 @@ export function ReportsPage() {
       {/* Tabbed Navigation */}
       <Tabs defaultValue="daily" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="daily" className="gap-1.5">
+          <TabsTrigger value="daily" className="tab-hover gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Daily Sales</span>
             <span className="sm:hidden">Daily</span>
           </TabsTrigger>
-          <TabsTrigger value="monthly" className="gap-1.5">
+          <TabsTrigger value="monthly" className="tab-hover gap-1.5">
             <TrendingUp className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Monthly Sales</span>
             <span className="sm:hidden">Monthly</span>
           </TabsTrigger>
-          <TabsTrigger value="profit" className="gap-1.5">
+          <TabsTrigger value="profit" className="tab-hover gap-1.5">
             <IndianRupee className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Profit Report</span>
             <span className="sm:hidden">Profit</span>
           </TabsTrigger>
-          <TabsTrigger value="expiry" className="gap-1.5">
+          <TabsTrigger value="expiry" className="tab-hover gap-1.5">
             <Clock className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Expiry Report</span>
             <span className="sm:hidden">Expiry</span>
           </TabsTrigger>
-          <TabsTrigger value="lowstock" className="gap-1.5">
+          <TabsTrigger value="lowstock" className="tab-hover gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Low Stock</span>
             <span className="sm:hidden">Stock</span>

@@ -252,6 +252,7 @@ function NewSupplierDialog({
             <Label htmlFor="supplier-name">Name *</Label>
             <Input
               id="supplier-name"
+              className="input-focus-smooth"
               placeholder="Supplier name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -263,6 +264,7 @@ function NewSupplierDialog({
               <Label htmlFor="supplier-phone">Phone</Label>
               <Input
                 id="supplier-phone"
+                className="input-focus-smooth"
                 placeholder="Phone number"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -272,6 +274,7 @@ function NewSupplierDialog({
               <Label htmlFor="supplier-email">Email</Label>
               <Input
                 id="supplier-email"
+                className="input-focus-smooth"
                 type="email"
                 placeholder="Email"
                 value={form.email}
@@ -283,6 +286,7 @@ function NewSupplierDialog({
             <Label htmlFor="supplier-address">Address</Label>
             <Input
               id="supplier-address"
+              className="input-focus-smooth"
               placeholder="Address"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
@@ -292,6 +296,7 @@ function NewSupplierDialog({
             <Label htmlFor="supplier-gst">GST Number</Label>
             <Input
               id="supplier-gst"
+              className="input-focus-smooth"
               placeholder="GST Number"
               value={form.gstNumber}
               onChange={(e) => setForm((f) => ({ ...f, gstNumber: e.target.value }))}
@@ -573,7 +578,7 @@ function ItemRow({
       <div className="col-span-6 lg:col-span-1.5">
         <Label className="text-xs text-muted-foreground mb-1 block">Batch #</Label>
         <Input
-          className="h-9 text-sm"
+          className="input-focus-smooth h-9 text-sm"
           value={item.batchNumber}
           onChange={(e) => onUpdate(item.id, { batchNumber: e.target.value })}
           placeholder="BN-..."
@@ -590,7 +595,7 @@ function ItemRow({
       <div className="col-span-6 lg:col-span-1.5">
         <Label className="text-xs text-muted-foreground mb-1 block">Qty *</Label>
         <Input
-          className="h-9 text-sm"
+          className="input-focus-smooth h-9 text-sm"
           type="number"
           min="1"
           value={item.quantity}
@@ -601,7 +606,7 @@ function ItemRow({
       <div className="col-span-6 lg:col-span-1">
         <Label className="text-xs text-muted-foreground mb-1 block">P. Price</Label>
         <Input
-          className="h-9 text-sm"
+          className="input-focus-smooth h-9 text-sm"
           type="number"
           step="0.01"
           min="0"
@@ -613,7 +618,7 @@ function ItemRow({
       <div className="col-span-6 lg:col-span-1">
         <Label className="text-xs text-muted-foreground mb-1 block">MRP</Label>
         <Input
-          className="h-9 text-sm"
+          className="input-focus-smooth h-9 text-sm"
           type="number"
           step="0.01"
           min="0"
@@ -625,7 +630,7 @@ function ItemRow({
       <div className="col-span-3 lg:col-span-1">
         <Label className="text-xs text-muted-foreground mb-1 block">GST %</Label>
         <Input
-          className="h-9 text-sm"
+          className="input-focus-smooth h-9 text-sm"
           type="number"
           step="0.5"
           min="0"
@@ -1520,7 +1525,7 @@ export function PurchasesPage() {
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pl-9 h-9 text-sm"
+                className="input-focus-smooth pl-9 h-9 text-sm"
                 placeholder="Search invoice #, supplier..."
                 value={historySearch}
                 onChange={(e) => {
