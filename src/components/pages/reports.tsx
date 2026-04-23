@@ -468,7 +468,7 @@ function DailySalesTab() {
           {isLoading ? (
             <TableSkeleton rows={6} />
           ) : data && data.sales.length > 0 ? (
-            <ScrollArea className="max-h-[420px]">
+            <ScrollArea className="scroll-container max-h-[420px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -681,7 +681,7 @@ function MonthlySalesTab() {
           {isLoading ? (
             <TableSkeleton rows={8} />
           ) : data && data.dailyBreakdown.length > 0 ? (
-            <ScrollArea className="max-h-[400px]">
+            <ScrollArea className="scroll-container max-h-[400px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -892,7 +892,7 @@ function ProfitReportTab() {
           {isLoading ? (
             <TableSkeleton rows={8} cols={6} />
           ) : data && data.items.length > 0 ? (
-            <ScrollArea className="max-h-[440px]">
+            <ScrollArea className="scroll-container max-h-[440px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1119,7 +1119,7 @@ function LowStockTab() {
           {isLoading ? (
             <TableSkeleton rows={8} />
           ) : items.length > 0 ? (
-            <ScrollArea className="max-h-[500px]">
+            <ScrollArea className="scroll-container max-h-[500px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1211,7 +1211,7 @@ function ExpiryTable({ items, title }: { items: ExpiryItem[]; title: string }) {
         <CardDescription>{items.length} batch{items.length !== 1 ? 'es' : ''}</CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0">
-        <ScrollArea className="max-h-[360px]">
+        <ScrollArea className="scroll-container max-h-[360px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1309,19 +1309,29 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="daily">
+          <div className="section-fade-in">
           <DailySalesTab />
+          </div>
         </TabsContent>
         <TabsContent value="monthly">
+          <div className="section-fade-in">
           <MonthlySalesTab />
+          </div>
         </TabsContent>
         <TabsContent value="profit">
+          <div className="section-fade-in">
           <ProfitReportTab />
+          </div>
         </TabsContent>
         <TabsContent value="expiry">
+          <div className="section-fade-in">
           <ExpiryReportTab />
+          </div>
         </TabsContent>
         <TabsContent value="lowstock">
+          <div className="section-fade-in">
           <LowStockTab />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

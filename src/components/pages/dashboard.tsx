@@ -56,6 +56,8 @@ import {
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -185,7 +187,7 @@ function StatCard({
   return (
     <Card
       className={cn(
-        'card-shadow-lg card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
+        'card-spotlight card-shadow-lg card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
         borderClass
       )}
       style={{ animationDelay: `${delayMs}ms` }}
@@ -617,7 +619,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <button
           onClick={() => setCurrentPage('billing')}
-          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
+          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-emerald-300 dark:hover:border-emerald-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm group-hover:shadow-emerald-500/30 transition-shadow duration-200">
             <Receipt className="h-5 w-5 text-white" />
@@ -626,7 +628,7 @@ export function DashboardPage() {
         </button>
         <button
           onClick={() => setCurrentPage('medicines')}
-          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
+          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-teal-300 dark:hover:border-teal-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-teal-500 to-teal-600 shadow-sm group-hover:shadow-teal-500/30 transition-shadow duration-200">
             <Plus className="h-5 w-5 text-white" />
@@ -635,7 +637,7 @@ export function DashboardPage() {
         </button>
         <button
           onClick={() => setCurrentPage('purchases')}
-          className="action-card-hover flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
+          className="action-card-hover hover-lift flex flex-col items-center gap-2.5 rounded-xl border bg-card p-4 lg:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.05] hover:border-orange-300 dark:hover:border-orange-700 active:scale-[0.98] group"
         >
           <div className="flex items-center justify-center rounded-2xl w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 shadow-sm group-hover:shadow-orange-500/30 transition-shadow duration-200">
             <ShoppingCart className="h-5 w-5 text-white" />
@@ -1067,7 +1069,7 @@ export function DashboardPage() {
             ))}
           </div>
         ) : topSellers.length > 0 ? (
-          <ScrollArea className="w-full" type="scroll">
+          <ScrollArea className="scroll-container w-full" type="scroll">
             <div className="flex gap-4 pb-2">
               {topSellers.map((item, idx) => (
                 <TopSellerCard key={item.medicineName} item={item} rank={idx + 1} />
@@ -1084,6 +1086,104 @@ export function DashboardPage() {
         )}
         </div>
       </div>
+
+      {/* Top Selling Medicines Bar Chart */}
+      {topSellersLoading ? (
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full rounded-lg" />
+          </CardContent>
+        </Card>
+      ) : topSellers.length > 0 ? (
+        <Card className="rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5 hover:border-emerald-300/50 dark:hover:border-emerald-700/50">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/50">
+                  <Trophy className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">Top Selling Medicines</CardTitle>
+                  <CardDescription className="text-xs">By quantity sold — horizontal bar chart</CardDescription>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage('reports')}
+                className="gap-1 text-xs"
+              >
+                View Report
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="rounded-lg bg-muted/30 p-2">
+              <ResponsiveContainer width="100%" height={Math.max(200, topSellers.length * 42 + 20)}>
+                <BarChart
+                  data={topSellers}
+                  layout="vertical"
+                  margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="emeraldBarGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#059669" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="medicineName"
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    tickLine={false}
+                    axisLine={false}
+                    width={140}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                        const data = payload[0].payload as TopSellingItem
+                        return (
+                          <div className="rounded-lg border bg-background p-3 shadow-xl">
+                            <p className="text-sm font-bold text-foreground">{data.medicineName}</p>
+                            <p className="text-xs text-muted-foreground">{data.qtySold} units sold</p>
+                            <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.revenue)}</p>
+                          </div>
+                        )
+                      }}
+                    />
+                  <Bar
+                    dataKey="qtySold"
+                    fill="url(#emeraldBarGradient)"
+                    radius={[0, 4, 4, 0]}
+                    barSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="rounded-xl">
+          <CardContent className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
+            <Trophy className="h-8 w-8 opacity-30" />
+            <p className="text-sm">No sales data yet</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Bottom Section: Recent Sales + Alerts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -1193,7 +1293,7 @@ export function DashboardPage() {
                 ))}
               </div>
             ) : hasAlerts ? (
-              <ScrollArea className="max-h-[400px] pr-1">
+              <ScrollArea className="scroll-container max-h-[400px] pr-1">
                 <div className="space-y-1">
                   <AlertGroup
                     title="Expired"

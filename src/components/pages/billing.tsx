@@ -56,6 +56,7 @@ import {
   Zap,
   ChevronDown,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ==================== Types ====================
 
@@ -607,6 +608,9 @@ export function BillingPage() {
     <div className="h-full flex flex-col lg:flex-row gap-0">
       {/* ==================== LEFT PANEL: Search ==================== */}
       <div className="flex-1 lg:w-[60%] flex flex-col min-h-0 border-r">
+        {/* Past Invoices Search Section */}
+        <PastInvoicesSection completedSale={completedSale} setShowInvoiceDialog={setShowInvoiceDialog} />
+
         {/* Quick Sale Section */}
         <div className="border-b bg-gradient-to-r from-amber-50/80 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10">
           <button
@@ -766,7 +770,7 @@ export function BillingPage() {
                     <Skeleton className="h-12 w-3/4" />
                   </div>
                 ) : (
-                  <ScrollArea className="max-h-[50vh]">
+                  <ScrollArea className="scroll-container max-h-[50vh]">
                     {searchResults.map((med) => (
                       <button
                         key={med.id}
@@ -1012,7 +1016,7 @@ export function BillingPage() {
                 <DrawerTitle>Cart ({cartSummary.itemCount} items)</DrawerTitle>
                 <DrawerDescription>Review and manage items before checkout</DrawerDescription>
               </DrawerHeader>
-              <ScrollArea className="max-h-[60vh] px-4">
+              <ScrollArea className="scroll-container max-h-[60vh] px-4">
                 {cartItems.map((item) => (
                   <CartItemRow
                     key={item.id}
@@ -1050,7 +1054,7 @@ export function BillingPage() {
 
       {/* ==================== RIGHT PANEL: Cart & Invoice ==================== */}
       <div className="hidden lg:flex w-[40%] flex-col min-h-0 bg-muted/30">
-        <ScrollArea className="flex-1">
+        <ScrollArea className="scroll-container flex-1">
           <div className="p-4 space-y-4">
             {/* Customer Section */}
             <div className="rounded-lg border bg-card p-3 space-y-3">
@@ -1444,6 +1448,187 @@ function CartItemRow({
         <div className="flex items-center gap-1 text-[10px] text-amber-600">
           <AlertTriangle className="h-3 w-3" />
           <span>Max available stock reached ({item.maxQty})</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==================== Past Invoices Component ====================
+
+interface InvoiceResult {
+  id: string
+  invoiceNo: string
+  saleDate: string
+  customerName: string
+  totalAmount: number
+  paymentMode: string
+  itemCount: number
+}
+
+function PastInvoicesSection({
+  completedSale,
+  setShowInvoiceDialog,
+}: {
+  completedSale: CompletedSale | null
+  setShowInvoiceDialog: (open: boolean) => void
+}) {
+  const [showPastInvoices, setShowPastInvoices] = useState(false)
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [viewInvoiceNo, setViewInvoiceNo] = useState('')
+  const [invoiceData, setInvoiceData] = useState<CompletedSale | null>(null)
+  const [loadingInvoice, setLoadingInvoice] = useState(false)
+
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{
+    invoices: InvoiceResult[]
+  }>({
+    queryKey: ['past-invoices', invoiceSearch],
+    queryFn: () =>
+      fetch(`/api/billing/invoices?search=${encodeURIComponent(invoiceSearch)}&limit=20`).then((r) =>
+        r.json()
+      ),
+    enabled: showPastInvoices,
+  })
+
+  const invoices = invoicesData?.invoices ?? []
+
+  // Watch completedSale to refresh invoices
+  const { data: latestInvoices } = useQuery<{
+    invoices: InvoiceResult[]
+  }>({
+    queryKey: ['past-invoices-latest'],
+    queryFn: () => fetch('/api/billing/invoices?limit=5').then((r) => r.json()),
+    refetchInterval: 60000,
+  })
+
+  // View invoice handler
+  const handleViewInvoice = useCallback(async (invoiceNo: string) => {
+    setViewInvoiceNo(invoiceNo)
+    setLoadingInvoice(true)
+    try {
+      const res = await fetch(`/api/billing/invoice/${invoiceNo}`)
+      const data = await res.json()
+      if (res.ok) {
+        setInvoiceData(data)
+        setShowInvoiceDialog(true)
+      } else {
+        toast.error('Failed to load invoice')
+      }
+    } catch {
+      toast.error('Failed to load invoice')
+    } finally {
+      setLoadingInvoice(false)
+    }
+  }, [setShowInvoiceDialog])
+
+  const paymentModeBadge = (mode: string) => {
+    const map: Record<string, string> = {
+      cash: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+      card: 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
+      upi: 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300',
+      credit: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+    }
+    return map[mode] || 'bg-muted text-muted-foreground'
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setShowPastInvoices(!showPastInvoices)}
+        className="w-full flex items-center justify-between px-3 lg:px-4 py-2 hover:bg-accent/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          <span className="text-sm font-semibold text-teal-800 dark:text-teal-300">
+            Past Invoices
+          </span>
+          {latestInvoices && latestInvoices.invoices.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
+              {latestInvoices.invoices.length} recent
+            </Badge>
+          )}
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${showPastInvoices ? 'rotate-180' : ''}`} />
+      </button>
+
+      {showPastInvoices && (
+        <div className="px-3 lg:px-4 pb-3 border-b">
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by invoice # or customer name..."
+              value={invoiceSearch}
+              onChange={(e) => setInvoiceSearch(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+            {invoiceSearch && (
+              <button
+                onClick={() => setInvoiceSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Invoice Table */}
+          {invoicesLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : invoices.length > 0 ? (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50 border-b">
+                      <th className="text-left px-2 py-1.5 font-semibold">Invoice #</th>
+                      <th className="text-left px-2 py-1.5 font-semibold hidden sm:table-cell">Date</th>
+                      <th className="text-left px-2 py-1.5 font-semibold">Customer</th>
+                      <th className="text-right px-2 py-1.5 font-semibold">Amount</th>
+                      <th className="text-center px-2 py-1.5 font-semibold hidden sm:table-cell">Mode</th>
+                      <th className="text-right px-2 py-1.5 font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr key={inv.id} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-2 py-1.5 font-mono font-medium">{inv.invoiceNo}</td>
+                        <td className="px-2 py-1.5 text-muted-foreground hidden sm:table-cell">
+                          {formatDate(inv.saleDate)}
+                        </td>
+                        <td className="px-2 py-1.5 font-medium">{inv.customerName}</td>
+                        <td className="px-2 py-1.5 text-right font-semibold text-emerald-700 dark:text-emerald-400">
+                          {formatCurrency(inv.totalAmount)}
+                        </td>
+                        <td className="px-2 py-1.5 text-center hidden sm:table-cell">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium capitalize ${paymentModeBadge(inv.paymentMode)}`}>
+                            {inv.paymentMode}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <button
+                            onClick={() => handleViewInvoice(inv.invoiceNo)}
+                            disabled={loadingInvoice}
+                            className="text-primary hover:underline text-[11px] font-medium disabled:opacity-50"
+                          >
+                            {loadingInvoice && viewInvoiceNo === inv.invoiceNo ? 'Loading...' : 'View'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-xs text-muted-foreground">
+              {invoiceSearch ? 'No invoices found matching your search' : 'No invoices recorded yet'}
+            </div>
+          )}
         </div>
       )}
     </div>

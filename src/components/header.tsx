@@ -17,6 +17,9 @@ import {
   Zap,
   AlertTriangle,
   Package,
+  XCircle,
+  TrendingDown,
+  Check,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Badge } from '@/components/ui/badge'
@@ -29,15 +32,17 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { useEffect, useState, useMemo, useRef, useCallback, useSyncExternalStore } from 'react'
 
-interface Alert {
+interface Notification {
   id: string
-  type: 'expiry' | 'expiring' | 'low_stock' | 'expired'
+  type: 'expired' | 'expiring_soon' | 'low_stock'
   title: string
   description: string
-  time: string
+  severity: 'critical' | 'warning' | 'info'
+  timestamp: string
 }
 
 interface MedicineResult {
@@ -84,31 +89,78 @@ const navPages = [
   { key: 'settings', label: 'Settings', icon: 'Settings' },
 ]
 
+// Notification severity styles
+const severityConfig = {
+  critical: {
+    icon: XCircle,
+    dotColor: 'bg-red-500',
+    badgeClass: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400',
+    bgClass: 'bg-red-50/80 dark:bg-red-950/30',
+    iconColor: 'text-red-500',
+  },
+  warning: {
+    icon: AlertTriangle,
+    dotColor: 'bg-amber-500',
+    badgeClass: 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400',
+    bgClass: 'bg-amber-50/80 dark:bg-amber-950/30',
+    iconColor: 'text-amber-500',
+  },
+  info: {
+    icon: TrendingDown,
+    dotColor: 'bg-orange-500',
+    badgeClass: 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400',
+    bgClass: 'bg-orange-50/80 dark:bg-orange-950/30',
+    iconColor: 'text-orange-500',
+  },
+}
+
+function formatNotificationTime(timestamp: string): string {
+  try {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+    return format(date, 'dd MMM')
+  } catch {
+    return ''
+  }
+}
+
 export function Header() {
   const { toggleSidebar, setCurrentPage, setPendingSearchQuery } = useAppStore()
   const isMobile = useIsMobile()
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
 
-  // Fetch alerts with TanStack Query - auto-refresh every 30s
-  const { data: alertsApiData } = useQuery<{ alerts: Array<{ id: string; type: 'expired' | 'expiring' | 'low_stock'; title: string; description: string }> }>({
-    queryKey: ['header-alerts'],
-    queryFn: () => fetch('/api/alerts').then((r) => r.json()),
+  // Fetch notifications with TanStack Query - auto-refresh every 30s
+  const { data: notifData } = useQuery<{
+    notifications: Notification[]
+    total: number
+    criticalCount: number
+  }>({
+    queryKey: ['header-notifications'],
+    queryFn: () => fetch('/api/notifications').then((r) => r.json()),
     refetchInterval: 30000,
   })
 
-  // Transform API alerts to header format
-  const alerts: Alert[] = useMemo(() => {
-    if (!alertsApiData?.alerts) return []
-    const now = format(new Date(), 'HH:mm')
-    return alertsApiData.alerts.slice(0, 20).map((a) => ({
-      id: a.id,
-      type: a.type === 'expired' ? 'expiry' : a.type === 'expiring' ? 'expiry' : a.type,
-      title: a.title,
-      description: a.description,
-      time: now,
-    }))
-  }, [alertsApiData])
+  // Client-side read state
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const unreadNotifications = useMemo(() => {
+    if (!notifData?.notifications) return []
+    return notifData.notifications.filter((n) => !readIds.has(n.id))
+  }, [notifData, readIds])
+
+  const markAsRead = useCallback((id: string) => {
+    setReadIds((prev) => new Set(prev).add(id))
+  }, [])
+
+  const markAllAsRead = useCallback(() => {
+    if (!notifData?.notifications) return
+    setReadIds(new Set(notifData.notifications.map((n) => n.id)))
+  }, [notifData])
 
   const greeting = useTimeGreeting()
   const [currentTime, setCurrentTime] = useState('')
@@ -276,6 +328,11 @@ export function Header() {
 
   const { currentPage } = useAppStore()
 
+  // Severity counts
+  const criticalCount = notifData?.criticalCount ?? 0
+  const totalNotifCount = notifData?.notifications?.length ?? 0
+  const unreadCount = unreadNotifications.length
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 glass-header header-gradient-border px-4 lg:px-6 shadow-sm shadow-black/[0.03]">
       {isMobile && (
@@ -397,59 +454,129 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Notification Center Popover */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="relative h-9 w-9 hover:bg-accent/50">
               <Bell className="h-[18px] w-[18px]" />
-              {alerts.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="relative flex h-4 w-4 items-center justify-center">
                   <span className="absolute inset-0 rounded-full bg-destructive animate-pulse-ring" />
                   <span className="relative flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm shadow-destructive/30">
-                    {alerts.length > 99 ? '99+' : alerts.length}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 </span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
+          <PopoverContent className="w-96 p-0" align="end">
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h3 className="text-sm font-semibold">Alerts</h3>
-              <Badge variant="secondary" className="text-[10px]">{alerts.length} new</Badge>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">Notifications</h3>
+                {totalNotifCount > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-5">{totalNotifCount}</Badge>
+                )}
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1"
+                >
+                  <Check className="h-3 w-3" />
+                  Mark all read
+                </button>
+              )}
             </div>
-            <ScrollArea className="max-h-72">
+
+            {/* Notifications List */}
+            <ScrollArea className="max-h-80">
               <div className="flex flex-col">
-                {alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
-                    <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                      alert.type === 'expiry' ? 'bg-amber-500' : 'bg-orange-500'
-                    }`} />
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-sm font-medium truncate">{alert.title}</span>
-                      <span className="text-xs text-muted-foreground truncate">{alert.description}</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] px-1.5 h-4 w-fit ${
-                            alert.type === 'expiry'
-                              ? 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400'
-                              : 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400'
-                          }`}
-                        >
-                          {alert.type === 'expiry' ? 'Expiry' : 'Low Stock'}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground/50">{alert.time}</span>
+                {notifData?.notifications && notifData.notifications.length > 0 ? (
+                  notifData.notifications.map((notif) => {
+                    const isRead = readIds.has(notif.id)
+                    const config = severityConfig[notif.severity]
+                    const SevIcon = config.icon
+                    return (
+                      <div
+                        key={notif.id}
+                        className={cn(
+                          'flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b last:border-b-0',
+                          isRead && 'opacity-60'
+                        )}
+                      >
+                        {/* Severity icon */}
+                        <div className={cn(
+                          'flex items-center justify-center rounded-lg h-8 w-8 shrink-0 mt-0.5',
+                          config.bgClass
+                        )}>
+                          <SevIcon className={cn('h-4 w-4', config.iconColor)} />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-medium truncate">{notif.title}</span>
+                            {!isRead && (
+                              <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1.5', config.dotColor)} />
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground leading-snug line-clamp-2">{notif.description}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge
+                              variant="outline"
+                              className={cn('text-[9px] px-1.5 h-4', config.badgeClass)}
+                            >
+                              {notif.type === 'expired'
+                                ? 'Expired'
+                                : notif.type === 'expiring_soon'
+                                  ? 'Expiring'
+                                  : 'Low Stock'}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground/60">
+                              {formatNotificationTime(notif.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mark read button */}
+                        {!isRead && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              markAsRead(notif.id)
+                            }}
+                            className="shrink-0 text-[10px] text-primary hover:underline opacity-0 group-hover:opacity-100 mt-1"
+                            title="Mark as read"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                ))}
-                {alerts.length === 0 && (
-                  <div className="flex flex-col items-center gap-2 py-8">
-                    <ShieldCheck className="h-8 w-8 text-emerald-500" />
-                    <p className="text-sm text-muted-foreground">No new alerts</p>
+                    )
+                  })
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-10">
+                    <ShieldCheck className="h-10 w-10 text-emerald-500" />
+                    <p className="text-sm font-medium text-muted-foreground">All clear!</p>
+                    <p className="text-xs text-muted-foreground">No new notifications</p>
                   </div>
                 )}
               </div>
             </ScrollArea>
+
+            {/* Footer */}
+            {totalNotifCount > 0 && (
+              <div className="border-t px-4 py-2">
+                <button
+                  onClick={() => navigateToPage('stock')}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:underline py-1"
+                >
+                  View All in Stock Management
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
 

@@ -278,7 +278,7 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ── Store Information Section ─────────────────────────────────── */}
-        <Card className="lg:col-span-2">
+        <Card className="card-spotlight lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ export function SettingsPage() {
               <Button
                 onClick={handleSaveStore}
                 disabled={updateStoreMutation.isPending || !editingStore}
-                className="gap-2 shadow-sm"
+                className="focus-ring-emerald gap-2 shadow-sm"
               >
                 {updateStoreMutation.isPending ? (
                   <>
@@ -414,7 +414,7 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Invoice Settings Section ──────────────────────────────────── */}
-        <Card>
+        <Card className="card-spotlight">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center justify-center rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/50">
@@ -475,7 +475,7 @@ export function SettingsPage() {
                 onClick={handleUpdateInvoice}
                 disabled={updateInvoiceMutation.isPending || !editingInvoice}
                 variant="outline"
-                className="gap-2"
+                className="focus-ring-emerald gap-2"
               >
                 {updateInvoiceMutation.isPending ? (
                   <>
@@ -494,7 +494,7 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Appearance Section ────────────────────────────────────────── */}
-        <Card>
+        <Card className="card-spotlight">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center justify-center rounded-lg bg-violet-50 p-2 dark:bg-violet-950/50">
@@ -557,7 +557,7 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Data Management Section ───────────────────────────────────── */}
-        <Card className="lg:col-span-2">
+        <Card className="card-spotlight lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center justify-center rounded-lg bg-amber-50 p-2 dark:bg-amber-950/50">

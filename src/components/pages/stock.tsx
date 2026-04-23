@@ -20,6 +20,7 @@ import {
   Plus,
   Minus,
   Loader2,
+  SlidersHorizontal,
 } from 'lucide-react'
 import {
   Card,
@@ -55,6 +56,13 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -208,7 +216,7 @@ function OverviewCard({
   iconBg: string
 }) {
   return (
-    <Card className="card-shadow-lg group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <Card className="card-3d-hover card-shadow-lg group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <CardContent className="p-4 lg:p-5">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
@@ -275,6 +283,14 @@ function TableSkeleton() {
 
 // ── Batch Sub-table ─────────────────────────────────────────────────────────
 
+const adjustReasons = [
+  { value: 'Received', label: 'Received' },
+  { value: 'Damaged', label: 'Damaged' },
+  { value: 'Returned', label: 'Returned' },
+  { value: 'Physical Count', label: 'Physical Count' },
+  { value: 'Other', label: 'Other' },
+]
+
 // ── Adjust Stock Dialog ────────────────────────────────────────────────────
 
 function AdjustStockDialog({
@@ -289,17 +305,17 @@ function AdjustStockDialog({
   medicineName: string
 }) {
   const [newQuantity, setNewQuantity] = useState(batch.quantity)
+  const [reason, setReason] = useState('')
   const queryClient = useQueryClient()
 
-  // Reset when dialog opens
   const adjustedQuantity = newQuantity - batch.quantity
 
   const adjustMutation = useMutation({
-    mutationFn: async ({ batchId, adjustment }: { batchId: string; adjustment: number }) => {
+    mutationFn: async ({ batchId, quantityChange, adjReason }: { batchId: string; quantityChange: number; adjReason: string }) => {
       const res = await fetch(`/api/batches/${batchId}/adjust`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adjustment }),
+        body: JSON.stringify({ quantityChange, reason: adjReason }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to adjust stock')
@@ -307,7 +323,7 @@ function AdjustStockDialog({
     },
     onSuccess: (data) => {
       toast.success(`Stock adjusted for ${medicineName}`, {
-        description: `${batch.quantity} → ${data.newQuantity} (${data.adjustment > 0 ? '+' : ''}${data.adjustment})`,
+        description: `${batch.quantity} → ${data.newQuantity} (${data.quantityChange > 0 ? '+' : ''}${data.quantityChange}) · ${data.reason}`,
       })
       queryClient.invalidateQueries({ queryKey: ['stock'] })
       onOpenChange(false)
@@ -324,7 +340,11 @@ function AdjustStockDialog({
       onOpenChange(false)
       return
     }
-    adjustMutation.mutate({ batchId: batch.id, adjustment: adjustedQuantity })
+    if (!reason) {
+      toast.error('Please select a reason for the adjustment')
+      return
+    }
+    adjustMutation.mutate({ batchId: batch.id, quantityChange: adjustedQuantity, adjReason: reason })
   }
 
   return (
@@ -332,7 +352,7 @@ function AdjustStockDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
+            <SlidersHorizontal className="h-4 w-4 text-primary" />
             Adjust Stock
           </DialogTitle>
           <DialogDescription>
@@ -343,7 +363,7 @@ function AdjustStockDialog({
         <div className="space-y-4 py-2">
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 text-sm">
             <span className="text-muted-foreground">Current Stock</span>
-            <span className="font-semibold">{batch.quantity}</span>
+            <span className="font-semibold text-lg">{batch.quantity}</span>
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">New Quantity</Label>
@@ -361,7 +381,7 @@ function AdjustStockDialog({
                 type="number"
                 value={newQuantity}
                 onChange={(e) => setNewQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-                className="h-9 text-center font-mono text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-9 text-center font-mono text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance:none [&::-webkit-inner-spin-button]:appearance:none"
                 min={0}
               />
               <Button
@@ -381,10 +401,32 @@ function AdjustStockDialog({
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                 : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
             )}>
-              <span>Adjustment</span>
-              <span>{adjustedQuantity > 0 ? '+' : ''}{adjustedQuantity}</span>
+              <span>Adjustment ({adjustedQuantity > 0 ? '+' : ''}{adjustedQuantity})</span>
+              <span className={cn(
+                'font-mono font-bold text-base',
+                adjustedQuantity > 0
+                  ? 'text-emerald-700 dark:text-emerald-400'
+                  : 'text-red-700 dark:text-red-400'
+              )}>
+                {newQuantity}
+              </span>
             </div>
           )}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Reason <span className="text-destructive">*</span></Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {adjustReasons.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={adjustMutation.isPending}>
@@ -392,7 +434,7 @@ function AdjustStockDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={adjustedQuantity === 0 || adjustMutation.isPending}
+            disabled={adjustedQuantity === 0 || !reason || adjustMutation.isPending}
           >
             {adjustMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Save Adjustment

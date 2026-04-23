@@ -1029,3 +1029,339 @@
 .dark .separator-subtle {
   background: linear-gradient(90deg, transparent, oklch(0.28 0.03 163 / 0.5), transparent);
 }
+
+/* ================================================================
+   Round 5 — Premium Micro-Interaction Styling
+   ================================================================ */
+
+/* ============ Gradient Text ============ */
+.gradient-text-teal {
+  background: linear-gradient(135deg, oklch(0.51 0.118 163), oklch(0.65 0.17 145));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-emerald {
+  background: linear-gradient(135deg, oklch(0.55 0.15 160), oklch(0.65 0.17 145));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-warm {
+  background: linear-gradient(135deg, oklch(0.65 0.2 45), oklch(0.75 0.183 55));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============ Pulse Dot (Live Indicator) ============ */
+.pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: oklch(0.6 0.15 145);
+  flex-shrink: 0;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid oklch(0.6 0.15 145);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+.pulse-dot-amber {
+  background: oklch(0.75 0.183 55);
+}
+.pulse-dot-amber::after {
+  border-color: oklch(0.75 0.183 55);
+}
+.pulse-dot-red {
+  background: oklch(0.577 0.245 27.325);
+}
+.pulse-dot-red::after {
+  border-color: oklch(0.577 0.245 27.325);
+}
+
+/* ============ Status Progress Bar ============ */
+.status-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: oklch(0.93 0.005 155);
+  overflow: hidden;
+  position: relative;
+}
+.dark .status-progress {
+  background: oklch(0.22 0.02 163);
+}
+.status-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, oklch(0.51 0.118 163), oklch(0.65 0.17 145));
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.status-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.3), transparent);
+  animation: shimmer 2s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+.status-progress-amber .status-progress-fill {
+  background: linear-gradient(90deg, oklch(0.75 0.183 55), oklch(0.8 0.16 75));
+}
+.status-progress-red .status-progress-fill {
+  background: linear-gradient(90deg, oklch(0.577 0.245 27.325), oklch(0.65 0.2 20));
+}
+
+/* ============ Card Spotlight Effect ============ */
+.card-spotlight {
+  position: relative;
+  overflow: hidden;
+}
+.card-spotlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.04), transparent);
+  transition: left 0.5s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.card-spotlight:hover::before {
+  left: 120%;
+}
+.dark .card-spotlight::before {
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.03), transparent);
+}
+
+/* ============ Glow Badges ============ */
+.badge-glow-green {
+  box-shadow: 0 0 6px oklch(0.6 0.15 145 / 0.3), inset 0 0 0 1px oklch(0.6 0.15 145 / 0.1);
+}
+.dark .badge-glow-green {
+  box-shadow: 0 0 8px oklch(0.6 0.15 145 / 0.2), inset 0 0 0 1px oklch(0.6 0.15 145 / 0.15);
+}
+.badge-glow-amber {
+  box-shadow: 0 0 6px oklch(0.75 0.183 55 / 0.3), inset 0 0 0 1px oklch(0.75 0.183 55 / 0.1);
+}
+.dark .badge-glow-amber {
+  box-shadow: 0 0 8px oklch(0.75 0.183 55 / 0.2), inset 0 0 0 1px oklch(0.75 0.183 55 / 0.15);
+}
+.badge-glow-red {
+  box-shadow: 0 0 6px oklch(0.577 0.245 27.325 / 0.3), inset 0 0 0 1px oklch(0.577 0.245 27.325 / 0.1);
+}
+.dark .badge-glow-red {
+  box-shadow: 0 0 8px oklch(0.577 0.245 27.325 / 0.2), inset 0 0 0 1px oklch(0.577 0.245 27.325 / 0.15);
+}
+
+/* ============ Skeleton Shimmer Enhanced ============ */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, oklch(0.95 0.005 155 / 0.6) 25%, oklch(0.92 0.005 155 / 0.4) 50%, oklch(0.95 0.005 155 / 0.6) 75%);
+  background-size: 300% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+  border-radius: 6px;
+}
+.dark .skeleton-shimmer {
+  background: linear-gradient(90deg, oklch(0.22 0.02 163 / 0.6) 25%, oklch(0.28 0.03 163 / 0.4) 50%, oklch(0.22 0.02 163 / 0.6) 75%);
+  background-size: 300% 100%;
+}
+
+/* ============ Sticky Table Header ============ */
+.table-header-sticky thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: oklch(1 0 0 / 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dark .table-header-sticky thead {
+  background: oklch(0.18 0.02 163 / 0.95);
+}
+
+/* ============ Section Fade In ============ */
+.section-fade-in {
+  opacity: 0;
+  animation: fade-up 0.4s ease-out forwards;
+}
+.section-fade-in:nth-child(1) { animation-delay: 0ms; }
+.section-fade-in:nth-child(2) { animation-delay: 80ms; }
+.section-fade-in:nth-child(3) { animation-delay: 160ms; }
+.section-fade-in:nth-child(4) { animation-delay: 240ms; }
+.section-fade-in:nth-child(5) { animation-delay: 320ms; }
+
+/* ============ 3D Card Hover ============ */
+.card-3d-hover {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  perspective: 800px;
+}
+.card-3d-hover:hover {
+  transform: translateY(-3px) rotateX(1deg);
+  box-shadow: 0 12px 32px -8px oklch(0 0 0 / 0.12), 0 4px 8px -2px oklch(0 0 0 / 0.06);
+}
+.dark .card-3d-hover:hover {
+  box-shadow: 0 12px 32px -8px oklch(0 0 0 / 0.3), 0 4px 8px -2px oklch(0 0 0 / 0.15);
+}
+
+/* ============ Focus Ring Color Variants ============ */
+.focus-ring-emerald:focus-visible {
+  outline: 2px solid oklch(0.55 0.15 160);
+  outline-offset: 2px;
+}
+.dark .focus-ring-emerald:focus-visible {
+  outline-color: oklch(0.65 0.17 160);
+}
+.focus-ring-amber:focus-visible {
+  outline: 2px solid oklch(0.75 0.183 55);
+  outline-offset: 2px;
+}
+.dark .focus-ring-amber:focus-visible {
+  outline-color: oklch(0.85 0.16 75);
+}
+
+/* ============ Noise Background Texture ============ */
+.noise-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .noise-bg::after {
+  opacity: 0.03;
+}
+.noise-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============ Tooltip Animation ============ */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.tooltip-animate {
+  animation: tooltip-in 0.15s ease-out forwards;
+}
+
+/* ============ Counter Animation ============ */
+@keyframes counter-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.counter-animate {
+  animation: counter-pulse 0.3s ease-out;
+}
+
+/* ============ Ripple Effect ============ */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-effect::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  background: oklch(1 0 0 / 0.2);
+  opacity: 0;
+  pointer-events: none;
+}
+.ripple-effect:active::after {
+  animation: ripple 0.4s ease-out;
+}
+
+/* ============ Notification Badge Pulse ============ */
+@keyframes badge-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.notification-badge-pulse {
+  animation: badge-bounce 2s ease-in-out infinite;
+}
+
+/* ============ Card Border Gradient on Hover ============ */
+.card-border-gradient {
+  position: relative;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: border-color 0.3s ease;
+}
+.card-border-gradient:hover {
+  border-image: linear-gradient(135deg, oklch(0.51 0.118 163 / 0.3), oklch(0.65 0.17 145 / 0.1), oklch(0.55 0.15 250 / 0.2)) 1;
+}
+
+/* ============ Smooth Number Transition ============ */
+@keyframes number-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.number-animate {
+  animation: number-in 0.25s ease-out;
+}
+
+/* ============ Premium Scroll Container ============ */
+.scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0 0 / 20%) transparent;
+}
+.scroll-container::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-container::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0 / 20%);
+  border-radius: 3px;
+}
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0 0 / 35%);
+}
+
+/* ============ Hover Lift Effect ============ */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.08);
+}
+.dark .hover-lift:hover {
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.2);
+}

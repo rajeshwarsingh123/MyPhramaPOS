@@ -583,7 +583,7 @@ export function CustomersPage() {
                 {customers.map((customer) => (
                   <Card
                     key={customer.id}
-                    className="card-hover-scale cursor-pointer hover:shadow-md transition-shadow"
+                    className="card-3d-hover card-hover-scale cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => openDetailDialog(customer)}
                   >
                     <CardContent className="p-3">
@@ -956,7 +956,7 @@ export function CustomersPage() {
                     ))}
                   </div>
                 ) : purchaseHistory && purchaseHistory.length > 0 ? (
-                  <ScrollArea className="max-h-[300px]">
+                  <ScrollArea className="scroll-container max-h-[300px]">
                     <Table>
                       <TableHeader>
                         <TableRow>

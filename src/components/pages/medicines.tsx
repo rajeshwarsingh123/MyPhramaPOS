@@ -804,7 +804,7 @@ export function MedicinesPage() {
         <div className="space-y-3">
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="table-header-sticky overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

@@ -963,7 +963,7 @@ function ScanBillDialog({
                   AI Generated
                 </Badge>
               </div>
-              <ScrollArea className="max-h-[300px]">
+              <ScrollArea className="scroll-container max-h-[300px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1421,7 +1421,7 @@ export function PurchasesPage() {
                     </div>
 
                     {/* Mobile: simplified cards, Desktop: compact grid rows */}
-                    <ScrollArea className="max-h-[400px]">
+                    <ScrollArea className="scroll-container max-h-[400px]">
                       <div className="space-y-3 pr-1">
                         {items.map((item, idx) => (
                           <div key={item.id}>
@@ -1599,7 +1599,7 @@ export function PurchasesPage() {
             </div>
           ) : historyData && historyData.purchases.length > 0 ? (
             <>
-              <div className="max-h-[480px] overflow-y-auto custom-scrollbar">
+              <div className="table-header-sticky max-h-[480px] overflow-y-auto custom-scrollbar">
                 <Table>
                   <TableHeader>
                     <TableRow>
