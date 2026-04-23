@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -203,6 +204,25 @@ export function BillingPage() {
 
   // Mobile
   const [mobileView, setMobileView] = useState<'search' | 'cart'>('search')
+
+  // Consume pending search query from header
+  const { pendingSearchQuery, setPendingSearchQuery } = useAppStore()
+  useEffect(() => {
+    if (pendingSearchQuery) {
+      setSearchQuery(pendingSearchQuery)
+      setPendingSearchQuery('')
+      // Trigger search immediately
+      const q = pendingSearchQuery
+      fetch(`/api/medicines?search=${encodeURIComponent(q)}&limit=5`)
+        .then((res) => res.json())
+        .then((data) => {
+          setSearchResults(data.medicines || [])
+          setShowSearchDropdown(true)
+        })
+        .catch(() => {})
+      searchInputRef.current?.focus()
+    }
+  }, [pendingSearchQuery, setPendingSearchQuery])
 
   // Load customers
   useEffect(() => {

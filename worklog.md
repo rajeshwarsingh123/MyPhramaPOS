@@ -825,6 +825,76 @@ Created a comprehensive database seed script (`prisma/seed.ts`) that populates t
 
 ---
 
+## Round 2 — Styling Enhancements & New Features (Cron Review #1)
+
+**Date**: 2026-04-23
+**Author**: Main Orchestrator
+
+---
+
+### Project Status: STABLE — Enhancement Round Complete ✅
+
+### Current State Assessment
+PharmPOS is fully functional with all 8 core modules working. This round focused on visual polish, UX improvements, and additional features. All changes verified via browser QA testing with agent-browser.
+
+### Current Goals / Completed Modifications
+
+#### style-1 — Sidebar, Header & Global CSS Enhancement
+- **Sidebar**: Glass-morphism background with pharmacy cross watermark, gradient accent line, enhanced hover transitions (scale effect), prominent active indicator with glowing bar, AI section with gradient border card, user avatar with gradient ring, "PharmPOS Pro v2.1" version badge
+- **Header**: Glass header with backdrop blur + saturation, teal gradient bottom border, time-based greeting (Good Morning/Afternoon/Evening), current date display, search bar with focus glow effect, pulsing notification badge with ring animation, smooth 180° rotation on theme toggle
+- **Global CSS**: 6 keyframe animations (pulse-ring, slide-in, fade-up, spin-slow, glow-pulse, shimmer), staggered children animation system, glass-morphism utilities, gradient-border system, pharmacy cross pattern, enhanced scrollbar styling, all with dark mode support
+
+#### style-2 — Dashboard Visual Overhaul
+- **Stat Cards**: Animated gradient overlays, decorative blob patterns, theme-colored borders, trend indicator arrows, staggered fade-up animations with per-card delays
+- **Page Header**: Time-based greeting ("Good Afternoon, Admin ✨"), formatted date, larger typography
+- **Quick Actions**: Redesigned as pill-shaped card buttons with colored icon circles, hover scale + shadow effects
+- **Charts**: Rounded bg containers, icon badges in chart headers, subtle glow on hover
+- **Recent Sales Table**: Alternating row backgrounds, hover with left border accent, bold emerald amount column
+- **Alerts Panel**: Grouped by type (Expired/Expiring Soon/Low Stock) with collapsible sections, count badges, 4px color-coded left borders
+- **NEW: Top Selling Medicines**: Horizontal scrollable card strip showing top 5 medicines by revenue from profit API, ranked badges (gold/silver/bronze), trophy icons, loading skeletons
+
+#### feature-1 — Footer + Header Quick Search
+- **Footer**: Sticky bottom footer with "© 2026 PharmPOS", "Powered by AI" with Sparkles icon, "v2.1.0" badge
+- **Header Quick Search**: Debounced medicine search (300ms) from `/api/medicines`, shows results with name/composition/price/stock, click navigates to Billing page, Enter key also navigates, click-outside closes dropdown, "Search in Billing" fallback link
+- **Zustand Store**: Added `pendingSearchQuery` + `setPendingSearchQuery` for cross-component communication
+- **App Shell**: Footer integrated below main content, sticky-to-bottom via flex layout
+
+#### feature-2 — Keyboard Shortcuts Dialog + Enhanced Notifications
+- **Keyboard Shortcuts Dialog**: Accessible via `?` key or keyboard icon button in header, shows 5 shortcuts (F2, F4, F8, ?, Esc) with descriptions, styled with kbd elements and hover effects, tip about `?` key at bottom
+- **Enhanced Notifications**: Alert items now show type badges (Expiry/Stock) with color-coded variants, improved empty state with ShieldCheck icon, time display
+
+### Verification Results
+- ✅ ESLint: Zero errors across all files
+- ✅ Dev Server: Compiles successfully
+- ✅ Browser QA: All 8 pages load correctly with data
+  - Dashboard: Stats, charts, alerts, top sellers all render
+  - Billing: Search autocomplete, cart management, keyboard shortcuts
+  - Medicines: Table/grid view, add/edit dialogs
+  - Stock: Overview cards, filters, expandable batch rows
+  - Reports: 5 tabs, charts, tables
+  - Customers: Table/cards, CRUD dialogs
+  - Purchases: Form, history, AI scan button
+  - Settings: Store info, theme toggle
+- ✅ Header Quick Search: Finds medicines correctly (tested with "para" → found Paracetamol, Crocin Advance)
+- ✅ Keyboard Shortcuts Dialog: Opens/closes correctly via `?` key or button
+- ✅ Footer: Visible with all 3 sections
+- ✅ Dashboard greeting shows "Good Afternoon, Admin"
+- ✅ Top Selling Medicines section renders with ranked badges
+
+### Unresolved Issues or Risks
+- None. System is stable with zero bugs or errors.
+
+### Priority Recommendations for Next Phase
+1. **Mobile optimization**: Test on actual mobile viewport (currently using desktop emulation)
+2. **Additional reports**: Add year-over-year comparison, customer analytics, medicine movement report
+3. **Barcode support**: Add barcode field to medicines and scan during billing
+4. **Data export**: Implement CSV/PDF export for reports
+5. **More AI features**: Smart reorder suggestions based on sales velocity, AI chatbot for help
+6. **Print improvements: Better invoice template with store logo
+7. **Audit trail**: Track all CRUD operations with timestamps
+
+---
+
 ## Task 11 — AI Features (Bill Scanner & Pricing Suggestions)
 
 **Date**: 2025-07-22
@@ -876,7 +946,7 @@ PharmPOS is a fully functional, production-ready Pharmacy Billing & Inventory Ma
 
 ### Completed Modules
 
-| Module | Status | Key Features |
+| Mo<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you find the tool isn't showing the full file. We should consider a smaller edit and focus only on appending to the end of the file.</response><NOTE>To save on context only part of this file has been shown. You should retry this tool after you use grep to find the line numbers of what you need.</NOTE>dule | Status | Key Features |
 |--------|--------|-------------|
 | Dashboard | ✅ Complete | 6 stat cards, sales trend chart, stock distribution donut, alerts panel, quick actions |
 | Billing/POS | ✅ Complete | Real-time search, FIFO batch selection, cart management, GST-inclusive pricing, print invoice, keyboard shortcuts |
@@ -910,3 +980,92 @@ PharmPOS is a fully functional, production-ready Pharmacy Billing & Inventory Ma
 | /api/settings | get, update |
 | /api/alerts | list |
 | /api/ai | scan-bill, suggest-pricing |
+
+---
+
+## Task style-1 — Sidebar, Header & Global CSS Style Enhancement
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: style-1)
+
+---
+
+### Summary
+Enhanced the sidebar, header, and global CSS for a more polished, modern SaaS look with pharmacy-themed styling. Added glass-morphism effects, gradient accents, smooth animations, and improved visual hierarchy while preserving all existing functionality.
+
+### Files Modified
+
+#### 1. `src/app/globals.css` — Custom Animations & Utilities
+- **Keyframe Animations**: Added `pulse-ring` (notification badge), `slide-in` (page transitions), `fade-up` (card appearance), `spin-slow` (theme toggle), `glow-pulse`, `shimmer`
+- **Animation Utility Classes**: `.animate-slide-in`, `.animate-fade-up`, `.animate-glow-pulse`, `.animate-pulse-ring`, `.animate-spin-slow`
+- **Staggered Animation System**: `.stagger-children` with CSS-based delay for list items (10 levels)
+- **Glass-morphism Utilities**: `.glass-sidebar`, `.glass-header`, `.glass-panel` — backdrop blur + gradient backgrounds
+- **Gradient Border Card**: `.gradient-border` + `.gradient-border-inner` for AI section
+- **Active Nav Indicator**: `.active-indicator` with left-edge glowing bar (::before pseudo-element)
+- **Pharmacy Cross Pattern**: `.pharmacy-cross-pattern` — subtle grid-based background motif
+- **Header Gradient Border**: `.header-gradient-border` — teal-to-transparent bottom line
+- **Search Glow Effect**: `.search-glow:focus-within` — teal ring + shadow on focus
+- **Avatar Ring**: `.avatar-ring` — gradient ring for user avatar
+- **Enhanced Scrollbar**: `.sidebar-scroll` — thinner 4px scrollbar with transparent track
+
+#### 2. `src/components/sidebar.tsx` — Enhanced Sidebar
+- **Glass-morphism Background**: Applied `glass-sidebar` class replacing flat `bg-sidebar`
+- **Pharmacy Cross Watermark**: Applied `pharmacy-cross-pattern` as subtle background
+- **Decorative Accent Line**: Added 2px gradient line at top of sidebar header
+- **Logo Enhancement**: Added ring-1, shadow-inner, and shadow effects to logo container
+- **Nav Items with Hover Scale**: Added `hover:scale-[1.02]`, `active:scale-[0.98]` transitions
+- **Active Page Indicator**: Prominent `active-indicator` class with glowing left-edge bar + shadow
+- **Nav Section Separators**: Split nav items into main, secondary, and settings sections with Separators
+- **AI Section Gradient Border**: Wrapped AI Powered card in gradient-border with animated Sparkles
+- **User Avatar Ring**: Applied `avatar-ring` class with gradient border
+- **Version Badge**: Added "PharmPOS Pro v2.1" outline badge in sidebar footer
+- **Smoother Scroll Area**: Applied `sidebar-scroll` class with thinner scrollbar
+- **Backdrop Blur Overlay**: Enhanced mobile overlay with `backdrop-blur-[2px]`
+
+#### 3. `src/components/header.tsx` — Enhanced Header
+- **Glass Header**: Applied `glass-header` class with blur + saturation + thin border
+- **Gradient Bottom Border**: Applied `header-gradient-border` with teal gradient pseudo-element
+- **Subtle Shadow**: Added `shadow-sm shadow-black/[0.03]` for depth
+- **Time-based Greeting**: Added `useTimeGreeting()` hook returning "Good Morning/Afternoon/Evening"
+- **Current Date Display**: Added formatted date next to page title via `date-fns`
+- **Search Bar Glow**: Wrapped search in `.search-glow` container for focus glow effect
+- **Pulsing Notification Badge**: Double-span structure using `animate-pulse-ring` for outer pulsing ring
+- **Theme Toggle Rotation**: Smooth 180° rotation using CSS transition on dark mode
+- **Removed Unused Import**: Cleaned up `Plus` import
+
+### Design Principles
+- Pharmacy-themed: Teal/green primary palette with subtle medical cross motif
+- Modern SaaS: Glass-morphism, subtle shadows, clean lines
+- Smooth Animations: 200-300ms transitions, no jarring effects
+- Dark Mode: All custom CSS classes include `.dark` variants
+- No Breaking Changes: Only CSS class modifications and decorative elements
+
+### Verification
+- ESLint passes with zero errors
+- Dev server compiles successfully
+- All existing functionality preserved
+
+
+---
+
+## Task ID: feature-1 — Footer, Header Quick Search, App Shell Integration
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: feature-1)
+
+---
+
+### Summary
+Added a sticky Footer component, wired the Header quick search input with debounced medicine search and billing page navigation, and integrated the footer into the app shell layout.
+
+### Files Created/Modified
+1. src/components/footer.tsx — New: Footer with copyright, Powered by AI, version badge
+2. src/components/header.tsx — Modified: Debounced quick search with dropdown results, billing navigation
+3. src/lib/store.ts — Modified: Added pendingSearchQuery for cross-component communication
+4. src/components/pages/billing.tsx — Modified: Consumes pendingSearchQuery from store
+5. src/components/app-shell.tsx — Modified: Footer integrated below main content
+
+### Verification
+- ESLint passes with zero errors
+- Dev server compiles successfully
+- All existing functionality preserved

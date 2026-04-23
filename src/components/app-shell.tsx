@@ -2,6 +2,7 @@
 
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
+import { Footer } from '@/components/footer'
 import { useAppStore } from '@/lib/store'
 import { DashboardPage } from '@/components/pages/dashboard'
 import { BillingPage } from '@/components/pages/billing'
@@ -35,6 +36,7 @@ export function AppShell() {
         <main className="flex-1 overflow-y-auto">
           {PageComponent ? <PageComponent /> : <DashboardPage />}
         </main>
+        <Footer />
       </div>
     </div>
   )
