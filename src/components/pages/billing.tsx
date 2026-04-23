@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -55,6 +56,8 @@ import {
   ArrowRight,
   Zap,
   ChevronDown,
+  Camera,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -234,6 +237,12 @@ export function BillingPage() {
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false)
   const [isCompletingSale, setIsCompletingSale] = useState(false)
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
+  const [showScanDialog, setShowScanDialog] = useState(false)
+  const [scanFile, setScanFile] = useState<File | null>(null)
+  const [scanPreview, setScanPreview] = useState<string | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanResults, setScanResults] = useState<Array<Record<string, unknown>> | null>(null)
+  const scanInputRef = useRef<HTMLInputElement>(null)
 
   // Mobile
   const [mobileView, setMobileView] = useState<'search' | 'cart'>('search')
@@ -741,12 +750,12 @@ export function BillingPage() {
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search medicine by name, composition, or generic..."
-              className="input-focus-smooth focus-teal h-11 pl-10 pr-10 text-base lg:text-sm"
+              className="input-focus-smooth focus-teal h-11 pl-10 pr-20 text-base lg:text-sm"
               onFocus={() => {
                 if (searchResults.length > 0) setShowSearchDropdown(true)
               }}
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
                 onClick={() => {
                   setSearchQuery('')
@@ -754,15 +763,42 @@ export function BillingPage() {
                   setShowSearchDropdown(false)
                   searchInputRef.current?.focus()
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-12 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-12 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setShowScanDialog(true)
+                  setScanFile(null)
+                  setScanPreview(null)
+                  setScanResults(null)
+                }}
+                title="Scan Prescription"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
             )}
-
-            {/* Search Results Dropdown */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => {
+                setShowScanDialog(true)
+                setScanFile(null)
+                setScanPreview(null)
+                setScanResults(null)
+              }}
+              title="Scan Prescription / Bill"
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </Button>
             {showSearchDropdown && (isSearching || searchResults.length > 0) && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-lg max-h-[50vh] overflow-hidden">
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background/95 backdrop-blur-sm border border-border/80 rounded-xl shadow-xl shadow-black/5 max-h-[50vh] overflow-hidden animate-slide-in">
                 {isSearching ? (
                   <div className="p-4">
                     <Skeleton className="h-12 w-full mb-2" />
@@ -775,7 +811,7 @@ export function BillingPage() {
                       <button
                         key={med.id}
                         onClick={() => addToCart(med)}
-                        className="w-full text-left p-3 hover:bg-accent/50 border-b last:border-b-0 transition-colors"
+                        className="w-full text-left p-3 hover:bg-primary/5 border-b border-border/50 last:border-b-0 transition-all duration-150"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -836,8 +872,8 @@ export function BillingPage() {
             )}
             {/* Recent Searches Dropdown */}
             {showRecentSearches && recentSearches.length > 0 && !showSearchDropdown && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background/95 backdrop-blur-sm border border-border/80 rounded-xl shadow-xl shadow-black/5 overflow-hidden animate-slide-in">
+                <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/50 bg-gradient-to-r from-muted/40 to-transparent">
                   <span className="text-[11px] font-medium text-muted-foreground">Recently Searched</span>
                   <button
                     onClick={clearRecentSearches}
@@ -854,10 +890,10 @@ export function BillingPage() {
                       setSearchQuery(name)
                       searchMedicines(name)
                     }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-accent/50 border-b last:border-b-0 transition-colors"
+                    className="w-full text-left px-3 py-2.5 hover:bg-primary/5 border-b border-border/50 last:border-b-0 transition-all duration-150"
                   >
                     <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <Clock className="h-3.5 w-3.5 text-primary/60 shrink-0" />
                       <span className="text-sm truncate">{name}</span>
                       <ArrowRight className="h-3 w-3 text-muted-foreground/40 ml-auto shrink-0" />
                     </div>
@@ -919,7 +955,10 @@ export function BillingPage() {
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2 p-2.5 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
+                        className={cn(
+                          "flex items-center gap-2 p-2.5 rounded-lg border bg-card hover:bg-primary/[0.03] transition-all duration-200 hover:shadow-sm",
+                          item.discount > 0 && "border-l-2 border-l-amber-400/60 dark:border-l-amber-500/60"
+                        )}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -1196,7 +1235,7 @@ export function BillingPage() {
         </ScrollArea>
 
         {/* Summary & Actions - Sticky bottom */}
-        <div className="border-t bg-background p-4 space-y-3">
+        <div className="border-t bg-gradient-to-b from-background to-muted/20 p-4 space-y-3 shadow-[0_-4px_12px_-4px_oklch(0_0_0/0.04)] dark:shadow-[0_-4px_12px_-4px_oklch(0_0_0/0.2)]">
           {/* Summary */}
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted-foreground">
@@ -1311,7 +1350,7 @@ export function BillingPage() {
 
       {/* ==================== INVOICE DIALOG ==================== */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30">
           <DialogHeader className="sr-only">
             <DialogTitle>Invoice</DialogTitle>
             <DialogDescription>Sale invoice preview</DialogDescription>
@@ -1320,11 +1359,11 @@ export function BillingPage() {
           {completedSale && (
             <>
               {/* Invoice Print Area */}
-              <div id="invoice-print-area" className="p-6">
+              <div id="invoice-print-area" className="p-6 sm:p-8">
                 <InvoiceContent sale={completedSale} />
               </div>
 
-              <DialogFooter className="flex-row gap-2 sm:justify-center border-t p-4">
+              <DialogFooter className="flex-row gap-2 sm:justify-center border-t border-border/50 bg-muted/20 p-4 rounded-b-2xl">
                 <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>
                   Close
                 </Button>
@@ -1365,7 +1404,7 @@ function CartItemRow({
   const lineTotal = item.mrp * item.quantity * (1 - item.discount / 100)
 
   return (
-    <div className="p-2 rounded-md border text-sm space-y-1.5 bg-background animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
+    <div className="p-2.5 rounded-lg border text-sm space-y-1.5 bg-background animate-in fade-in-0 slide-in-from-bottom-1 duration-200 hover:bg-muted/30 transition-colors shadow-sm shadow-black/[0.02]"
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{item.medicineName}</p>

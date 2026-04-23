@@ -1236,5 +1236,4 @@ export function CustomersPage() {
   )
 }
 
-// Import needed for the Receipt icon used in detail dialog
-import { Receipt } from 'lucide-react'
+// (Receipt is already imported at the top of the file)

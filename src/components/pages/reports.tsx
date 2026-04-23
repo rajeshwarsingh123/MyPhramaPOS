@@ -230,8 +230,8 @@ function StatCard({
   suffix?: string
 }) {
   return (
-    <Card className="card-elevated group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-      <CardContent className="p-4 lg:p-5">
+    <Card className="card-3d-hover card-spotlight group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+      <CardContent className="p-4 lg:p-5 relative z-10">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -247,7 +247,10 @@ function StatCard({
           </div>
         </div>
       </CardContent>
-      <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${colorClass.replace('text-', 'bg-')} opacity-40`} />
+      {/* Bottom accent bar */}
+      <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${colorClass.replace('text-', 'bg-')} opacity-40 transition-opacity group-hover:opacity-70`} />
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white/20 dark:to-white/[0.03] pointer-events-none transition-opacity group-hover:opacity-0" />
     </Card>
   )
 }
@@ -454,16 +457,17 @@ function DailySalesTab() {
       ) : null}
 
       {/* Sales Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileBarChart className="h-4 w-4" />
-            Sales for {format(selectedDate, 'dd MMM yyyy')}
-          </CardTitle>
-          <CardDescription>
-            {data ? `${data.sales.length} transaction${data.sales.length !== 1 ? 's' : ''}` : ''}
-          </CardDescription>
-        </CardHeader>
+  return (
+    <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+      <CardHeader className="p-4 dark:p-5 pb-2">
+      <div className="flex items-center gap-3 mb-2">
+        <FileBarChart className="h-4 w-4 text-primary/70" />
+        <CardTitle className="text-base">Sales for {format(selectedDate, 'dd MMM yyyy')}</CardTitle>
+      </div>
+      <CardDescription className="mb-2">
+          {data ? `${data.sales.length} transaction${data.sales.length !== 1 ? 's' : ''}` : ''}
+        </CardDescription>
+      </CardHeader>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={6} />
@@ -615,16 +619,16 @@ function MonthlySalesTab() {
       ) : null}
 
       {/* Sales Trend Chart */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Sales Trend</CardTitle>
-              <CardDescription>Daily sales for {format(selectedMonth, 'MMMM yyyy')}</CardDescription>
-            </div>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <CardTitle className="text-base">Sales Trend</CardTitle>
+            <CardDescription className="mt-0.5">Daily sales for {format(selectedMonth, 'MMMM yyyy')}</CardDescription>
           </div>
-        </CardHeader>
+          <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </div>
+        </div>
         <CardContent>
           {isLoading ? (
             <ChartSkeleton />
@@ -670,13 +674,12 @@ function MonthlySalesTab() {
       </Card>
 
       {/* Breakdown Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Daily Breakdown</CardTitle>
-          <CardDescription>
+      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
+        <CardTitle className="text-base">Daily Breakdown</CardTitle>
+        <CardDescription className="mb-3">
             {data ? `${data.dailyBreakdown.length} day${data.dailyBreakdown.length !== 1 ? 's' : ''} with sales` : ''}
           </CardDescription>
-        </CardHeader>
+        </div>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={8} />
@@ -826,16 +829,17 @@ function ProfitReportTab() {
       ) : null}
 
       {/* Profit Chart */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Revenue vs Cost vs Profit</CardTitle>
-              <CardDescription>Top 15 medicines by profit</CardDescription>
-            </div>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <CardTitle className="text-base">Revenue vs Cost vs Profit</CardTitle>
+            <CardDescription className="mt-0.5">Top 15 medicines by profit</CardDescription>
           </div>
-        </CardHeader>
+          <div className="flex items-center justify-center rounded-lg bg-primary/10 w-8 h-8">
+            <BarChart3 className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+      </CardHeader>
         <CardContent>
           {isLoading ? (
             <ChartSkeleton />
@@ -881,13 +885,12 @@ function ProfitReportTab() {
       </Card>
 
       {/* Items Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Medicine-wise Profit</CardTitle>
-          <CardDescription>
+      <div className="rounded-xl border bg-muted/20 dark:bg-muted/10 p-4 dark:p-5 card-spotlight overflow-hidden transition-all duration-200">
+        <CardTitle className="text-base">Medicine-wise Profit</CardTitle>
+        <CardDescription className="mb-3">
             {data ? `${data.items.length} medicine${data.items.length !== 1 ? 's' : ''} sold` : ''}
           </CardDescription>
-        </CardHeader>
+        </div>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={8} cols={6} />

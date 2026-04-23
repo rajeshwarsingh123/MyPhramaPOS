@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { format, parseISO, subDays } from 'date-fns'
@@ -15,6 +15,7 @@ import {
   TrendingDown,
   ShoppingCart,
   Plus,
+  Minus,
   Receipt,
   ArrowRight,
   RefreshCw,
@@ -28,7 +29,11 @@ import {
   Banknote,
   CreditCard,
   Smartphone,
+  Loader2,
+  X,
+  Zap,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Card,
   CardContent,
@@ -493,6 +498,221 @@ function AlertGroup({
   )
 }
 
+// ── Quick Sale Widget ──────────────────────────────────────────────────────
+
+interface QuickSaleMedicine {
+  id: string
+  name: string
+  composition: string | null
+  strength: string | null
+  unitType: string
+  mrp: number
+  totalStock: number
+  quantitySold: number
+}
+
+function QuickSaleWidget() {
+  const queryClient = useQueryClient()
+
+  const { data: quickSaleData, isLoading } = useQuery<{ medicines: QuickSaleMedicine[] }>({
+    queryKey: ['quick-sale-medicines'],
+    queryFn: () => fetch('/api/billing/quick-sale').then((r) => r.json()),
+  })
+
+  const [cart, setCart] = useState<Array<{ medicine: QuickSaleMedicine; qty: number }>>([])
+  const [isCompleting, setIsCompleting] = useState(false)
+
+  const medicines = quickSaleData?.medicines?.slice(0, 6) ?? []
+
+  function addToCart(med: QuickSaleMedicine) {
+    setCart((prev) => {
+      const existing = prev.find((c) => c.medicine.id === med.id)
+      if (existing) {
+        if (existing.qty >= med.totalStock) {
+          toast.warning('Maximum stock reached', { description: `Only ${med.totalStock} units available` })
+          return prev
+        }
+        return prev.map((c) => (c.medicine.id === med.id ? { ...c, qty: c.qty + 1 } : c))
+      }
+      return [...prev, { medicine: med, qty: 1 }]
+    })
+  }
+
+  function removeFromCart(medicineId: string) {
+    setCart((prev) => prev.filter((c) => c.medicine.id !== medicineId))
+  }
+
+  function updateQty(medicineId: string, qty: number) {
+    if (qty <= 0) {
+      removeFromCart(medicineId)
+      return
+    }
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.medicine.id !== medicineId) return c
+        const maxQty = c.medicine.totalStock
+        return { ...c, qty: Math.min(qty, maxQty) }
+      })
+    )
+  }
+
+  const cartTotal = cart.reduce((sum, c) => sum + c.medicine.mrp * c.qty, 0)
+  const cartItemCount = cart.reduce((sum, c) => sum + c.qty, 0)
+
+  const completeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/billing/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: 'Walk-in Customer',
+          paymentMode: 'cash',
+          items: cart.map((c) => ({
+            medicineId: c.medicine.id,
+            quantity: c.qty,
+            discount: 0,
+          })),
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Sale failed')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Quick sale completed!', { description: `${cartItemCount} items — ${formatCurrency(cartTotal)}` })
+      setCart([])
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['quick-sale-medicines'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
+    },
+    onError: (err: Error) => {
+      toast.error('Quick sale failed', { description: err.message })
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 rounded-lg" />
+        ))}
+      </div>
+    )
+  }
+
+  if (medicines.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        <Pill className="h-6 w-6 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">No sales data yet</p>
+        <p className="text-xs mt-1">Start selling to see top medicines here</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Medicine Quick-Add Buttons */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {medicines.map((med) => {
+          const inCart = cart.find((c) => c.medicine.id === med.id)
+          return (
+            <button
+              key={med.id}
+              onClick={() => addToCart(med)}
+              className={cn(
+                'relative flex flex-col items-center gap-1 rounded-lg p-2.5 text-left transition-all duration-200 border',
+                inCart
+                  ? 'border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/40 shadow-sm'
+                  : 'border-transparent bg-muted/50 hover:bg-muted hover:border-muted-foreground/20 active:scale-[0.97]'
+              )}
+            >
+              {inCart && (
+                <span className="absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center rounded-full bg-violet-600 text-white text-[10px] font-bold shadow-sm">
+                  {inCart.qty}
+                </span>
+              )}
+              <Pill className="h-4 w-4 text-muted-foreground shrink-0" />
+              <p className="text-[11px] font-medium truncate w-full text-center leading-tight">{med.name}</p>
+              <p className="text-[10px] text-muted-foreground">{formatCurrency(med.mrp)} · {med.totalStock} left</p>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Mini Cart */}
+      {cart.length > 0 && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Cart ({cartItemCount} items)
+            </span>
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(cartTotal)}
+            </span>
+          </div>
+          <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-container">
+            {cart.map((c) => (
+              <div key={c.medicine.id} className="flex items-center justify-between gap-2 bg-background/80 rounded-md px-2.5 py-1.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{c.medicine.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatCurrency(c.medicine.mrp)} each</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => updateQty(c.medicine.id, c.qty - 1)}
+                    className="h-6 w-6 flex items-center justify-center rounded-md border hover:bg-muted transition-colors"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="text-xs font-bold w-5 text-center tabular-nums">{c.qty}</span>
+                  <button
+                    onClick={() => updateQty(c.medicine.id, c.qty + 1)}
+                    className="h-6 w-6 flex items-center justify-center rounded-md border hover:bg-muted transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => removeFromCart(c.medicine.id)}
+                    className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5 h-8 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-sm"
+              onClick={() => completeMutation.mutate()}
+              disabled={isCompleting || cart.length === 0}
+            >
+              {completeMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Banknote className="h-3.5 w-3.5" />
+              )}
+              Pay {formatCurrency(cartTotal)}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setCart([])}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -662,6 +882,35 @@ export function DashboardPage() {
           <span className="text-xs font-semibold text-foreground">New Purchase</span>
         </button>
       </div>
+
+      {/* Quick Sale Widget */}
+      <Card className="card-elevated rounded-xl overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Quick Sale</CardTitle>
+                <CardDescription className="text-xs">Top sellers — one-tap billing</CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage('billing')}
+              className="gap-1 text-xs"
+            >
+              Full POS
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <QuickSaleWidget />
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       {statsLoading ? (
@@ -1010,7 +1259,7 @@ export function DashboardPage() {
                   }
                   const config = typeConfig[activity.type] ?? typeConfig.sale
                   const Icon = config.icon
-                  const timeAgo = useMemo(() => {
+                  const timeAgo = (() => {
                     const now = new Date()
                     const then = new Date(activity.timestamp)
                     const diffMs = now.getTime() - then.getTime()
@@ -1021,7 +1270,7 @@ export function DashboardPage() {
                     if (diffHrs < 24) return `${diffHrs}h ago`
                     const diffDays = Math.floor(diffHrs / 24)
                     return `${diffDays}d ago`
-                  }, [activity.timestamp])
+                  })()
 
                   return (
                     <div key={activity.id} className={cn('flex items-start gap-3 rounded-lg px-3 py-2.5 border-l-[3px] transition-colors hover:bg-muted/30', config.border)}>

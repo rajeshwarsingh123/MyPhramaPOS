@@ -217,7 +217,7 @@ function OverviewCard({
 }) {
   return (
     <Card className="card-3d-hover card-shadow-lg group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-      <CardContent className="p-4 lg:p-5">
+      <CardContent className="p-4 lg:p-5 relative z-10">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -235,6 +235,8 @@ function OverviewCard({
           </div>
         </div>
       </CardContent>
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white/30 dark:to-white/5 pointer-events-none" />
       <div
         className={cn(
           'absolute bottom-0 left-0 right-0 h-0.5 opacity-40',
@@ -842,7 +844,7 @@ export function StockPage() {
             </form>
 
             {/* Expiry Filter Tabs */}
-            <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5">
+            <div className="flex items-center gap-1 rounded-full border bg-muted/30 p-1">
               {[
                 { value: 'all', label: 'All' },
                 { value: 'expiring_soon', label: 'Expiring Soon' },
@@ -853,10 +855,10 @@ export function StockPage() {
                   key={tab.value}
                   onClick={() => handleExpiryFilterChange(tab.value)}
                   className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150',
+                    'px-3.5 py-1.5 text-xs font-medium rounded-full transition-all duration-200',
                     expiryFilter === tab.value
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   )}
                 >
                   {tab.label}
@@ -1060,7 +1062,8 @@ export function StockPage() {
                         <TableRow
                           className={cn(
                             'table-row-hover cursor-pointer transition-colors',
-                            isExpanded && 'bg-muted/30'
+                            isExpanded && 'bg-muted/30',
+                            !isExpanded && idx % 2 === 1 && 'bg-muted/20 dark:bg-muted/10'
                           )}
                         >
                           <CollapsibleTrigger asChild>
