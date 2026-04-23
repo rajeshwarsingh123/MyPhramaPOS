@@ -6,6 +6,7 @@ export type Page =
   | 'medicines'
   | 'stock'
   | 'purchases'
+  | 'suppliers'
   | 'reports'
   | 'customers'
   | 'settings'

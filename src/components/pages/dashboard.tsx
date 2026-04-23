@@ -422,12 +422,12 @@ function AlertGroup({
     critical: {
       card: 'border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-950/30',
       titleText: 'text-red-700 dark:text-red-400',
-      badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400',
+      badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400 badge-pulse-critical',
     },
     warning: {
       card: 'border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/30',
       titleText: 'text-amber-700 dark:text-amber-400',
-      badge: 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400',
+      badge: 'border-amber-300 text-amber-600 dark:border-amber-800 dark:text-amber-400 badge-pulse-warning',
     },
     info: {
       card: 'border-orange-200 bg-orange-50/80 dark:border-orange-900/50 dark:bg-orange-950/30',
@@ -565,6 +565,23 @@ export function DashboardPage() {
     queryKey: ['payment-modes'],
     queryFn: () => fetch('/api/dashboard/payment-modes').then((r) => r.json()),
     refetchInterval: 60000,
+  })
+
+  // Fetch activity feed
+  const { data: activityData, isLoading: activityLoading } = useQuery<{
+    activities: Array<{
+      id: string
+      type: 'sale' | 'purchase' | 'return' | 'low_stock' | 'expiry'
+      title: string
+      description: string
+      timestamp: string
+      amount?: number
+    }>
+    summary: { salesCount: number; purchasesCount: number; returnsCount: number; lowStockCount: number; expiryCount: number }
+  }>({
+    queryKey: ['activity-feed'],
+    queryFn: () => fetch('/api/dashboard/activity').then((r) => r.json()),
+    refetchInterval: 30000,
   })
 
   const topSellers = useMemo(() => {
@@ -939,6 +956,103 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Activity Feed */}
+      <Card className="rounded-xl transition-all duration-300 hover:shadow-lg">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center rounded-lg w-8 h-8 bg-teal-50 dark:bg-teal-950/50">
+                <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Activity Feed</CardTitle>
+                <CardDescription className="text-xs">Recent activity across your pharmacy</CardDescription>
+              </div>
+            </div>
+            {activityData?.summary && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[10px] gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  {activityData.summary.salesCount} sales
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {activityData.summary.lowStockCount + activityData.summary.expiryCount} alerts
+                </Badge>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {activityLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : activityData && activityData.activities.length > 0 ? (
+            <ScrollArea className="max-h-[340px]">
+              <div className="space-y-1">
+                {activityData.activities.slice(0, 15).map((activity) => {
+                  const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; border: string }> = {
+                    sale: { icon: Receipt, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-l-emerald-500' },
+                    purchase: { icon: ShoppingCart, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/40', border: 'border-l-teal-500' },
+                    return: { icon: ArrowRight, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-l-amber-500' },
+                    low_stock: { icon: AlertTriangle, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/40', border: 'border-l-orange-500' },
+                    expiry: { icon: XCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-l-red-500' },
+                  }
+                  const config = typeConfig[activity.type] ?? typeConfig.sale
+                  const Icon = config.icon
+                  const timeAgo = useMemo(() => {
+                    const now = new Date()
+                    const then = new Date(activity.timestamp)
+                    const diffMs = now.getTime() - then.getTime()
+                    const diffMin = Math.floor(diffMs / 60000)
+                    if (diffMin < 1) return 'Just now'
+                    if (diffMin < 60) return `${diffMin}m ago`
+                    const diffHrs = Math.floor(diffMin / 60)
+                    if (diffHrs < 24) return `${diffHrs}h ago`
+                    const diffDays = Math.floor(diffHrs / 24)
+                    return `${diffDays}d ago`
+                  }, [activity.timestamp])
+
+                  return (
+                    <div key={activity.id} className={cn('flex items-start gap-3 rounded-lg px-3 py-2.5 border-l-[3px] transition-colors hover:bg-muted/30', config.border)}>
+                      <div className={cn('flex items-center justify-center rounded-lg w-8 h-8 shrink-0', config.bg)}>
+                        <Icon className={cn('h-4 w-4', config.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold truncate">{activity.title}</p>
+                          <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">{timeAgo}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{activity.description}</p>
+                        {activity.amount !== undefined && (
+                          <p className={cn('text-xs font-bold mt-0.5', config.color)}>
+                            {activity.type === 'return' ? '-' : ''}{formatCurrency(activity.amount)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <FileText className="h-8 w-8 opacity-30 mb-2" />
+              <p className="text-sm">No recent activity</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Sales by Payment Mode + Top Selling Medicines */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

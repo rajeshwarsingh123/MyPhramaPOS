@@ -1229,7 +1229,7 @@ export function BillingPage() {
             <Button
               onClick={() => setShowConfirmDialog(true)}
               disabled={cartItems.length === 0}
-              className="btn-glow flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base"
+              className="btn-gradient-emerald btn-glow flex-1 h-11 font-semibold text-base"
             >
               <Check className="h-4 w-4 mr-2" />
               Complete Sale

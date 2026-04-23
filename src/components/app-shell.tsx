@@ -9,6 +9,7 @@ import { BillingPage } from '@/components/pages/billing'
 import { MedicinesPage } from '@/components/pages/medicines'
 import { StockPage } from '@/components/pages/stock'
 import { PurchasesPage } from '@/components/pages/purchases'
+import { SuppliersPage } from '@/components/pages/suppliers'
 import { ReportsPage } from '@/components/pages/reports'
 import { CustomersPage } from '@/components/pages/customers'
 import { SettingsPage } from '@/components/pages/settings'
@@ -19,6 +20,7 @@ const pages: Record<string, React.ComponentType> = {
   medicines: MedicinesPage,
   stock: StockPage,
   purchases: PurchasesPage,
+  suppliers: SuppliersPage,
   reports: ReportsPage,
   customers: CustomersPage,
   settings: SettingsPage,

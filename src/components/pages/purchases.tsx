@@ -240,9 +240,9 @@ function NewSupplierDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+        <DialogHeader className="dialog-header-gradient">
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
+            <UserPlus className="h-5 w-5 text-primary" />
             Add New Supplier
           </DialogTitle>
           <DialogDescription>Enter the supplier details below</DialogDescription>
@@ -306,7 +306,7 @@ function NewSupplierDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!form.name.trim()}>
+            <Button type="submit" disabled={!form.name.trim()} className="btn-gradient-primary">
               Add Supplier
             </Button>
           </DialogFooter>
@@ -336,9 +336,9 @@ function PurchaseDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="dialog-header-gradient">
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText className="h-5 w-5 text-primary" />
             Purchase Order Details
           </DialogTitle>
         </DialogHeader>
@@ -560,7 +560,7 @@ function ItemRow({
   const subtotal = calcItemSubtotal(item)
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-start p-3 rounded-lg bg-muted/30 border">
+    <div className="grid grid-cols-12 gap-2 items-start p-3 rounded-lg purchase-item-row">
       <div className="col-span-12 lg:col-span-3">
         <Label className="text-xs text-muted-foreground mb-1 block">Medicine *</Label>
         <MedicineAutocomplete
@@ -774,7 +774,7 @@ function ScanBillDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="dialog-header-gradient">
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             AI Bill Scanner
@@ -845,7 +845,7 @@ function ScanBillDialog({
                 />
               </div>
               <Button
-                className="w-full gap-2"
+                className="w-full gap-2 btn-gradient-primary"
                 onClick={handleScan}
                 disabled={scanning}
               >
@@ -888,7 +888,7 @@ function ScanBillDialog({
                 </Button>
               </div>
               <Button
-                className="w-full gap-2"
+                className="w-full gap-2 btn-gradient-primary"
                 onClick={handleScan}
                 disabled={scanning}
               >
@@ -1010,7 +1010,7 @@ function ScanBillDialog({
             <Button variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
-            <Button className="gap-2" onClick={handleAddToPurchase}>
+            <Button className="gap-2 btn-gradient-primary" onClick={handleAddToPurchase}>
               <Plus className="h-4 w-4" />
               Add to Purchase ({results.length} items)
             </Button>
@@ -1299,8 +1299,8 @@ export function PurchasesPage() {
 
       {/* Top Section - New Purchase Form (Collapsible) */}
       <Collapsible open={formOpen} onOpenChange={setFormOpen}>
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="purchase-form-section">
+          <CardHeader className="pb-3 collapsible-form-header rounded-t-xl">
             <CollapsibleTrigger className="w-full flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ShoppingCart className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -1476,7 +1476,7 @@ export function PurchasesPage() {
                         </div>
                       </div>
                       <Button
-                        className="gap-2 shadow-sm"
+                        className="gap-2 btn-gradient-emerald"
                         onClick={handleSave}
                         disabled={createPurchase.isPending}
                       >
@@ -1504,12 +1504,12 @@ export function PurchasesPage() {
       />
 
       {/* Bottom Section - Purchase History */}
-      <Card>
+      <Card className="table-zebra-soft table-header-gradient">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <FileText className="h-4 w-4 text-primary" />
                 Purchase History
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">

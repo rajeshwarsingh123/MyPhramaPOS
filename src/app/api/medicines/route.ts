@@ -8,18 +8,42 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const unitType = searchParams.get('unitType') || ''
+    const compositionKeyword = searchParams.get('compositionKeyword') || ''
 
     const where: Prisma.MedicineWhereInput = {
       isActive: true,
     }
 
+    const conditions: Prisma.MedicineWhereInput[] = []
+
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { composition: { contains: search } },
-        { companyName: { contains: search } },
-        { genericName: { contains: search } },
-      ]
+      conditions.push({
+        OR: [
+          { name: { contains: search } },
+          { composition: { contains: search } },
+          { companyName: { contains: search } },
+          { genericName: { contains: search } },
+        ],
+      })
+    }
+
+    if (unitType) {
+      conditions.push({ unitType })
+    }
+
+    if (compositionKeyword) {
+      conditions.push({
+        OR: [
+          { composition: { contains: compositionKeyword } },
+          { genericName: { contains: compositionKeyword } },
+          { name: { contains: compositionKeyword } },
+        ],
+      })
+    }
+
+    if (conditions.length > 0) {
+      where.AND = conditions
     }
 
     const [medicines, total] = await Promise.all([

@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
 
     const where: Prisma.SupplierWhereInput = {
       isActive: true,
@@ -20,13 +22,60 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const suppliers = await db.supplier.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      take: 100,
-    })
+    const [suppliers, total] = await Promise.all([
+      db.supplier.findMany({
+        where,
+        include: {
+          _count: {
+            select: { purchaseOrders: true },
+          },
+          purchaseOrders: {
+            orderBy: { invoiceDate: 'desc' },
+            take: 1,
+            select: {
+              invoiceDate: true,
+              totalAmount: true,
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      db.supplier.count({ where }),
+    ])
 
-    return NextResponse.json({ suppliers })
+    // Aggregate total orders and total amount per supplier
+    const suppliersWithStats = await Promise.all(
+      suppliers.map(async (supplier) => {
+        const aggregated = await db.purchaseOrder.aggregate({
+          where: { supplierId: supplier.id },
+          _sum: { totalAmount: true },
+          _count: true,
+        })
+
+        return {
+          id: supplier.id,
+          name: supplier.name,
+          phone: supplier.phone,
+          email: supplier.email,
+          address: supplier.address,
+          gstNumber: supplier.gstNumber,
+          createdAt: supplier.createdAt,
+          updatedAt: supplier.updatedAt,
+          totalOrders: aggregated._count,
+          totalAmount: aggregated._sum.totalAmount || 0,
+          lastOrderDate: supplier.purchaseOrders[0]?.invoiceDate || null,
+        }
+      })
+    )
+
+    return NextResponse.json({
+      suppliers: suppliersWithStats,
+      total,
+      page,
+      limit,
+    })
   } catch (error) {
     console.error('GET /api/suppliers error:', error)
     return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 })

@@ -1095,7 +1095,7 @@ export function MedicinesPage() {
       {/* ── Add/Edit Medicine Dialog ────────────────────────────────────────── */}
       <Dialog open={showMedicineDialog} onOpenChange={(open) => !open && closeMedicineDialog()}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="dialog-header-gradient">
             <DialogTitle>
               {editingMedicine ? 'Edit Medicine' : 'Add New Medicine'}
             </DialogTitle>
@@ -1441,7 +1441,7 @@ export function MedicinesPage() {
       {/* ── Add/Edit Batch Dialog ───────────────────────────────────────────── */}
       <Dialog open={showBatchDialog} onOpenChange={(open) => !open && closeBatchDialog()}>
         <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="dialog-header-gradient">
             <DialogTitle>
               {batchFormMode === 'edit' ? 'Edit Batch' : 'Add Batch'}
             </DialogTitle>

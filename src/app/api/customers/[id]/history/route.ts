@@ -24,10 +24,14 @@ export async function GET(
         saleDate: true,
         totalAmount: true,
         paymentMode: true,
+        notes: true,
         items: {
           select: {
+            id: true,
             medicineName: true,
             quantity: true,
+            mrp: true,
+            discount: true,
             totalAmount: true,
           },
         },
@@ -42,6 +46,7 @@ export async function GET(
       saleDate: sale.saleDate.toISOString(),
       totalAmount: sale.totalAmount,
       paymentMode: sale.paymentMode,
+      notes: sale.notes,
       itemCount: sale.items.length,
       items: sale.items,
     }))

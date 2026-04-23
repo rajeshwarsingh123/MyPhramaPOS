@@ -22,6 +22,9 @@ import {
   ShoppingCart,
   UserCircle,
   Download,
+  RotateCcw,
+  Receipt,
+  Minus,
 } from 'lucide-react'
 import {
   Card,
@@ -53,6 +56,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,9 +90,13 @@ interface PurchaseHistory {
   totalAmount: number
   paymentMode: string
   itemCount: number
+  notes?: string | null
   items: Array<{
+    id: string
     medicineName: string
     quantity: number
+    mrp: number
+    discount: number
     totalAmount: number
   }>
 }
@@ -159,6 +167,10 @@ export function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [formData, setFormData] = useState<CustomerForm>(emptyForm)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<PurchaseHistory | null>(null)
+  const [returnItems, setReturnItems] = useState<Record<string, number>>({})
+  const [returnReason, setReturnReason] = useState('')
 
   // Debounce search
   useMemo(() => {
@@ -320,6 +332,66 @@ export function CustomersPage() {
     if (!selectedCustomer || !validateForm()) return
     updateMutation.mutate({ id: selectedCustomer.id, data: formData })
   }
+
+  // Return mutation
+  const returnMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedSale) return Promise.reject(new Error('No sale selected'))
+      const items = Object.entries(returnItems)
+        .filter(([, qty]) => qty > 0)
+        .map(([saleItemId, quantity]) => ({ saleItemId, quantity }))
+      if (items.length === 0) return Promise.reject(new Error('No items to return'))
+      return fetch('/api/billing/return', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          saleId: selectedSale.id,
+          items,
+          reason: returnReason.trim() || undefined,
+        }),
+      }).then((r) => {
+        if (!r.ok) return r.json().then((e) => Promise.reject(e))
+        return r.json()
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-history'] })
+      toast.success('Return processed successfully', { description: `Refund: ${formatCurrency(Object.entries(returnItems).reduce((sum, [, qty]) => {
+        const item = selectedSale?.items.find((i) => i.id === Object.keys(returnItems).find((k) => returnItems[k] === qty && returnItems[k] > 0))
+        return sum + (item ? item.mrp * qty * (1 - item.discount / 100) : 0)
+      }, 0))}` })
+      setReturnDialogOpen(false)
+      setSelectedSale(null)
+      setReturnItems({})
+      setReturnReason('')
+    },
+    onError: (err: { error?: string }) => {
+      toast.error(err.error || 'Failed to process return')
+    },
+  })
+
+  function openReturnDialog(sale: PurchaseHistory) {
+    setSelectedSale(sale)
+    setReturnItems({})
+    setReturnReason('')
+    setReturnDialogOpen(true)
+  }
+
+  function updateReturnQty(saleItemId: string, qty: number) {
+    setReturnItems((prev) => ({ ...prev, [saleItemId]: Math.max(0, qty) }))
+  }
+
+  const returnTotal = useMemo(() => {
+    if (!selectedSale) return 0
+    return Object.entries(returnItems).reduce((sum, [saleItemId, qty]) => {
+      const item = selectedSale.items.find((i) => i.id === saleItemId)
+      if (!item || qty <= 0) return sum
+      return sum + item.mrp * qty * (1 - item.discount / 100)
+    }, 0)
+  }, [selectedSale, returnItems])
+
+  const returnItemCount = Object.values(returnItems).filter((q) => q > 0).length
 
   const totalCustomers = customers?.length ?? 0
   const totalRevenue = customers?.reduce((sum, c) => sum + c.totalPurchases, 0) ?? 0
@@ -667,9 +739,9 @@ export function CustomersPage() {
       {/* ── Add Customer Dialog ──────────────────────────────────────────── */}
       <Dialog open={addDialogOpen} onOpenChange={(open) => { if (!open) { setAddDialogOpen(false); resetForm() } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+          <DialogHeader className="dialog-header-gradient">
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 text-primary" />
               Add Customer
             </DialogTitle>
             <DialogDescription>Add a new customer to your pharmacy records.</DialogDescription>
@@ -740,7 +812,7 @@ export function CustomersPage() {
             <Button
               onClick={handleCreate}
               disabled={createMutation.isPending}
-              className="gap-2"
+              className="btn-gradient-primary gap-2"
             >
               {createMutation.isPending ? (
                 <>
@@ -761,9 +833,9 @@ export function CustomersPage() {
       {/* ── Edit Customer Dialog ─────────────────────────────────────────── */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => { if (!open) { setEditDialogOpen(false); setSelectedCustomer(null); resetForm() } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+          <DialogHeader className="dialog-header-gradient">
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-4 w-4 text-primary" />
               Edit Customer
             </DialogTitle>
             <DialogDescription>Update customer information.</DialogDescription>
@@ -834,7 +906,7 @@ export function CustomersPage() {
             <Button
               onClick={handleUpdate}
               disabled={updateMutation.isPending}
-              className="gap-2"
+              className="btn-gradient-primary gap-2"
             >
               {updateMutation.isPending ? (
                 <>
@@ -855,9 +927,9 @@ export function CustomersPage() {
       {/* ── Customer Detail Dialog ───────────────────────────────────────── */}
       <Dialog open={detailDialogOpen} onOpenChange={(open) => { if (!open) { setDetailDialogOpen(false); setSelectedCustomer(null) } }}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="dialog-header-gradient">
             <DialogTitle className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 text-primary" />
               Customer Details
             </DialogTitle>
             <DialogDescription>Customer information and purchase history.</DialogDescription>
@@ -965,10 +1037,11 @@ export function CustomersPage() {
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="hidden sm:table-cell text-right">Items</TableHead>
                           <TableHead className="text-right">Payment</TableHead>
+                          <TableHead className="w-10" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {purchaseHistory.map((sale) => (
+                        {purchaseHistory.filter((s) => !s.notes?.startsWith('RETURN')).map((sale) => (
                           <TableRow key={sale.id}>
                             <TableCell className="font-mono text-xs font-medium">
                               {sale.invoiceNo}
@@ -987,6 +1060,17 @@ export function CustomersPage() {
                                 {sale.paymentMode}
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                                onClick={() => openReturnDialog(sale)}
+                                title="Return items"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -998,6 +1082,120 @@ export function CustomersPage() {
                     <p className="text-sm text-muted-foreground">No purchase history</p>
                   </div>
                 )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Return Dialog ────────────────────────────────────────────────── */}
+      <Dialog open={returnDialogOpen} onOpenChange={(open) => { if (!open) { setReturnDialogOpen(false); setSelectedSale(null); setReturnItems({}); setReturnReason('') } }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-500" />
+              Return Items
+            </DialogTitle>
+            <DialogDescription>
+              Process return for invoice {selectedSale?.invoiceNo}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSale && (
+            <>
+              {/* Items to return */}
+              <div className="flex-1 min-h-0 space-y-3">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Select items and quantities to return
+                  </p>
+                  <div className="space-y-2">
+                    {selectedSale.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{item.medicineName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            MRP: {formatCurrency(item.mrp)} × {item.quantity} = {formatCurrency(item.totalAmount)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => updateReturnQty(item.id, (returnItems[item.id] || 0) - 1)}
+                            disabled={!returnItems[item.id]}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm font-medium tabular-nums">
+                            {returnItems[item.id] || 0}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => updateReturnQty(item.id, (returnItems[item.id] || 0) + 1)}
+                            disabled={(returnItems[item.id] || 0) >= item.quantity}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs text-muted-foreground w-6 text-right">
+                            /{item.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Return Reason */}
+                <div className="grid gap-2">
+                  <Label className="text-xs font-medium">Reason (optional)</Label>
+                  <Textarea
+                    placeholder="Reason for return..."
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                    className="min-h-[60px] text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Summary Footer */}
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {returnItemCount} item{returnItemCount !== 1 ? 's' : ''} to return
+                  </span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    Refund: {formatCurrency(returnTotal)}
+                  </span>
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setReturnDialogOpen(false); setSelectedSale(null); setReturnItems({}); setReturnReason('') }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => returnMutation.mutate()}
+                    disabled={returnMutation.isPending || returnItemCount === 0}
+                    className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    {returnMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Process Return
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
               </div>
             </>
           )}

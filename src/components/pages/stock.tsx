@@ -144,17 +144,17 @@ function expiryBadge(status: ExpiryStatus) {
     expired: {
       label: 'Expired',
       className:
-        'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800',
+        'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800 badge-pulse-critical relative',
     },
     expiring_7d: {
       label: '7 days',
       className:
-        'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
+        'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800 badge-pulse-critical relative',
     },
     expiring_30d: {
       label: '30 days',
       className:
-        'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800',
+        'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800 badge-pulse-warning relative',
     },
     expiring_90d: {
       label: '90 days',

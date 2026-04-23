@@ -1365,3 +1365,394 @@
 .dark .hover-lift:hover {
   box-shadow: 0 4px 12px oklch(0 0 0 / 0.2);
 }
+
+/* ================================================================
+   Round 6 — Deep Micro-Interaction & Component Styling Polish
+   ================================================================ */
+
+/* ============ Badge Pulse Animation for Critical States ============ */
+@keyframes badge-pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+.badge-pulse-critical {
+  animation: badge-pulse-subtle 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 oklch(0.577 0.245 27.325 / 0.4);
+}
+.badge-pulse-critical::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 6px 1px oklch(0.577 0.245 27.325 / 0.2);
+  animation: glow-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+.badge-pulse-warning {
+  animation: badge-pulse-subtle 2.5s ease-in-out infinite;
+}
+.badge-pulse-warning::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 6px 1px oklch(0.75 0.183 55 / 0.2);
+  animation: glow-pulse 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ============ Gradient Primary Button ============ */
+.btn-gradient-primary {
+  background: linear-gradient(135deg, oklch(0.55 0.15 163), oklch(0.51 0.118 163));
+  color: oklch(0.99 0 0);
+  border: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-gradient-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px oklch(0.51 0.118 163 / 0.35), 0 2px 6px oklch(0 0 0 / 0.1);
+  filter: brightness(1.08);
+}
+.btn-gradient-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+.btn-gradient-primary:disabled {
+  opacity: 0.5;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+.dark .btn-gradient-primary {
+  background: linear-gradient(135deg, oklch(0.55 0.14 163), oklch(0.48 0.1 163));
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.2);
+}
+.dark .btn-gradient-primary:hover {
+  box-shadow: 0 4px 16px oklch(0.55 0.14 163 / 0.3), 0 2px 8px oklch(0 0 0 / 0.2);
+}
+
+/* ============ Gradient Emerald Button (for financial actions) ============ */
+.btn-gradient-emerald {
+  background: linear-gradient(135deg, oklch(0.60 0.15 160), oklch(0.55 0.15 145));
+  color: oklch(0.99 0 0);
+  border: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-gradient-emerald:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px oklch(0.55 0.15 145 / 0.35);
+  filter: brightness(1.08);
+}
+.btn-gradient-emerald:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+.dark .btn-gradient-emerald {
+  background: linear-gradient(135deg, oklch(0.55 0.14 160), oklch(0.50 0.12 145));
+}
+
+/* ============ Gradient Amber Button (for caution actions) ============ */
+.btn-gradient-amber {
+  background: linear-gradient(135deg, oklch(0.78 0.16 75), oklch(0.75 0.183 55));
+  color: oklch(0.25 0.05 55);
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-gradient-amber:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px oklch(0.75 0.183 55 / 0.35);
+}
+
+/* ============ Dialog Header Gradient Bar ============ */
+.dialog-header-gradient {
+  position: relative;
+  padding-bottom: 1rem;
+}
+.dialog-header-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.51 0.118 163),
+    oklch(0.65 0.17 145),
+    oklch(0.55 0.15 250 / 0.5),
+    transparent
+  );
+  border-radius: 1px;
+}
+
+/* ============ Soft Table Header Gradient ============ */
+.table-header-gradient thead th {
+  background: linear-gradient(
+    180deg,
+    oklch(0.97 0.008 163 / 0.8) 0%,
+    oklch(0.99 0.004 163 / 0.4) 100%
+  );
+  border-bottom: 1px solid oklch(0.91 0.01 155);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.dark .table-header-gradient thead th {
+  background: linear-gradient(
+    180deg,
+    oklch(0.22 0.025 163 / 0.8) 0%,
+    oklch(0.19 0.02 163 / 0.4) 100%
+  );
+  border-bottom-color: oklch(0.28 0.03 163);
+}
+
+/* ============ Zebra Stripe Table (Enhanced Soft) ============ */
+.table-zebra-soft tbody tr:nth-child(even) {
+  background: oklch(0.975 0.004 163 / 0.5);
+}
+.table-zebra-soft tbody tr:hover {
+  background: oklch(0.95 0.01 163 / 0.6);
+  box-shadow: inset 3px 0 0 oklch(0.51 0.118 163);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dark .table-zebra-soft tbody tr:nth-child(even) {
+  background: oklch(0.20 0.02 163 / 0.5);
+}
+.dark .table-zebra-soft tbody tr:hover {
+  background: oklch(0.23 0.025 163 / 0.6);
+  box-shadow: inset 3px 0 0 oklch(0.6 0.15 163);
+}
+
+/* ============ Settings Section Card Enhancement ============ */
+.settings-section-card {
+  position: relative;
+  overflow: hidden;
+}
+.settings-section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tw-gradient-stops));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.settings-section-card:hover::before {
+  opacity: 1;
+}
+.settings-section-accent-teal::before {
+  background: linear-gradient(90deg, oklch(0.51 0.118 163), oklch(0.65 0.17 145), transparent);
+}
+.settings-section-accent-emerald::before {
+  background: linear-gradient(90deg, oklch(0.55 0.15 145), oklch(0.65 0.17 160), transparent);
+}
+.settings-section-accent-violet::before {
+  background: linear-gradient(90deg, oklch(0.55 0.15 290), oklch(0.65 0.17 280), transparent);
+}
+.settings-section-accent-amber::before {
+  background: linear-gradient(90deg, oklch(0.75 0.183 55), oklch(0.80 0.16 75), transparent);
+}
+
+/* ============ Data Management Card Hover ============ */
+.data-action-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s ease;
+}
+.data-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px oklch(0 0 0 / 0.08);
+  border-color: oklch(0.51 0.118 163 / 0.3);
+}
+.dark .data-action-card:hover {
+  box-shadow: 0 8px 20px -4px oklch(0 0 0 / 0.25);
+  border-color: oklch(0.6 0.15 163 / 0.3);
+}
+
+/* ============ System Info Tile Enhancement ============ */
+.system-info-tile {
+  background: linear-gradient(
+    135deg,
+    oklch(0.96 0.005 155 / 0.8) 0%,
+    oklch(0.98 0.003 163 / 0.4) 100%
+  );
+  border: 1px solid oklch(0.91 0.01 155 / 0.5);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.system-info-tile:hover {
+  border-color: oklch(0.51 0.118 163 / 0.2);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.03);
+}
+.dark .system-info-tile {
+  background: linear-gradient(
+    135deg,
+    oklch(0.22 0.02 163 / 0.8) 0%,
+    oklch(0.20 0.018 163 / 0.4) 100%
+  );
+  border-color: oklch(0.28 0.03 163 / 0.5);
+}
+.dark .system-info-tile:hover {
+  border-color: oklch(0.6 0.15 163 / 0.2);
+}
+
+/* ============ Purchase Form Section Enhancement ============ */
+.purchase-form-section {
+  border: 1px solid oklch(0.91 0.01 155);
+  background: oklch(1 0 0);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.04);
+  transition: border-color 0.2s ease;
+}
+.purchase-form-section:focus-within {
+  border-color: oklch(0.51 0.118 163 / 0.3);
+}
+.dark .purchase-form-section {
+  background: oklch(0.18 0.02 163);
+  border-color: oklch(0.28 0.03 163);
+}
+.dark .purchase-form-section:focus-within {
+  border-color: oklch(0.6 0.15 163 / 0.3);
+}
+
+/* ============ Purchase Item Row Enhancement ============ */
+.purchase-item-row {
+  border: 1px solid oklch(0.91 0.01 155 / 0.7);
+  background: oklch(0.98 0.003 163 / 0.3);
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.purchase-item-row:focus-within {
+  border-color: oklch(0.51 0.118 163 / 0.25);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.03);
+}
+.dark .purchase-item-row {
+  background: oklch(0.20 0.02 163 / 0.3);
+  border-color: oklch(0.28 0.03 163 / 0.7);
+}
+.dark .purchase-item-row:focus-within {
+  border-color: oklch(0.6 0.15 163 / 0.25);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.1);
+}
+
+/* ============ Collapsible Form Header ============ */
+.collapsible-form-header {
+  background: linear-gradient(
+    135deg,
+    oklch(0.97 0.01 163 / 0.6) 0%,
+    oklch(0.99 0.005 155 / 0.3) 100%
+  );
+  border-bottom: 1px solid oklch(0.91 0.01 155 / 0.5);
+}
+.dark .collapsible-form-header {
+  background: linear-gradient(
+    135deg,
+    oklch(0.20 0.025 163 / 0.6) 0%,
+    oklch(0.18 0.02 163 / 0.3) 100%
+  );
+  border-bottom-color: oklch(0.28 0.03 163 / 0.5);
+}
+
+/* ============ Footer Quick-Link Hover ============ */
+.footer-link-hover {
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.footer-link-hover:hover {
+  color: oklch(0.51 0.118 163);
+  transform: translateY(-1px);
+}
+
+/* ============ Theme Toggle Card Enhancement ============ */
+.theme-toggle-card {
+  position: relative;
+  border: 1px solid oklch(0.91 0.01 155 / 0.5);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  background: linear-gradient(
+    135deg,
+    oklch(0.98 0.005 155 / 0.5) 0%,
+    oklch(1 0 0 / 0.3) 100%
+  );
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.theme-toggle-card:hover {
+  border-color: oklch(0.55 0.15 290 / 0.3);
+  box-shadow: 0 2px 12px oklch(0.55 0.15 290 / 0.05);
+}
+.dark .theme-toggle-card {
+  background: linear-gradient(
+    135deg,
+    oklch(0.22 0.025 163 / 0.5) 0%,
+    oklch(0.18 0.02 163 / 0.3) 100%
+  );
+  border-color: oklch(0.28 0.03 163 / 0.5);
+}
+
+/* ============ Purchase History Table View Button ============ */
+.table-view-btn {
+  transition: all 0.15s ease;
+}
+.table-view-btn:hover {
+  background: oklch(0.51 0.118 163 / 0.08);
+  border-color: oklch(0.51 0.118 163 / 0.3);
+  color: oklch(0.51 0.118 163);
+}
+
+/* ============ Footer Version Badge Enhancement ============ */
+.footer-version-badge {
+  background: linear-gradient(
+    135deg,
+    oklch(0.51 0.118 163 / 0.06) 0%,
+    oklch(0.65 0.17 145 / 0.04) 100%
+  );
+  border: 1px solid oklch(0.51 0.118 163 / 0.15);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.footer-version-badge:hover {
+  border-color: oklch(0.51 0.118 163 / 0.3);
+  background: linear-gradient(
+    135deg,
+    oklch(0.51 0.118 163 / 0.1) 0%,
+    oklch(0.65 0.17 145 / 0.06) 100%
+  );
+}
+.dark .footer-version-badge {
+  background: linear-gradient(
+    135deg,
+    oklch(0.6 0.15 163 / 0.08) 0%,
+    oklch(0.65 0.17 145 / 0.05) 100%
+  );
+  border-color: oklch(0.6 0.15 163 / 0.2);
+}
+
+/* ============ Pulse dot on footer status ============ */
+.footer-status-dot {
+  position: relative;
+}
+.footer-status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: oklch(0.6 0.15 145);
+  opacity: 0;
+  animation: pulse-ring 2.5s ease-out infinite;
+}
+
+/* ============ Subtle Text Gradient for Section Titles ============ */
+.section-title-gradient {
+  background: linear-gradient(135deg, oklch(0.17 0.017 260), oklch(0.30 0.04 260));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.dark .section-title-gradient {
+  background: linear-gradient(135deg, oklch(0.93 0.01 155), oklch(0.85 0.015 163));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

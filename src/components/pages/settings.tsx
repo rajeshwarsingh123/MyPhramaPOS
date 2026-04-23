@@ -263,13 +263,13 @@ export function SettingsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+          <h2 className="text-2xl font-bold tracking-tight section-title-gradient">Settings</h2>
           <p className="text-sm text-muted-foreground">
             Configure your pharmacy settings and preferences
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs gap-1.5">
+          <Badge variant="outline" className="text-xs gap-1.5 badge-glow-green">
             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
             System Active
           </Badge>
@@ -278,11 +278,11 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ── Store Information Section ─────────────────────────────────── */}
-        <Card className="card-spotlight lg:col-span-2">
+        <Card className="card-spotlight settings-section-card settings-section-accent-teal lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center rounded-lg bg-teal-50 p-2 dark:bg-teal-950/50">
+                <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-teal-50 to-teal-100 p-2.5 dark:from-teal-950/60 dark:to-teal-900/40 shadow-sm">
                   <Store className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                 </div>
                 <div>
@@ -395,7 +395,7 @@ export function SettingsPage() {
               <Button
                 onClick={handleSaveStore}
                 disabled={updateStoreMutation.isPending || !editingStore}
-                className="focus-ring-emerald gap-2 shadow-sm"
+                className="btn-gradient-primary focus-ring-emerald gap-2"
               >
                 {updateStoreMutation.isPending ? (
                   <>
@@ -414,10 +414,10 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Invoice Settings Section ──────────────────────────────────── */}
-        <Card className="card-spotlight">
+        <Card className="card-spotlight settings-section-card settings-section-accent-emerald">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/50">
+              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 dark:from-emerald-950/60 dark:to-emerald-900/40 shadow-sm">
                 <Receipt className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
@@ -474,8 +474,7 @@ export function SettingsPage() {
               <Button
                 onClick={handleUpdateInvoice}
                 disabled={updateInvoiceMutation.isPending || !editingInvoice}
-                variant="outline"
-                className="focus-ring-emerald gap-2"
+                className="btn-gradient-primary focus-ring-emerald gap-2"
               >
                 {updateInvoiceMutation.isPending ? (
                   <>
@@ -494,10 +493,10 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Appearance Section ────────────────────────────────────────── */}
-        <Card className="card-spotlight">
+        <Card className="card-spotlight settings-section-card settings-section-accent-violet">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center rounded-lg bg-violet-50 p-2 dark:bg-violet-950/50">
+              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-violet-50 to-violet-100 p-2.5 dark:from-violet-950/60 dark:to-violet-900/40 shadow-sm">
                 <Palette className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
@@ -508,7 +507,7 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Theme Toggle */}
-            <div className="flex items-center justify-between">
+            <div className="theme-toggle-card flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium">Theme</Label>
                 <p className="text-xs text-muted-foreground">
@@ -557,10 +556,10 @@ export function SettingsPage() {
         </Card>
 
         {/* ── Data Management Section ───────────────────────────────────── */}
-        <Card className="card-spotlight lg:col-span-2">
+        <Card className="card-spotlight settings-section-card settings-section-accent-amber lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center rounded-lg bg-amber-50 p-2 dark:bg-amber-950/50">
+              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 p-2.5 dark:from-amber-950/60 dark:to-amber-900/40 shadow-sm">
                 <HardDrive className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
@@ -574,9 +573,9 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Export Data */}
-              <div className="rounded-lg border p-4 space-y-3">
+              <div className="rounded-xl border p-4 space-y-3 data-action-card">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center rounded-lg bg-sky-50 p-2 dark:bg-sky-950/50">
+                  <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-sky-50 to-sky-100 p-2.5 dark:from-sky-950/60 dark:to-sky-900/40 shadow-sm">
                     <Download className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                   </div>
                   <div>
@@ -589,7 +588,7 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full gap-2"
+                  className="w-full gap-2 table-view-btn"
                   onClick={handleExportData}
                 >
                   <FileText className="h-3.5 w-3.5" />
@@ -598,9 +597,9 @@ export function SettingsPage() {
               </div>
 
               {/* Backup Database */}
-              <div className="rounded-lg border p-4 space-y-3">
+              <div className="rounded-xl border p-4 space-y-3 data-action-card">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/50">
+                  <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 dark:from-emerald-950/60 dark:to-emerald-900/40 shadow-sm">
                     <Database className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
@@ -613,7 +612,7 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full gap-2"
+                  className="w-full gap-2 table-view-btn"
                   onClick={handleBackupDatabase}
                 >
                   <Database className="h-3.5 w-3.5" />
@@ -631,7 +630,7 @@ export function SettingsPage() {
                 <p className="text-sm font-medium">System Information</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                <div className="system-info-tile rounded-lg p-3 space-y-1">
                   <p className="text-xs text-muted-foreground">Last Updated</p>
                   <p className="text-sm font-medium">
                     {settings?.updatedAt
@@ -639,11 +638,11 @@ export function SettingsPage() {
                       : '—'}
                   </p>
                 </div>
-                <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                <div className="system-info-tile rounded-lg p-3 space-y-1">
                   <p className="text-xs text-muted-foreground">Database</p>
                   <p className="text-sm font-medium">SQLite (Local)</p>
                 </div>
-                <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                <div className="system-info-tile rounded-lg p-3 space-y-1">
                   <p className="text-xs text-muted-foreground">Version</p>
                   <p className="text-sm font-medium">PharmPOS v1.0.0</p>
                 </div>
