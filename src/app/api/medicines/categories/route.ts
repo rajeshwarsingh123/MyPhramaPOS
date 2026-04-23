@@ -3,22 +3,27 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    // Prisma SQLite doesn't support groupBy on nullable fields.
-    // Use raw query instead.
-    const categories = await db.$queryRaw<
-      { category: string | null; count: bigint }[]
-    >`
-      SELECT category, COUNT(*) as count
-      FROM Medicine
-      WHERE isActive = 1 AND category IS NOT NULL
-      GROUP BY category
-      ORDER BY count DESC
-    `)
+    // Fetch all active medicines with categories (avoid groupBy on nullable fields in SQLite)
+    const medicines = await db.medicine.findMany({
+      where: {
+        isActive: true,
+        category: { not: null },
+      },
+      select: {
+        category: true,
+      },
+    })
 
-    const result = categories.map((c) => ({
-      name: c.category,
-      count: Number(c.count),
-    }))
+    // Group by category in JavaScript
+    const categoryMap = new Map<string, number>()
+    for (const med of medicines) {
+      const cat = med.category!
+      categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1)
+    }
+
+    const result = Array.from(categoryMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
 
     return NextResponse.json({ categories: result })
   } catch (error) {

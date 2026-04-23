@@ -9,23 +9,21 @@ export async function GET(request: NextRequest) {
 
     const where = search
       ? {
-          AND: [
-            { isActive: true },
-            {
-              OR: [
-                { invoiceNo: { contains: search } },
-                { customer: { name: { contains: search } } },
-              ],
-            },
+          OR: [
+            { invoiceNo: { contains: search } },
+            { customer: { name: { contains: search } } },
           ],
         }
-      : { isActive: true }
+      : {}
 
     const invoices = await db.sale.findMany({
       where,
       include: {
         customer: {
           select: { name: true },
+        },
+        items: {
+          select: { id: true },
         },
       },
       orderBy: { saleDate: 'desc' },

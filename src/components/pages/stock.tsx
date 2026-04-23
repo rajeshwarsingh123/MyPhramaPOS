@@ -1051,7 +1051,7 @@ export function StockPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => {
+                  {items.map((item, idx) => {
                     const isExpanded = expandedRows.has(item.id)
                     return (
                       <Collapsible

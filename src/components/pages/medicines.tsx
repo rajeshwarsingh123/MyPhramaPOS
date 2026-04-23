@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -893,9 +893,8 @@ export function MedicinesPage() {
                   </TableHeader>
                   <TableBody>
                     {medicines.map((med) => (
-                      <>
+                      <Fragment key={med.id}>
                         <TableRow
-                          key={med.id}
                           className="table-row-interactive table-row-hover cursor-pointer hover:bg-muted/50"
                           onClick={() => toggleExpand(med.id)}
                         >
@@ -987,7 +986,7 @@ export function MedicinesPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
