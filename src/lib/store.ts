@@ -34,6 +34,8 @@ interface AppState {
   setPendingSearchQuery: (query: string) => void
   launchedApp: boolean
   setLaunchedApp: (v: boolean) => void
+  showAuth: boolean
+  setShowAuth: (v: boolean) => void
   adminPage: AdminPage | null
   setAdminPage: (page: AdminPage | null) => void
 }
@@ -50,6 +52,8 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
   launchedApp: false,
   setLaunchedApp: (v) => set({ launchedApp: v }),
+  showAuth: false,
+  setShowAuth: (v) => set({ showAuth: v }),
   adminPage: null,
   setAdminPage: (page) => set({ adminPage: page }),
 }))

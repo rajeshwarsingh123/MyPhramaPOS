@@ -220,7 +220,7 @@ function FloatingDashboard() {
    ═══════════════════════════════════════════════ */
 
 function HeroSection() {
-  const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+  const setShowAuth = useAppStore((s) => s.setShowAuth)
 
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden pt-20 pb-16 lg:pt-24">
@@ -270,7 +270,7 @@ function HeroSection() {
               <motion.button
                 whileHover={{ scale: 1.04, y: -2 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setLaunchedApp(true)}
+                onClick={() => setShowAuth(true)}
                 className="group relative px-8 py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
@@ -712,7 +712,7 @@ const plans = [
 ]
 
 function PricingSection() {
-  const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+  const setShowAuth = useAppStore((s) => s.setShowAuth)
 
   return (
     <Section className="py-24 lg:py-32 relative" id="pricing">
@@ -749,7 +749,7 @@ function PricingSection() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setLaunchedApp(true)}
+                onClick={() => setShowAuth(true)}
                 className={`w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
                   plan.popular
                     ? 'bg-gradient-to-r from-primary to-emerald-400 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40'
@@ -781,7 +781,7 @@ function PricingSection() {
    ═══════════════════════════════════════════════ */
 
 function FinalCTA() {
-  const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+  const setShowAuth = useAppStore((s) => s.setShowAuth)
 
   return (
     <Section className="py-24 lg:py-32 relative" id="cta">
@@ -809,11 +809,11 @@ function FinalCTA() {
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setLaunchedApp(true)}
+                onClick={() => setShowAuth(true)}
                 className="group relative px-10 py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-shadow duration-300"
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  Launch App
+                  Get Started
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </motion.button>
@@ -857,7 +857,7 @@ function LandingFooter() {
    ═══════════════════════════════════════════════ */
 
 function LandingNav() {
-  const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+  const setShowAuth = useAppStore((s) => s.setShowAuth)
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -902,14 +902,24 @@ function LandingNav() {
             ))}
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setLaunchedApp(true)}
-            className="px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-emerald-400 text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 transition-shadow"
-          >
-            Launch App
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowAuth(true)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold glass-landing-card text-white/80 hover:text-white transition-colors"
+            >
+              Log In
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowAuth(true)}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-emerald-400 text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 transition-shadow"
+            >
+              Get Started
+            </motion.button>
+          </div>
         </div>
       </div>
     </motion.nav>

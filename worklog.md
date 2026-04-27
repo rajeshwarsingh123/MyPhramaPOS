@@ -1892,3 +1892,25 @@ Stage Summary:
 - Access via "Admin Panel" button at bottom of main app sidebar
 - Purple-themed design distinct from main app's teal theme
 - Files: prisma/schema.prisma, prisma/seed-admin.ts, src/lib/store.ts, src/app/page.tsx, src/components/admin/*, src/components/sidebar.tsx, src/app/api/admin/*/
+---
+Task ID: Auth Page - Login/Signup
+Agent: Main Agent (via subagent)
+Task: Create professional login/signup page and integrate with landing page navigation
+
+Work Log:
+- Added showAuth/setShowAuth to Zustand store (src/lib/store.ts)
+- Created src/components/auth-page.tsx (537 lines) with full login/signup page
+- Updated src/app/page.tsx to render AuthPage overlay with AnimatePresence
+- Updated landing-page.tsx navbar: replaced "Launch App" with "Log In" + "Get Started" buttons
+- Updated all CTA buttons (HeroSection, PricingSection, FinalCTA) to route to auth flow
+- Lint passes with 0 errors, dev server compiles successfully
+
+Stage Summary:
+- Professional auth page with dark glass-morphism design matching landing page
+- Split layout: left brand showcase (desktop) + right form area
+- Login form: email, password (show/hide), remember me, forgot password
+- Signup form: full name, pharmacy name, email, phone, password strength indicator, confirm password, terms checkbox
+- Password strength checker: weak/medium/strong with animated color bar
+- All CTA buttons on landing page now route through auth flow
+- Files: src/lib/store.ts, src/components/auth-page.tsx, src/app/page.tsx, src/components/landing-page.tsx
+
