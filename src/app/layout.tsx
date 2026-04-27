@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   description: "Simple, fast, and powerful pharmacy management system for medical shops",
   keywords: ["pharmacy", "billing", "inventory", "medical shop", "POS"],
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.svg",
   },
 };
 

@@ -2456,3 +2456,35 @@ The Super Admin Dashboard was already comprehensive with:
 - Passwords are stored in plain text (marked for production bcrypt hashing)
 - Some tenant GST numbers are null (data was not seeded with all fields)
 
+
+---
+
+## Task — Fix Z Logo / Favicon Issue
+
+**Date**: 2025-07-27
+**Author**: Main Agent
+
+---
+
+### Summary
+Fixed the browser tab showing a default "Z" logo instead of the PharmPOS branding. The issue was caused by missing proper favicon files at conventional paths. Created Next.js App Router icon files and updated metadata configuration.
+
+### Files Created
+1. **`src/app/icon.svg`** — PharmPOS pharmacy cross icon (32x32, teal background with white cross pattern)
+2. **`src/app/apple-icon.svg`** — Apple touch icon version (180x180)
+
+### Files Modified
+3. **`src/app/layout.tsx`** — Updated metadata icons configuration:
+   - Changed from single `icon: "/logo.svg"` to array format with explicit MIME types
+   - Added apple touch icon reference
+   - Both `/icon.svg` and `/logo.svg` now referenced for maximum browser compatibility
+
+### Root Cause
+- No `favicon.ico` existed at the expected paths
+- The `public/logo.svg` was referenced in metadata but browsers also check `/favicon.ico` by default
+- Without a proper icon, browsers show a default letter icon (displayed as "Z" from the hosting platform)
+
+### Verification
+- Dev server compiles successfully with no errors
+- All icon files properly placed in `src/app/` directory (Next.js App Router convention)
+- Metadata properly references both SVG icons with correct MIME types
