@@ -466,13 +466,13 @@ export function InvoiceHistoryPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium">Total Invoices</p>
-              <p className="text-xl font-bold gradient-text-teal">
+              <div className="text-xl font-bold gradient-text-teal">
                 {isLoadingInvoices ? (
                   <Skeleton className="h-7 w-16 inline-block" />
                 ) : (
                   stats.totalInvoices.toLocaleString('en-IN')
                 )}
-              </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -484,13 +484,13 @@ export function InvoiceHistoryPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium">Total Revenue</p>
-              <p className="text-xl font-bold gradient-text-teal">
+              <div className="text-xl font-bold gradient-text-teal">
                 {isLoadingInvoices ? (
                   <Skeleton className="h-7 w-24 inline-block" />
                 ) : (
                   formatCurrency(stats.totalRevenue)
                 )}
-              </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -502,13 +502,13 @@ export function InvoiceHistoryPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium">This Month</p>
-              <p className="text-xl font-bold gradient-text-teal">
+              <div className="text-xl font-bold gradient-text-teal">
                 {isLoadingInvoices ? (
                   <Skeleton className="h-7 w-16 inline-block" />
                 ) : (
                   stats.thisMonthCount.toLocaleString('en-IN')
                 )}
-              </p>
+              </div>
             </div>
           </CardContent>
         </Card>
