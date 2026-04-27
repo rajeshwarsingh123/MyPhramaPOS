@@ -17,10 +17,23 @@ export type AdminPage =
   | 'admin-dashboard'
   | 'admin-users'
   | 'admin-subscriptions'
+  | 'admin-payments'
+  | 'admin-invoices'
   | 'admin-reports'
+  | 'admin-logs'
   | 'admin-tickets'
   | 'admin-announcements'
   | 'admin-settings'
+  | 'admin-pharmacy-monitor'
+
+export interface AdminAuthState {
+  isAuthenticated: boolean
+  adminId: string | null
+  adminName: string | null
+  adminEmail: string | null
+  adminRole: 'super_admin' | 'staff' | null
+  loginTime: string | null
+}
 
 interface AppState {
   currentPage: Page
@@ -38,6 +51,12 @@ interface AppState {
   setShowAuth: (v: boolean) => void
   adminPage: AdminPage | null
   setAdminPage: (page: AdminPage | null) => void
+  adminAuth: AdminAuthState
+  setAdminAuth: (auth: AdminAuthState) => void
+  adminSidebarCollapsed: boolean
+  setAdminSidebarCollapsed: (v: boolean) => void
+  adminSidebarMobileOpen: boolean
+  setAdminSidebarMobileOpen: (v: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -56,4 +75,17 @@ export const useAppStore = create<AppState>((set) => ({
   setShowAuth: (v) => set({ showAuth: v }),
   adminPage: null,
   setAdminPage: (page) => set({ adminPage: page }),
+  adminAuth: {
+    isAuthenticated: false,
+    adminId: null,
+    adminName: null,
+    adminEmail: null,
+    adminRole: null,
+    loginTime: null,
+  },
+  setAdminAuth: (auth) => set({ adminAuth: auth }),
+  adminSidebarCollapsed: false,
+  setAdminSidebarCollapsed: (v) => set({ adminSidebarCollapsed: v }),
+  adminSidebarMobileOpen: false,
+  setAdminSidebarMobileOpen: (v) => set({ adminSidebarMobileOpen: v }),
 }))
