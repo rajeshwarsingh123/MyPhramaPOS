@@ -19,6 +19,8 @@ interface AppState {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
+  sidebarCollapsed: boolean
+  toggleSidebarCollapse: () => void
   pendingSearchQuery: string
   setPendingSearchQuery: (query: string) => void
 }
@@ -29,6 +31,8 @@ export const useAppStore = create<AppState>((set) => ({
   sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  sidebarCollapsed: false,
+  toggleSidebarCollapse: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   pendingSearchQuery: '',
   setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
 }))

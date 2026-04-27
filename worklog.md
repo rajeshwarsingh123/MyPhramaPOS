@@ -1791,3 +1791,23 @@ Stage Summary:
 - Sidebar background is now solid dark (oklch(0.22 0.04 163)) — no transparency issues
 - Text contrast is excellent: light foreground (oklch(0.95)) on dark background (oklch(0.22))
 - File modified: src/components/sidebar.tsx
+---
+Task ID: Round 6b - Sidebar Collapse & Responsive Height
+Agent: Main Agent
+Task: Make sidebar responsive (not extend below screen), add collapse/expand with unique toggle button
+
+Work Log:
+- Added `sidebarCollapsed` and `toggleSidebarCollapse` to Zustand store (src/lib/store.ts)
+- Rewrote sidebar component (src/components/sidebar.tsx) with full collapse/expand support
+- Sidebar height fix: Uses `flex flex-col` with `h-full` + ScrollArea with `flex-1 min-h-0` — nav items scroll, header/footer stay fixed
+- Desktop collapse: sidebar shrinks from w-64 to w-[68px] with smooth 300ms transition
+- Unique hamburger toggle button: Custom three-bar icon inside a pill container with animated bar widths
+- Collapsed state: icons centered, labels hidden, tooltips on hover via shadcn Tooltip
+- Mobile: unaffected — still uses slide-in overlay with hamburger in header
+- Verified: lint passes, dev server compiles, all API endpoints 200
+
+Stage Summary:
+- Sidebar no longer extends below screen — proper flex layout with scrollable nav area
+- Desktop users can collapse sidebar to icon-only 68px width via custom toggle button
+- Collapsed state shows tooltips on hover for all nav items, AI section, and user info
+- Files modified: src/lib/store.ts, src/components/sidebar.tsx
