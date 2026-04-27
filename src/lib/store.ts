@@ -13,6 +13,15 @@ export type Page =
   | 'invoice-history'
   | 'settings'
 
+export type AdminPage =
+  | 'admin-dashboard'
+  | 'admin-users'
+  | 'admin-subscriptions'
+  | 'admin-reports'
+  | 'admin-tickets'
+  | 'admin-announcements'
+  | 'admin-settings'
+
 interface AppState {
   currentPage: Page
   setCurrentPage: (page: Page) => void
@@ -25,6 +34,8 @@ interface AppState {
   setPendingSearchQuery: (query: string) => void
   launchedApp: boolean
   setLaunchedApp: (v: boolean) => void
+  adminPage: AdminPage | null
+  setAdminPage: (page: AdminPage | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -39,4 +50,6 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
   launchedApp: false,
   setLaunchedApp: (v) => set({ launchedApp: v }),
+  adminPage: null,
+  setAdminPage: (page) => set({ adminPage: page }),
 }))

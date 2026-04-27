@@ -201,3 +201,103 @@ model StoreSetting {
   dailySalesTarget Float @default(10000)
   updatedAt  DateTime @updatedAt
 }
+
+// ==================== SaaS ADMIN ====================
+
+model Admin {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("staff") // super_admin, staff
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tenant {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  businessName  String
+  businessPhone String?
+  businessAddress String?
+  gstNumber     String?
+  plan          String   @default("free") // free, pro
+  status        String   @default("active") // active, suspended, trial
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions Subscription[]
+  supportTickets SupportTicket[]
+  systemLogs     SystemLog[]
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  tenantId    String
+  plan        String   @default("free") // free, pro
+  amount      Float    @default(0)
+  status      String   @default("active") // active, expired, cancelled
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  paymentMode String?  // upi, card, bank_transfer
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  tenantId    String
+  subject     String
+  description String
+  status      String   @default("open") // open, in_progress, resolved, closed
+  priority    String   @default("medium") // low, medium, high, urgent
+  replies     String   @default("[]") // JSON array of replies
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, maintenance, promotion
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlatformSetting {
+  id              String @id @default(cuid())
+  key             String @unique
+  value           String
+  description     String?
+  updatedAt       DateTime @updatedAt
+}

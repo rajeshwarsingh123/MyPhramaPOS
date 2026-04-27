@@ -27,6 +27,7 @@ import {
   Truck,
   RotateCcw,
   FileText,
+  ShieldCheck,
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react'
@@ -59,6 +60,7 @@ export function Sidebar() {
     setSidebarOpen,
     sidebarCollapsed,
     toggleSidebarCollapse,
+    setAdminPage,
   } = useAppStore()
   const isMobile = useIsMobile()
   const collapsed = isMobile ? false : sidebarCollapsed
