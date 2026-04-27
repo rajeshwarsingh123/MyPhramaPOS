@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Simple, fast, and powerful pharmacy management system for medical shops",
   keywords: ["pharmacy", "billing", "inventory", "medical shop", "POS"],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 
