@@ -2561,3 +2561,330 @@ Investigated and fixed the "Z logo" favicon issue (root cause: Z.ai platform fav
 2. Enhance payments page with server-side summary totals
 3. Add more admin API endpoints for real data
 4. Improve landing page mobile responsiveness
+
+
+---
+
+## Task 2-a — Admin Settings Page Enhancement
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: 2-a)
+
+---
+
+### Summary
+Enhanced the Admin Settings page with comprehensive platform configuration options. Replaced the basic settings page (4 cards) with a full-featured 5-section settings panel covering Platform, Email/Notifications, Security, Plan Configuration, and API Settings. Also updated the API route to support batch GET/PUT with 22 configurable settings keys and proper validation.
+
+### Files Modified
+
+1. **`src/app/api/admin/settings/route.ts`** — Complete rewrite:
+   - GET: Returns all settings as flat key-value map with defaults for missing keys
+   - PUT: Accepts batch `{ settings: Record<string, string> }` payload, validates all keys against known defaults, upserts in a Prisma transaction
+   - 22 settings keys organized across 5 categories (platform, email, security, plan, api)
+   - Input validation: rejects unknown keys, requires at least one setting
+   - Uses `Prisma.TransactionIsolationLevel.ReadCommitted` for safe concurrent updates
+
+2. **`src/components/admin/admin-settings.tsx`** — Complete rewrite (~650 lines):
+
+   **Architecture**:
+   - Section-based settings with per-section save and global "Save All" support
+   - Local edit tracking via `Partial<AllSettings>` overlay merged with server data
+   - Section-level change detection using `SECTION_KEYS` mapping
+   - TanStack Query for data fetching with `useMutation` for saves
+   - Reusable sub-components: `SettingsSectionCard`, `FieldRow`, `ToggleRow`, `InfoRow`
+
+   **Section 1 — Platform Settings** (Globe icon, purple):
+   - Platform name, tagline, support email
+   - Maintenance mode toggle with amber warning banner when active
+   - Max free tier limits (3-column grid: medicines, bills/day, staff)
+   - Default trial period (days) with unit suffix
+   - AI scan feature toggle
+
+   **Section 2 — Email & Notifications** (Bell icon, purple):
+   - SMTP email service toggle with disabled-state info notice
+   - New tenant signup notification toggle (emerald)
+   - Subscription expiry alert toggle (amber)
+   - Support ticket creation notification toggle (violet)
+
+   **Section 3 — Security Settings** (ShieldCheck icon, emerald):
+   - Password minimum length input (chars suffix)
+   - Two-factor authentication toggle for admins
+   - Session timeout dropdown (7 options: 15min to 24hr)
+   - IP whitelist textarea (monospace font, one IP per line, live count)
+
+   **Section 4 — Plan Configuration** (Crown icon, purple):
+   - Free plan features: 10 checkboxes in 2-column grid with highlighted selection state
+   - Pro plan monthly/yearly pricing with ₹ prefix and savings calculation
+   - Pro plan features: 10 checkboxes in 2-column grid
+   - Feature lists stored as JSON arrays in PlatformSetting
+
+   **Section 5 — API Settings** (Zap icon, amber):
+   - API rate limit input (req/min suffix)
+   - Tenant API access toggle with amber switch color
+   - Disabled-state info notice when API access is off
+   - System information panel (version, database, status, settings count)
+
+   **Global Features**:
+   - Page header with total changes badge and Discard All / Save All buttons
+   - Per-section "Modified" amber badge and Reset/Save buttons in card header
+   - Full loading skeleton (PageSkeleton) during initial data fetch
+   - Error state with AlertTriangle icon and retry button
+   - Toast notifications (sonner) for save success/error
+   - Responsive 2-column grid (stacks on mobile)
+
+### Tech Stack Used
+- Next.js 16 App Router (API Routes)
+- Prisma ORM (SQLite) with `PlatformSetting` model, `$transaction` for batch upserts
+- TanStack Query (`useQuery`, `useMutation`, `useQueryClient`)
+- shadcn/ui: Card, Input, Label, Switch, Checkbox, Select, Textarea, Separator, Skeleton, Badge, Button
+- lucide-react icons: Settings, Globe, Bell, ShieldCheck, Crown, Zap, Wrench, Mail, Lock, Timer, KeyRound, Save, AlertTriangle, Info, RotateCcw, Loader2, CheckCircle2, Sparkles
+- sonner for toast notifications
+- `cn()` utility for conditional class composition
+
+### Design Decisions
+- Per-section save pattern: each section tracks its own changes independently and can be saved/reset individually, while a global "Save All" is also available in the header
+- Feature lists stored as JSON strings in the PlatformSetting table (no schema changes needed)
+- Boolean settings stored as `"true"`/`"false"` strings (consistent with PlatformSetting value type)
+- Maintenance mode shows amber warning banner explaining impact to tenants
+- Yearly pricing auto-calculates savings displayed as emerald tip
+- IP whitelist uses monospace font for readability and shows live count
+- Session timeout uses Select dropdown for clean UX instead of freeform input
+- Color-coded toggle icons: purple for general, amber for caution, emerald for security, violet for informational
+
+### Verification
+- ESLint passes with zero errors on both modified files
+- All 22 settings keys defined with sensible defaults
+- API route validates unknown keys and empty payloads
+- Frontend properly handles loading, error, and empty states
+- Consistent with other admin pages: same oklch colors, rounded-xl cards, purple accent buttons
+- No blue/indigo colors used (only purple, emerald, amber, red accents)
+
+---
+
+## Task 2-b — Admin Pharmacy Monitor (Comprehensive Dashboard)
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: 2-b)
+
+---
+
+### Summary
+Replaced the placeholder Pharmacy Monitor page with a comprehensive live monitoring dashboard that aggregates data from three API endpoints. The page shows system health, tenant activity, resource usage, recent activity feed, and an alert panel — all with auto-refresh, responsive design, and dark purple admin theme consistency.
+
+### Files Modified
+
+1. **`src/components/admin/admin-pharmacy-monitor.tsx`** — Complete rewrite (~580 lines):
+
+**Data Sources** (3 parallel TanStack Query calls, each with 30s refetchInterval):
+- `GET /api/admin/pharmacy-monitor` — medicines, stock, sales, data quality
+- `GET /api/admin/tenants?limit=100` — tenant list with subscriptions, ticket/log counts
+- `GET /api/admin/dashboard` — aggregate stats, recent activity, expiring subscriptions
+
+**Section 1 — System Health Bar** (top, full-width card):
+- Uptime percentage with color coding: green ≥99%, amber ≥95%, red <95%
+- Active tenants count with Users icon
+- Total API calls (sum of all tenant systemLog counts) with Zap icon
+- System status indicator (Operational/Warning/Critical) with animated pulse dot and ShieldCheck icon
+- Derived health score from stock health, data quality, open tickets, expiring subscriptions, suspended tenants
+
+**Section 2 — Tenant Activity Grid** (main section, scrollable):
+- Cards for each tenant showing:
+  - Business name + status dot (color-coded: green/amber/red)
+  - Plan badge (FREE/PRO) with purple styling for PRO
+  - Status badge (Active/Warning/Offline) with color-coded bg/border
+  - Email below business name
+  - 2×2 info grid: Last Activity (relative time), Plan Expires (date), API Calls count, Open Tickets count
+  - Data usage bar (estimated from systemLog count, color-coded by threshold)
+  - Border color indicates status: green for active, amber for warning, red for offline
+- ScrollArea with max-h-[520px] for many tenants
+- Responsive grid: 1 col mobile, 2 cols tablet (md), 3 cols desktop (xl)
+
+**Section 3 — Resource Usage + Top Pharmacies + Alerts** (3-column grid):
+- **Resource Usage** (left card):
+  - 4 stat rows with icons: Total Medicines (purple), Total Stock Units (teal), Stock Value (emerald, ₹ formatted), Total Bills (violet)
+  - Stock Health progress bar (green/amber/red)
+  - Data Quality progress bar (green/amber/red)
+  - 3 mini issue counters: Expired (red), Expiring 30d (amber), Low Stock (orange)
+- **Top Pharmacies** (center card):
+  - Top 5 Most Active tenants by API call count with gradient bar visualization
+  - Top 5 Selling Medicines with quantity and revenue display
+  - Purple and teal gradient bars respectively
+- **Alert Panel** (right card):
+  - Auto-computed alerts from tenant data:
+    - Subscriptions expiring within 7 days (warning)
+    - Expired subscriptions (critical)
+    - Inactive 30+ days (warning)
+    - Suspended accounts (critical)
+    - High API usage >500 calls (warning)
+  - Color-coded cards: amber bg/border for warnings, red for critical
+  - Alert badge count in header
+  - "All systems normal" empty state with ShieldCheck icon
+
+**Section 4 — Recent Activity Feed** (full-width card):
+- Color-coded event types with matching icons:
+  - signup → UserPlus icon, emerald
+  - subscription → CreditCard icon, purple
+  - ticket → TicketCheck icon, amber
+  - payment → IndianRupee icon, teal
+- Relative timestamps ("2 hours ago", "Yesterday", etc.)
+- ScrollArea with max-h-[300px]
+- Event count badge in header
+
+**Section 5 — Recent Sales Table** (full-width card):
+- Invoice # (monospace), Customer, Date (responsive hidden on mobile), Amount (emerald, right-aligned)
+- Read-only label in header
+- Empty state with Package icon
+
+**UX Features**:
+- Auto-refresh every 30 seconds on all 3 queries
+- Manual refresh button with spinning animation and toast notification (sonner)
+- `useSyncExternalStore` for reactive clock display (last updated time)
+- Loading skeleton for entire page layout (System Health, Tenant Grid, 3-column section, Activity Feed, Sales Table)
+- Error state with AlertTriangle icon and retry button
+- Combined error/loading states — only shows when ALL queries finish loading
+- Toast notification on manual refresh success/failure
+
+**Helper Functions**:
+- `formatRelativeTime()` — converts ISO date to human-readable relative time
+- `computeSystemStatus()` — derives uptime, status label, and colors from data quality metrics
+- `computeAlerts()` — scans all tenants for subscription expiry, inactivity, suspension, high usage
+- `getTenantStatus()` — determines tenant status (active/warning/offline) based on subscription, activity, and account state
+- `getTenantStatusConfig()` — maps status to colors, borders, badges
+- `getActivityIcon()` — maps activity type to icon and color scheme
+- `ProgressBar` — reusable progress bar with label and value display
+
+### Tech Stack Used
+- React 'use client' component
+- TanStack Query (`useQuery`) with 3 parallel queries and `refetchInterval: 30000`
+- `useSyncExternalStore` for hydration-safe reactive clock
+- shadcn/ui: Card, Badge, Button, Skeleton, ScrollArea, Separator, Progress
+- lucide-react icons (30+ icons used)
+- sonner for toast notifications
+- No blue/indigo colors — only purple, emerald, amber, red, teal, violet, orange accents
+
+### Design Decisions
+- Three parallel API queries instead of a single combined endpoint — reuses existing APIs
+- System uptime derived algorithmically from data quality metrics rather than actual server uptime (since this is SQLite/local dev)
+- Data usage percentage estimated from systemLog count (scaled to 800 = 100%) since there's no per-tenant storage metric
+- Tenant status computed from multiple signals: subscription status, expiry proximity, last activity date, account suspension
+- Alert panel auto-computes from tenant data rather than requiring a separate alerts API
+- Color scheme strictly avoids blue/indigo: purple=brand, emerald=positive, amber=warning, red=critical, teal=data, violet=info, orange=caution
+- Consistent dark purple theme: `bg-[oklch(0.18_0.02_250)]`, `border-[oklch(0.28_0.03_250)]`, rounded-xl cards
+- ScrollArea for long tenant grids and activity feeds (max-height capped)
+- Responsive grid: 1 col → 2 cols → 3 cols using md/xl breakpoints
+
+### Verification
+- ESLint passes with zero errors
+- Dev server compiles successfully
+- Component registered in admin-shell.tsx (existing mapping unchanged)
+- All 3 API endpoints confirmed accessible and returning correct data shapes
+- No unused imports
+- No blue/indigo colors in component
+
+
+---
+
+## Task 2-c — Admin Notification Center
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: 2-c)
+
+---
+
+### Summary
+Built a comprehensive Admin Notification Center that replaces the static notification bell in the admin navbar. Includes a full-featured notification dropdown panel with Popover, a server-side notification API that aggregates system data into meaningful notifications, and dynamic unread count with auto-refresh.
+
+### Files Created
+
+1. **`src/app/api/admin/notifications/route.ts`** — Notification API (GET/PUT):
+   - GET: Generates admin notifications from live system data:
+     - New pharmacy signups (last 7 days) → `new_signup` type
+     - Open/in-progress support tickets → `ticket` type (with priority labels)
+     - Expiring subscriptions (within 30 days) → `expiry` type (with days left)
+     - Recent subscription payments → `payment` type
+     - Cancelled subscriptions → `subscription` type
+     - System alerts: suspended accounts, high-priority tickets, expired-but-active subscriptions → `system` type
+   - Returns `{ notifications[], unreadCount, totalCount }` with relative timestamps
+   - Sorted by most recent, limited to 20 items
+   - PUT with `{ ids: string[] }`: Mark specific notifications as read (in-memory Set)
+   - PUT with `{ markAll: true }`: Mark all notifications as read
+
+2. **`src/components/admin/admin-notification-panel.tsx`** — Notification dropdown panel:
+   - shadcn/ui Popover triggered by bell icon with animated ping badge
+   - Header with "Notifications" title, unread count badge, and "Mark all read" button
+   - ScrollArea (max-h-360px) with notification list
+   - Each notification row:
+     - Color-coded icon in rounded container (UserPlus=emerald, CreditCard=purple, MessageSquare=amber, DollarSign=emerald, Server=red, Clock=amber)
+     - Title (bold for unread, muted for read)
+     - Description (2-line clamp)
+     - Relative timestamp + hover-reveal "view" link
+     - Unread: left purple border accent + subtle brighter background + purple dot indicator
+     - Read: normal styling, muted text
+   - Click to mark as read and navigate to relevant admin page
+   - Empty state with BellOff icon ("All caught up!")
+   - Loading state with spinner
+   - Footer "View all activity" link
+   - TanStack Query with 60-second auto-refresh
+   - useMutation for mark-as-read operations with optimistic cache invalidation
+
+### Files Modified
+
+3. **`src/components/admin/admin-navbar.tsx`** — Integrated AdminNotificationPanel:
+   - Replaced entire static notification DropdownMenu (~60 lines) with single `<AdminNotificationPanel>` component
+   - Removed: `notificationCount`, `notifications`, `notifOpen` state variables
+   - Removed: `useEffect` for fetching open tickets (now handled inside panel via TanStack Query)
+   - Removed: `Badge` and `Input` imports (no longer needed)
+   - Removed: `Bell` and `Ticket` imports (moved to notification panel)
+   - Added: `AdminNotificationPanel` import and `onNavigate` callback wired to `setAdminPage`
+
+### Tech Stack Used
+- Next.js 16 App Router (API Route with Prisma ORM queries)
+- TanStack Query (`useQuery` with `refetchInterval: 60000`, `useMutation`, `useQueryClient`)
+- shadcn/ui: Popover, Button, Badge, Separator, ScrollArea
+- lucide-react: Bell, UserPlus, CreditCard, MessageSquare, DollarSign, Server, Clock, CheckCheck, ExternalLink, BellOff, Loader2
+- In-memory Set for read state (per-process, acceptable for single-admin SaaS panel)
+- `cn()` utility for conditional class composition
+
+### Design Decisions
+- Popover instead of DropdownMenu for better control over styling and behavior
+- Notification types derived from actual system data (not hardcoded) for real-time relevance
+- Relative timestamps server-side ("just now", "5m ago", "2h ago", "yesterday", "3 days ago")
+- Unread state with left border accent (`border-l-2 border-l-purple-500/60`) + subtle bg (`bg-white/[0.02]`) + purple dot
+- Read state: normal row with muted text colors
+- Hover reveals "view" link with ExternalLink icon for navigation hint
+- Icon containers use semi-transparent colored backgrounds (e.g., `bg-emerald-500/15`)
+- System notifications aggregate counts (e.g., "3 tenant accounts suspended") rather than listing individually
+- 60-second auto-refresh balances freshness with API load
+- "Mark all read" uses loading spinner (Loader2) during mutation
+
+### Verification
+- ESLint passes with zero errors across all 3 files
+- Dev server compiles successfully (✓ Ready)
+- No unused imports in admin-navbar.tsx after cleanup
+- Notification panel self-contained (all logic encapsulated in component)
+- `onNavigate` prop provides clean navigation without tight coupling to store
+
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Continue PharmPOS Super Admin Dashboard - Enhance admin pages and add new features
+
+Work Log:
+- Assessed project state from worklog.md - all admin pages were already built
+- Confirmed ESLint passes with zero errors
+- Confirmed dev server compiles successfully
+- Dispatched 3 parallel subagents:
+  - Task 2-a: Enhanced Admin Settings page with 5 configuration sections (Platform, Email, Security, Plan, API)
+  - Task 2-b: Built Admin Pharmacy Monitor with system health, tenant grid, resource overview, alerts
+  - Task 2-c: Built Admin Notification Center with dynamic bell dropdown, API, and navbar integration
+- All subagents completed successfully
+- Verified final compilation: ESLint clean, dev server running
+
+Stage Summary:
+- Admin Settings: Now has 22 configurable platform settings across 5 sections with per-section save
+- Admin Pharmacy Monitor: Full monitoring dashboard with health bar, tenant cards, resource usage, alerts
+- Admin Notification Center: Dynamic notification dropdown with 60s auto-refresh, mark-as-read, type-coded icons
+- Admin Navbar: Integrated notification panel replacing static badge
+- All 11 admin pages are now fully functional (not placeholders)
+- Cron job creation failed (auth required - platform limitation)

@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAppStore, type AdminPage } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   DropdownMenu,
@@ -18,7 +16,6 @@ import {
 import {
   Menu,
   Search,
-  Bell,
   Sun,
   Moon,
   LogOut,
@@ -34,6 +31,7 @@ import {
   LayoutDashboard,
   X,
 } from 'lucide-react'
+import { AdminNotificationPanel } from './admin-notification-panel'
 
 const adminPages: { key: AdminPage; label: string; icon: React.ReactNode; group: string }[] = [
   { key: 'admin-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" />, group: 'Main' },
@@ -60,38 +58,7 @@ export function AdminNavbar() {
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [notificationCount, setNotificationCount] = useState(0)
-  const [notifications, setNotifications] = useState<{ id: string; title: string; desc: string; time: string; type: string }[]>([])
-  const [notifOpen, setNotifOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
-
-  // Fetch open ticket count for notifications
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch('/api/admin/tickets?status=open&limit=5')
-        if (res.ok) {
-          const data = await res.json()
-          const tickets = data.tickets || data || []
-          setNotificationCount(tickets.length)
-          setNotifications(
-            tickets.slice(0, 5).map((t: { id: number; subject: string; priority: string; createdAt: string }) => ({
-              id: String(t.id),
-              title: t.subject,
-              desc: `Priority: ${t.priority}`,
-              time: new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-              type: 'ticket',
-            }))
-          )
-        }
-      } catch {
-        // silently fail
-      }
-    }
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, [])
 
   // Keyboard shortcut Cmd+K / Ctrl+K for search
   useEffect(() => {
@@ -193,86 +160,7 @@ export function AdminNavbar() {
         {/* Right actions */}
         <div className="flex items-center gap-1">
           {/* Notifications */}
-          <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-white/60 hover:text-white hover:bg-white/5 h-9 w-9"
-              >
-                <Bell className="h-[18px] w-[18px]" />
-                {notificationCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/40" />
-                    <span className="relative inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] font-bold text-white">
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </span>
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-80 bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white p-0"
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <span className="text-sm font-semibold text-white">Notifications</span>
-                {notificationCount > 0 && (
-                  <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-0 text-[10px]">
-                    {notificationCount} open
-                  </Badge>
-                )}
-              </div>
-              <ScrollArea className="max-h-72">
-                {notifications.length > 0 ? (
-                  <div className="p-1">
-                    {notifications.map((n) => (
-                      <DropdownMenuItem
-                        key={n.id}
-                        onClick={() => {
-                          handleSearchSelect('admin-tickets')
-                          setNotifOpen(false)
-                        }}
-                        className="flex flex-col items-start gap-1 p-3 rounded-lg text-white/70 focus:text-white focus:bg-white/5 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <Ticket className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                          <span className="text-xs font-medium text-white truncate flex-1">
-                            {n.title}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 pl-5.5 text-[10px] text-white/40">
-                          <span>{n.desc}</span>
-                          <span>·</span>
-                          <span>{n.time}</span>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-white/30">
-                    <Bell className="h-8 w-8 mb-2" />
-                    <p className="text-xs">No open tickets</p>
-                  </div>
-                )}
-              </ScrollArea>
-              {notifications.length > 0 && (
-                <div className="border-t border-white/10 p-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                    onClick={() => {
-                      handleSearchSelect('admin-tickets')
-                      setNotifOpen(false)
-                    }}
-                  >
-                    View all tickets
-                  </Button>
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AdminNotificationPanel onNavigate={(page) => setAdminPage(page as AdminPage)} />
 
           {/* Separator */}
           <div className="h-6 w-px bg-white/10 mx-1" />
