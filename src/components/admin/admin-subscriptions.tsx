@@ -27,10 +27,15 @@ import {
   RefreshCw,
   AlertTriangle,
   Filter,
-  CalendarDays,
+  Search,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  TrendingUp,
+  Users,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 
 interface Subscription {
@@ -85,11 +90,15 @@ function PaymentModeBadge({ mode }: { mode: string | null }) {
   return <span className={cn('text-xs font-medium', c.color)}>{c.label}</span>
 }
 
+const PAGE_SIZE = 10
+
 export function AdminSubscriptions() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [planChangeId, setPlanChangeId] = useState<string | null>(null)
   const [newPlan, setNewPlan] = useState<string>('free')
+  const [page, setPage] = useState(1)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-subscriptions', statusFilter],
@@ -121,10 +130,42 @@ export function AdminSubscriptions() {
 
   const subscriptions: Subscription[] = data?.subscriptions ?? []
 
+  // Client-side search + pagination
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return subscriptions
+    const q = searchQuery.toLowerCase()
+    return subscriptions.filter(
+      (s) =>
+        s.tenant?.name?.toLowerCase().includes(q) ||
+        s.tenant?.businessName?.toLowerCase().includes(q) ||
+        s.tenant?.email?.toLowerCase().includes(q) ||
+        s.plan?.toLowerCase().includes(q)
+    )
+  }, [subscriptions, searchQuery])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  // Summary metrics from ALL subscriptions (not just current page)
+  const totalCount = subscriptions.length
   const activeCount = subscriptions.filter((s) => s.status === 'active').length
   const expiredCount = subscriptions.filter((s) => s.status === 'expired').length
-  const totalRevenue = subscriptions.reduce((sum, s) => sum + s.amount, 0)
-  const proRevenue = subscriptions.filter((s) => s.plan === 'pro' && s.status === 'active').reduce((sum, s) => sum + s.amount, 0)
+  const totalRevenue = subscriptions.reduce((sum, s) => sum + (s.amount || 0), 0)
+  const proRevenue = subscriptions
+    .filter((s) => s.plan === 'pro' && s.status === 'active')
+    .reduce((sum, s) => sum + (s.amount || 0), 0)
+
+  // Expiring soon: active subscriptions ending within 30 days
+  const expiringSoon = useMemo(() => {
+    const now = new Date()
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000
+    return subscriptions.filter((s) => {
+      if (s.status !== 'active') return false
+      const end = new Date(s.endDate)
+      return end.getTime() - now.getTime() > 0 && end.getTime() - now.getTime() < thirtyDays
+    })
+  }, [subscriptions])
 
   if (error) {
     return (
@@ -147,7 +188,7 @@ export function AdminSubscriptions() {
             <CreditCard className="h-7 w-7 text-purple-400" />
             Subscriptions
           </h1>
-          <p className="text-white/50 mt-1">Manage all tenant subscriptions</p>
+          <p className="text-white/50 mt-1">Manage all tenant subscriptions and plans</p>
         </div>
         <Button onClick={() => refetch()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -156,29 +197,78 @@ export function AdminSubscriptions() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-1">Total Subscriptions</p>
-          <p className="text-2xl font-bold text-white">{subscriptions.length}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+              <CreditCard className="h-4 w-4 text-purple-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-white">{totalCount}</p>
+          <p className="text-xs text-white/40 mt-0.5">Total</p>
         </div>
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-1">Active</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+            </div>
+          </div>
           <p className="text-2xl font-bold text-emerald-400">{activeCount}</p>
+          <p className="text-xs text-white/40 mt-0.5">Active</p>
         </div>
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-1">Expired</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+            </div>
+          </div>
           <p className="text-2xl font-bold text-red-400">{expiredCount}</p>
+          <p className="text-xs text-white/40 mt-0.5">Expired</p>
         </div>
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-1">Pro Revenue (Active)</p>
-          <p className="text-2xl font-bold text-purple-400">₹{proRevenue.toLocaleString('en-IN')}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-amber-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-amber-400">{expiringSoon.length}</p>
+          <p className="text-xs text-white/40 mt-0.5">Expiring Soon</p>
+        </div>
+        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4 col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+              <Users className="h-4 w-4 text-violet-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-violet-400">₹{proRevenue.toLocaleString('en-IN')}</p>
+          <p className="text-xs text-white/40 mt-0.5">Pro MRR</p>
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-3">
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
+          <Input
+            placeholder="Search by name, business, email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-sm text-white placeholder:text-white/25"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Status Filter */}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+          <SelectTrigger className="w-40 h-9 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white text-sm">
             <Filter className="h-4 w-4 mr-2 text-white/40" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -189,8 +279,25 @@ export function AdminSubscriptions() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Expiring Soon Filter */}
+        {expiringSoon.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
+            onClick={() => {
+              setStatusFilter('active')
+              setSearchQuery('')
+            }}
+          >
+            <Clock className="h-3.5 w-3.5 mr-1.5" />
+            {expiringSoon.length} expiring soon
+          </Button>
+        )}
+
         {statusFilter !== 'all' && (
-          <Button variant="ghost" size="sm" onClick={() => setStatusFilter('all')} className="text-white/40 hover:text-white/70">
+          <Button variant="ghost" size="sm" onClick={() => setStatusFilter('all')} className="text-white/40 hover:text-white/70 h-9">
             <X className="h-4 w-4 mr-1" />
             Clear
           </Button>
@@ -202,102 +309,161 @@ export function AdminSubscriptions() {
         <CardContent className="p-0">
           {isLoading ? (
             <SubscriptionsSkeleton />
-          ) : subscriptions.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-white/30">
               <CreditCard className="h-10 w-10 mb-3" />
               <p className="text-sm font-medium">No subscriptions found</p>
-              <p className="text-xs mt-1">Adjust the filter to see more results</p>
+              <p className="text-xs mt-1">
+                {searchQuery ? 'Try a different search term' : 'Adjust the filter to see more results'}
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/5 hover:bg-transparent">
-                    <TableHead className="text-white/40 text-xs font-medium">Tenant</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Plan</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Amount</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Status</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium hidden md:table-cell">Start Date</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium hidden md:table-cell">End Date</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium hidden lg:table-cell">Payment Mode</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium text-right">Change Plan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subscriptions.map((sub) => (
-                    <TableRow key={sub.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                      <TableCell>
-                        <div>
-                          <p className="text-white font-medium text-sm">{sub.tenant?.name ?? 'Unknown'}</p>
-                          <p className="text-white/40 text-xs">{sub.tenant?.businessName ?? sub.tenant?.email ?? ''}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {planChangeId === sub.id ? (
-                          <Select value={newPlan} onValueChange={setNewPlan}>
-                            <SelectTrigger className="w-24 h-7 text-xs bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                              <SelectItem value="free">Free</SelectItem>
-                              <SelectItem value="pro">Pro</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <PlanBadge plan={sub.plan} />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-white font-medium">
-                        {sub.amount > 0 ? `₹${sub.amount.toLocaleString('en-IN')}` : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={sub.status} />
-                      </TableCell>
-                      <TableCell className="text-white/50 text-xs hidden md:table-cell">
-                        {new Date(sub.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </TableCell>
-                      <TableCell className="text-white/50 text-xs hidden md:table-cell">
-                        {new Date(sub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <PaymentModeBadge mode={sub.paymentMode} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {planChangeId === sub.id ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white"
-                              onClick={() => changePlanMutation.mutate({ id: sub.id, plan: newPlan })}
-                              disabled={changePlanMutation.isPending}
-                            >
-                              {changePlanMutation.isPending ? 'Saving...' : 'Save'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs text-white/40 hover:text-white/70"
-                              onClick={() => { setPlanChangeId(null); setNewPlan('free') }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                            onClick={() => { setPlanChangeId(sub.id); setNewPlan(sub.plan) }}
-                          >
-                            Change
-                          </Button>
-                        )}
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-white/5 hover:bg-transparent">
+                      <TableHead className="text-white/40 text-xs font-medium">Tenant</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium">Plan</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium">Amount</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium">Status</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium hidden md:table-cell">Period</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium hidden lg:table-cell">Payment</TableHead>
+                      <TableHead className="text-white/40 text-xs font-medium text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.map((sub) => {
+                      const isExpiring = expiringSoon.some((e) => e.id === sub.id)
+                      return (
+                        <TableRow key={sub.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                          <TableCell>
+                            <div>
+                              <p className="text-white font-medium text-sm">{sub.tenant?.name ?? 'Unknown'}</p>
+                              <p className="text-white/40 text-xs">{sub.tenant?.businessName ?? sub.tenant?.email ?? ''}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {planChangeId === sub.id ? (
+                              <Select value={newPlan} onValueChange={setNewPlan}>
+                                <SelectTrigger className="w-24 h-7 text-xs bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
+                                  <SelectItem value="free">Free</SelectItem>
+                                  <SelectItem value="pro">Pro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <PlanBadge plan={sub.plan} />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-white font-medium">
+                            {sub.amount > 0 ? `₹${sub.amount.toLocaleString('en-IN')}` : 'Free'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <StatusBadge status={sub.status} />
+                              {isExpiring && (
+                                <span className="text-[10px] text-amber-400 flex items-center gap-0.5">
+                                  <Clock className="h-3 w-3" />
+                                  Soon
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <div className="text-white/50 text-xs">
+                              <p>{new Date(sub.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                              <p className="text-white/30">to {new Date(sub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <PaymentModeBadge mode={sub.paymentMode} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {planChangeId === sub.id ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={() => changePlanMutation.mutate({ id: sub.id, plan: newPlan })}
+                                  disabled={changePlanMutation.isPending}
+                                >
+                                  {changePlanMutation.isPending ? 'Saving...' : 'Save'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-white/40 hover:text-white/70"
+                                  onClick={() => { setPlanChangeId(null); setNewPlan('free') }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                onClick={() => { setPlanChangeId(sub.id); setNewPlan(sub.plan) }}
+                              >
+                                Change
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                  <p className="text-xs text-white/40">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-30"
+                      disabled={currentPage <= 1}
+                      onClick={() => setPage(currentPage - 1)}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <Button
+                        key={p}
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          'h-8 w-8 text-xs',
+                          p === currentPage
+                            ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30'
+                            : 'text-white/40 hover:text-white hover:bg-white/5'
+                        )}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-30"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setPage(currentPage + 1)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

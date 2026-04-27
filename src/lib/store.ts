@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type Page =
   | 'dashboard'
@@ -59,33 +60,52 @@ interface AppState {
   setAdminSidebarMobileOpen: (v: boolean) => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentPage: 'dashboard',
-  setCurrentPage: (page) => set({ currentPage: page, sidebarOpen: false }),
-  sidebarOpen: false,
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  sidebarCollapsed: false,
-  toggleSidebarCollapse: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-  pendingSearchQuery: '',
-  setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
-  launchedApp: false,
-  setLaunchedApp: (v) => set({ launchedApp: v }),
-  showAuth: false,
-  setShowAuth: (v) => set({ showAuth: v }),
-  adminPage: null,
-  setAdminPage: (page) => set({ adminPage: page }),
-  adminAuth: {
-    isAuthenticated: false,
-    adminId: null,
-    adminName: null,
-    adminEmail: null,
-    adminRole: null,
-    loginTime: null,
-  },
-  setAdminAuth: (auth) => set({ adminAuth: auth }),
-  adminSidebarCollapsed: false,
-  setAdminSidebarCollapsed: (v) => set({ adminSidebarCollapsed: v }),
-  adminSidebarMobileOpen: false,
-  setAdminSidebarMobileOpen: (v) => set({ adminSidebarMobileOpen: v }),
-}))
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      currentPage: 'dashboard',
+      setCurrentPage: (page) => set({ currentPage: page, sidebarOpen: false }),
+      sidebarOpen: false,
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      sidebarCollapsed: false,
+      toggleSidebarCollapse: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      pendingSearchQuery: '',
+      setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
+      launchedApp: false,
+      setLaunchedApp: (v) => set({ launchedApp: v }),
+      showAuth: false,
+      setShowAuth: (v) => set({ showAuth: v }),
+      adminPage: null,
+      setAdminPage: (page) => set({ adminPage: page }),
+      adminAuth: {
+        isAuthenticated: false,
+        adminId: null,
+        adminName: null,
+        adminEmail: null,
+        adminRole: null,
+        loginTime: null,
+      },
+      setAdminAuth: (auth) => set({ adminAuth: auth }),
+      adminSidebarCollapsed: false,
+      setAdminSidebarCollapsed: (v) => set({ adminSidebarCollapsed: v }),
+      adminSidebarMobileOpen: false,
+      setAdminSidebarMobileOpen: (v) => set({ adminSidebarMobileOpen: v }),
+    }),
+    {
+      name: 'pharmpos-store',
+      storage: createJSONStorage(() => {
+        if (typeof window === 'undefined') return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        }
+        return localStorage
+      }),
+      partialize: (state) => ({
+        adminAuth: state.adminAuth,
+        adminSidebarCollapsed: state.adminSidebarCollapsed,
+      }),
+    }
+  )
+)

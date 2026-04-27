@@ -20,11 +20,13 @@ export const metadata: Metadata = {
   keywords: ["pharmacy", "billing", "inventory", "medical shop", "POS"],
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
       { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/logo.svg", type: "image/svg+xml" },
     ],
+    shortcut: "/favicon.ico",
     apple: "/apple-icon.svg",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

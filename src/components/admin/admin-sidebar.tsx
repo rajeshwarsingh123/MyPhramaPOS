@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-const adminNavItems: { id: string; label: string; icon: LucideIcon; badge?: string }[] = [
+const adminNavItems: { id: string; label: string; icon: LucideIcon; badgeKey?: string }[] = [
   { id: 'admin-dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'admin-users', label: 'Users', icon: Users },
   { id: 'admin-subscriptions', label: 'Subscriptions', icon: CreditCard },
@@ -39,7 +40,7 @@ const adminNavItems: { id: string; label: string; icon: LucideIcon; badge?: stri
   { id: 'admin-invoices', label: 'Invoices', icon: Receipt },
   { id: 'admin-reports', label: 'Reports', icon: BarChart3 },
   { id: 'admin-logs', label: 'System Logs', icon: ScrollText },
-  { id: 'admin-tickets', label: 'Support', icon: MessageSquare, badge: '3' },
+  { id: 'admin-tickets', label: 'Support', icon: MessageSquare, badgeKey: 'tickets' },
   { id: 'admin-announcements', label: 'Announcements', icon: Megaphone },
   { id: 'admin-settings', label: 'Settings', icon: Settings },
   { id: 'admin-pharmacy-monitor', label: 'Pharmacy Data', icon: Building2 },
@@ -50,13 +51,16 @@ function NavItem({
   isActive,
   collapsed,
   onClick,
+  badgeCount,
 }: {
   item: (typeof adminNavItems)[number]
   isActive: boolean
   collapsed: boolean
   onClick: () => void
+  badgeCount?: number
 }) {
   const Icon = item.icon
+  const showBadge = badgeCount !== undefined && badgeCount > 0
 
   if (collapsed) {
     return (
@@ -66,13 +70,20 @@ function NavItem({
             <button
               onClick={onClick}
               className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 mx-auto',
+                'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 mx-auto relative',
                 isActive
                   ? 'bg-purple-500/20 text-purple-300'
                   : 'text-white/60 hover:bg-white/5 hover:text-white/90',
               )}
             >
               <Icon className={cn('h-[18px] w-[18px]', isActive && 'text-purple-400')} />
+              {showBadge && (
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
+                  <span className="relative inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
+                    {badgeCount > 9 ? '9+' : badgeCount}
+                  </span>
+                </span>
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent
@@ -80,6 +91,7 @@ function NavItem({
             className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white text-xs"
           >
             {item.label}
+            {showBadge && <span className="ml-1 text-red-400">({badgeCount})</span>}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -98,9 +110,9 @@ function NavItem({
     >
       <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-purple-400')} />
       <span>{item.label}</span>
-      {item.badge && (
+      {showBadge && (
         <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px] bg-red-500/20 text-red-400">
-          {item.badge}
+          {badgeCount > 9 ? '9+' : badgeCount}
         </Badge>
       )}
     </button>
@@ -117,6 +129,27 @@ export function AdminSidebar() {
     adminSidebarMobileOpen,
     setAdminSidebarMobileOpen,
   } = useAppStore()
+
+  const [ticketBadge, setTicketBadge] = useState<number | undefined>(undefined)
+
+  // Fetch open ticket count for badge
+  useEffect(() => {
+    const fetchBadge = async () => {
+      try {
+        const res = await fetch('/api/admin/tickets?status=open&limit=1')
+        if (res.ok) {
+          const data = await res.json()
+          const tickets = data.tickets || data || []
+          setTicketBadge(tickets.length > 0 ? tickets.length : undefined)
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    fetchBadge()
+    const interval = setInterval(fetchBadge, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleNav = (page: string) => {
     setAdminPage(page as typeof adminPage)
@@ -201,6 +234,7 @@ export function AdminSidebar() {
                 isActive={adminPage === item.id}
                 collapsed={collapsed}
                 onClick={() => handleNav(item.id)}
+                badgeCount={item.badgeKey === 'tickets' ? ticketBadge : undefined}
               />
             ))}
           </nav>

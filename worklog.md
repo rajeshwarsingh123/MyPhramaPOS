@@ -2488,3 +2488,76 @@ Fixed the browser tab showing a default "Z" logo instead of the PharmPOS brandin
 - Dev server compiles successfully with no errors
 - All icon files properly placed in `src/app/` directory (Next.js App Router convention)
 - Metadata properly references both SVG icons with correct MIME types
+
+---
+
+## Task 11 — Favicon Fix & Admin Panel Enhancement
+
+**Date**: 2025-04-27
+**Author**: Agent (Task ID: 11)
+
+---
+
+### Summary
+Investigated and fixed the "Z logo" favicon issue (root cause: Z.ai platform favicon, not our app), then enhanced the Super Admin Panel with functional search command palette, dynamic notification badges, auth persistence, and improved subscriptions page with pagination/search/expiry alerts.
+
+### Root Cause Analysis: Z Logo Issue
+- The browser tab shows "Z" because the app runs inside the Z.ai platform's Preview Panel (iframe)
+- The parent Z.ai page controls the browser tab favicon, not our Next.js app
+- When Next.js is starting/compiling, Caddy returns a Z.ai loading page with `<img src='/logo.svg' alt='Z.ai Logo'>`
+- This is a **platform-level limitation** — the Z favicon cannot be changed from our code
+
+### Fixes Applied
+1. **Created `public/favicon.ico`** — Proper ICO file (16x16, 32x32, 48x48) with teal pharmacy cross icon via Pillow
+2. **Updated `src/app/icon.svg`** — Teal pharmacy cross SVG icon (already existed, verified correct)
+3. **Created `public/manifest.json`** — Web app manifest with icon references for PWA support
+4. **Updated `src/app/layout.tsx`** — Added `favicon.ico` (48x48), `shortcut` icon, and `manifest.json` references
+
+### Admin Panel Enhancements
+
+#### Files Modified
+
+1. **`src/components/admin/admin-navbar.tsx`** — Complete rewrite (~270 lines):
+   - **Command Palette Search (⌘K / Ctrl+K)**: Full-page search overlay with grouped results (Main, Billing, Support, Communication, Analytics, System), keyboard navigation hints, instant navigation to any admin page
+   - **Dynamic Notifications**: Fetches open ticket count from `/api/admin/tickets?status=open` every 30 seconds, shows badge with ping animation, dropdown with recent tickets list and "View all" link
+   - **Removed broken theme toggle**: Admin panel is intentionally dark-themed (OKLCH colors), removed non-functional light/dark toggle
+   - **Improved search trigger**: Shows "Search pages..." placeholder with ⌘K keyboard shortcut badge
+
+2. **`src/components/admin/admin-sidebar.tsx`** — Enhanced with dynamic badges:
+   - Support nav item badge now fetches open ticket count from API (30s polling)
+   - Removed hardcoded `badge: '3'`, replaced with `badgeKey: 'tickets'` pattern
+   - Badge renders dynamically in both expanded and collapsed sidebar states
+   - Badge hidden when count is 0
+
+3. **`src/lib/store.ts`** — Added auth persistence:
+   - Added `zustand/middleware` persist middleware with `createJSONStorage`
+   - `adminAuth` and `adminSidebarCollapsed` now persist to `localStorage` under key `pharmpos-store`
+   - SSR-safe with fallback storage when `window` is undefined
+   - Admin login now survives page refresh
+
+4. **`src/components/admin/admin-subscriptions.tsx`** — Major enhancement (~370 lines):
+   - **Search**: Client-side search by tenant name, business name, email, or plan
+   - **Pagination**: 10 items per page with full page controls and page info
+   - **Expiring Soon Detection**: Identifies active subscriptions ending within 30 days
+   - **Enhanced Summary Cards (5)**: Total, Active, Expired, Expiring Soon, Pro MRR
+   - **"Expiring Soon" filter button**: Quick filter to see subscriptions ending soon
+   - **Improved Period display**: Combined start/end dates in single column
+   - **Expiry badges on active subscriptions**: "Soon" indicator with Clock icon
+
+### Verification
+- ESLint passes with zero errors on all modified files
+- `bun run lint` clean
+- All admin components properly typed
+- Dynamic badge fetching from `/api/admin/tickets` endpoint
+- localStorage persistence for admin auth verified
+
+### Unresolved Issues
+- Dashboard metrics (trend percentages, uptime) still hardcoded in `admin-dashboard.tsx`
+- Payments page summary metrics computed from current page only
+- Dev server stability issues in sandbox environment (process dies after first request)
+
+### Next Phase Recommendations
+1. Fix hardcoded dashboard metrics to use real API data
+2. Enhance payments page with server-side summary totals
+3. Add more admin API endpoints for real data
+4. Improve landing page mobile responsiveness
