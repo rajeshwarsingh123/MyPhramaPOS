@@ -42,7 +42,7 @@ export function AdminShell() {
   const PageComponent = adminPages[adminPage || 'admin-dashboard']
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.015_250)]">
+    <div className="dark flex h-screen overflow-hidden bg-[oklch(0.12_0.015_250)]">
       <AdminSidebar />
 
       {/* Main area */}

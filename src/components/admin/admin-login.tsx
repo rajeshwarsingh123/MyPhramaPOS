@@ -68,7 +68,7 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[oklch(0.12_0.015_250)] overflow-hidden">
+    <div className="dark relative flex min-h-screen items-center justify-center bg-[oklch(0.12_0.015_250)] overflow-hidden">
       {/* Animated background accents */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl animate-pulse" />
