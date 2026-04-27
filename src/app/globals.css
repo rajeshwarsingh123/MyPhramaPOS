@@ -1805,6 +1805,15 @@
   border: none;
 }
 
+/* Reset the global `* { border-border }` inside the landing page
+   so light borders never flash on the dark background. */
+.bg-landing-bg,
+.bg-landing-bg *,
+.bg-landing-bg *::before,
+.bg-landing-bg *::after {
+  border-color: transparent !important;
+}
+
 /* ============ Slow Pulse for Orbs ============ */
 
 @keyframes pulse-slow {
