@@ -321,6 +321,33 @@ export function Sidebar() {
               </Badge>
             </div>
           )}
+
+          {/* Admin Panel Entry */}
+          {collapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setAdminPage('admin-dashboard')}
+                  className="w-9 h-9 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 flex items-center justify-center transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8} className="font-medium">
+                Admin Panel
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={() => setAdminPage('admin-dashboard')}
+              className="group flex items-center gap-2 w-full px-2 py-2 rounded-lg hover:bg-purple-500/10 transition-colors mt-1"
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-medium text-sidebar-foreground/60 group-hover:text-purple-400 transition-colors">
+                Admin Panel
+              </span>
+            </button>
+          )}
         </div>
       </aside>
     </>
