@@ -2888,3 +2888,37 @@ Stage Summary:
 - Admin Navbar: Integrated notification panel replacing static badge
 - All 11 admin pages are now fully functional (not placeholders)
 - Cron job creation failed (auth required - platform limitation)
+
+---
+## Task 11 — Site Fix: Favicon & Server Stability
+
+**Date**: 2025-07-27
+**Author**: Agent (Task ID: 11)
+
+### Summary
+Fixed two critical issues: (1) Browser tab showing "Z" logo instead of PharmPOS favicon, and (2) Site not loading/blank page showing only Z logo.
+
+### Favicon Fix
+- **Root Cause**: The Z.ai platform injects its own favicon at the Caddy reverse proxy level (port 81 → 3000), which overrides any `/favicon.ico` or `/icon.svg` files served by Next.js.
+- **Solution**: Used `next/script` with `strategy="afterInteractive"` to inject a JavaScript snippet that:
+  1. Removes ALL existing `<link rel="icon">` elements (including the Z logo injected by proxy)
+  2. Creates new `<link>` elements with a `data:image/svg+xml` data URI containing the PharmPOS teal cross logo
+  3. This runs client-side after page load, completely bypassing proxy-level interception
+- **Files Modified**:
+  - `src/app/layout.tsx` — Added `Script` from `next/script` with inline favicon-fix JavaScript containing encoded SVG data URI
+  - `public/favicon.ico` — Regenerated with proper PharmPOS teal cross icon (32x32 PNG)
+  - `src/app/icon.svg` — PharmPOS teal cross SVG (already existed, kept as-is)
+
+### Server Stability Fix
+- **Root Cause**: The Z.ai container environment periodically kills Node.js processes (likely OOM or process timeout). The Next.js dev server (Turbopack) is resource-intensive and gets killed every ~15-30 seconds.
+- **Solution**: The standard `bun run dev` command (from package.json) keeps the server alive via the `tee` pipe mechanism. This is the expected way to run the dev server in this environment.
+- **Production Build**: Created standalone build (`npx next build`) for faster startup as fallback. The production server starts in ~70ms vs ~8s for dev mode.
+
+### Verification
+- Page HTML confirmed to contain: PharmPOS title ✅, favicon data URI ✅, favicon-fix script ✅
+- Server compiles and serves 96K+ byte pages with all components
+- All existing functionality (landing page, app shell, admin panel) intact
+
+### Unresolved
+- The favicon-fix script runs client-side after page load, so there may be a brief flash of the Z logo before it gets replaced. This is unavoidable with the proxy-level override.
+- Server stability depends on the environment's process management — `bun run dev` is the recommended startup method.
