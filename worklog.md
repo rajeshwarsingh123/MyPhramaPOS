@@ -1771,3 +1771,23 @@ The globals.css already contains 1768 lines of comprehensive styling including:
 3. Enhanced dark mode testing (QA was only on light mode)
 4. Mobile-responsive QA pass (QA was desktop-only)
 5. Add keyboard shortcuts documentation to onboarding
+---
+Task ID: Round 6 - Sidebar Fix
+Agent: Main Agent
+Task: Fix sidebar not showing on all screens + transparent background issue
+
+Work Log:
+- Analyzed sidebar component (src/components/sidebar.tsx) and app-shell layout
+- Identified root cause: sidebar used `lg:` breakpoint (1024px) but hamburger button used `md:` (768px), leaving 768-1024px range with no sidebar access
+- Identified transparent background: `glass-sidebar` class used `backdrop-filter: blur` with 97% opacity + `pharmacy-cross-pattern` overlay
+- Changed sidebar breakpoint from `lg:` to `md:` (768px) — sidebar now visible on tablets
+- Replaced `glass-sidebar pharmacy-cross-pattern` with solid `bg-sidebar border-r border-sidebar-border` — fully opaque dark background
+- Updated mobile overlay from `lg:hidden` to `md:hidden` to match new breakpoint
+- Updated sidebar footer from `bg-sidebar/50 backdrop-blur-sm` to `bg-sidebar` — fully opaque
+- Verified: lint passes with 0 errors, dev server running, all API endpoints returning 200
+
+Stage Summary:
+- Sidebar now visible on all screens ≥ 768px (was only ≥ 1024px)
+- Sidebar background is now solid dark (oklch(0.22 0.04 163)) — no transparency issues
+- Text contrast is excellent: light foreground (oklch(0.95)) on dark background (oklch(0.22))
+- File modified: src/components/sidebar.tsx

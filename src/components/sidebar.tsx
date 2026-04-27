@@ -94,18 +94,18 @@ export function Sidebar() {
     <>
       {sidebarOpen && isMobile && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-[2px]"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-[2px]"
           onClick={() => setSidebarOpen(false)}
         />
       )}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-64 glass-sidebar text-sidebar-foreground transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto pharmacy-cross-pattern',
+          'fixed top-0 left-0 z-50 h-full w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto border-r border-sidebar-border',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Sidebar Header */}
-        <div className="relative flex h-16 items-center gap-2.5 px-5 border-b border-sidebar-border/60">
+        <div className="relative flex h-16 items-center gap-2.5 px-5 border-b border-sidebar-border">
           {/* Decorative accent line at top */}
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sidebar-primary/80 via-sidebar-primary/40 to-transparent" />
           
@@ -162,7 +162,7 @@ export function Sidebar() {
         </ScrollArea>
 
         {/* Sidebar Footer */}
-        <div className="border-t border-sidebar-border/60 p-3 bg-sidebar/50 backdrop-blur-sm">
+        <div className="border-t border-sidebar-border p-3 bg-sidebar">
           {/* User Info */}
           <div className="flex items-center gap-3 px-2 py-2">
             <div className="avatar-ring shrink-0">
