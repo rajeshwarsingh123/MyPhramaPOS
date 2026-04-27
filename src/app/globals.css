@@ -49,6 +49,9 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-landing-bg: var(--landing-bg);
+  --color-landing-foreground: var(--landing-foreground);
+  --color-landing-muted: var(--landing-muted);
 }
 
 :root {
@@ -1764,4 +1767,96 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ================================================================
+   Landing Page — Dark Premium SaaS Theme
+   ================================================================ */
+
+:root {
+  --landing-bg: oklch(0.11 0.015 163);
+  --landing-foreground: oklch(0.95 0.005 155);
+  --landing-muted: oklch(0.65 0.02 155);
+}
+
+/* ============ Landing Glass Cards ============ */
+
+.glass-landing-card {
+  background: oklch(1 0 0 / 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid oklch(1 0 0 / 0.08);
+}
+
+.glass-landing-card-primary {
+  background: oklch(0.51 0.118 163 / 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.51 0.118 163 / 0.25);
+  box-shadow: 0 0 40px oklch(0.51 0.118 163 / 0.1), 0 0 80px oklch(0.51 0.118 163 / 0.05);
+}
+
+/* ============ Landing Nav ============ */
+
+.glass-landing-nav {
+  background: oklch(0.11 0.015 163 / 0.7);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom: 1px solid oklch(1 0 0 / 0.06);
+}
+
+/* ============ Slow Pulse for Orbs ============ */
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 6s ease-in-out infinite;
+}
+
+/* ============ 3D Perspective Helper ============ */
+
+.perspective-\[800px\] {
+  perspective: 800px;
+}
+
+.perspective-\[1000px\] {
+  perspective: 1000px;
+}
+
+.perspective-\[1200px\] {
+  perspective: 1200px;
+}
+
+/* ============ Smooth scroll ============ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============ Landing page scrollbar ============ */
+
+.bg-landing-bg ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bg-landing-bg ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bg-landing-bg ::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.12);
+  border-radius: 4px;
+}
+
+.bg-landing-bg ::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.2);
 }

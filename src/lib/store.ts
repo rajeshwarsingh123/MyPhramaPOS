@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Page = 
+export type Page =
   | 'dashboard'
   | 'billing'
   | 'medicines'
@@ -23,6 +23,8 @@ interface AppState {
   toggleSidebarCollapse: () => void
   pendingSearchQuery: string
   setPendingSearchQuery: (query: string) => void
+  launchedApp: boolean
+  setLaunchedApp: (v: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -35,4 +37,6 @@ export const useAppStore = create<AppState>((set) => ({
   toggleSidebarCollapse: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   pendingSearchQuery: '',
   setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
+  launchedApp: false,
+  setLaunchedApp: (v) => set({ launchedApp: v }),
 }))
