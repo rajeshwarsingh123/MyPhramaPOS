@@ -13,10 +13,15 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   Cross,
   Check,
   ShieldCheck,
   Sparkles,
+  MailCheck,
+  CheckCircle2,
+  KeyRound,
+  AlertCircle,
 } from 'lucide-react'
 
 /* ═══════════════════════════════════════════════
@@ -72,6 +77,7 @@ function AuthInput({
   value,
   onChange,
   rightElement,
+  disabled = false,
 }: {
   icon: React.ElementType
   type?: string
@@ -79,6 +85,7 @@ function AuthInput({
   value: string
   onChange: (v: string) => void
   rightElement?: React.ReactNode
+  disabled?: boolean
 }) {
   return (
     <div className="relative group">
@@ -90,7 +97,8 @@ function AuthInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 focus:bg-white/[0.07] transition-all duration-200"
+        disabled={disabled}
+        className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 focus:bg-white/[0.07] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {rightElement && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>
@@ -100,10 +108,24 @@ function AuthInput({
 }
 
 /* ═══════════════════════════════════════════════
+   LOADING SPINNER
+   ═══════════════════════════════════════════════ */
+
+function Spinner({ className = '' }: { className?: string }) {
+  return (
+    <motion.div
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      className={`w-4 h-4 border-2 border-white/30 border-t-white rounded-full ${className}`}
+    />
+  )
+}
+
+/* ═══════════════════════════════════════════════
    LOGIN FORM
    ═══════════════════════════════════════════════ */
 
-function LoginForm({ onSwitch }: { onSwitch: () => void }) {
+function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onForgotPassword: () => void }) {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
   const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
   const setAdminPage = useAppStore((s) => s.setAdminPage)
@@ -205,7 +227,11 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
             </div>
             <span className="text-xs text-landing-muted">Remember me</span>
           </label>
-          <button type="button" className="text-xs text-primary/80 hover:text-primary transition-colors font-medium">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs text-primary/80 hover:text-primary transition-colors font-medium"
+          >
             Forgot password?
           </button>
         </div>
@@ -230,11 +256,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-              />
+              <Spinner />
               Signing in...
             </span>
           ) : (
@@ -261,10 +283,435 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
 }
 
 /* ═══════════════════════════════════════════════
+   FORGOT PASSWORD FORM (Multi-step)
+   ═══════════════════════════════════════════════ */
+
+type ForgotStep = 'enter-email' | 'enter-password' | 'success'
+
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const [step, setStep] = useState<ForgotStep>('enter-email')
+  const [email, setEmail] = useState('')
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [userName, setUserName] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const passwordsMatch = confirmPassword.length === 0 || newPassword === confirmPassword
+  const strength = getPasswordStrength(newPassword)
+
+  // Step 1: Verify email
+  const handleVerifyEmail = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address')
+      return
+    }
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Account not found')
+        setLoading(false)
+        return
+      }
+
+      setMaskedEmail(data.maskedEmail || email)
+      setUserName(data.name || '')
+      setIsAdmin(data.isAdmin || false)
+      setStep('enter-password')
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Step 2: Reset password
+  const handleResetPassword = async () => {
+    if (!newPassword) {
+      setError('Please enter a new password')
+      return
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), newPassword }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Password reset failed')
+        setLoading(false)
+        return
+      }
+
+      setStep('success')
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Back to login from success
+  const handleBackToLogin = () => {
+    setStep('enter-email')
+    setEmail('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setMaskedEmail('')
+    setUserName('')
+    setIsAdmin(false)
+    setError('')
+    onBack()
+  }
+
+  return (
+    <motion.div
+      key="forgot-password"
+      initial={{ opacity: 0, x: 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -30 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={step === 'enter-email' ? onBack : () => {
+          setStep('enter-email')
+          setNewPassword('')
+          setConfirmPassword('')
+          setError('')
+        }}
+        className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
+      >
+        <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+        Back to login
+      </button>
+
+      <AnimatePresence mode="wait">
+        {/* ── Step 1: Enter Email ── */}
+        {step === 'enter-email' && (
+          <motion.div
+            key="step-email"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-landing-foreground">Forgot Password?</h2>
+                <p className="text-sm text-landing-muted">No worries, we&apos;ll help you reset it</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mt-6">
+              <div>
+                <AuthInput
+                  icon={Mail}
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={setEmail}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyEmail() }}
+                />
+              </div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {error}
+                </motion.div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleVerifyEmail}
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner />
+                    Verifying...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+
+              <p className="text-[11px] text-landing-muted/60 text-center leading-relaxed">
+                Enter the email associated with your account. We&apos;ll verify it and let you set a new password.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Step 2: Enter New Password ── */}
+        {step === 'enter-password' && (
+          <motion.div
+            key="step-password"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <MailCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-landing-foreground">Account Found</h2>
+                <p className="text-sm text-landing-muted">
+                  {userName
+                    ? <>Welcome back, <span className="text-landing-foreground font-medium">{userName}</span></>
+                    : <>Email verified</>
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Account info card */}
+            <div className="mt-5 px-4 py-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                {isAdmin ? <ShieldCheck className="w-4 h-4 text-primary" /> : <Cross className="w-4 h-4 text-primary" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-landing-muted">{isAdmin ? 'Admin Account' : 'Pharmacy Account'}</p>
+                <p className="text-sm font-medium text-landing-foreground truncate">{maskedEmail}</p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-auto" />
+            </div>
+
+            <div className="space-y-4 mt-5">
+              <div>
+                <AuthInput
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(v) => { setNewPassword(v); setError('') }}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  }
+                />
+                <StrengthBar password={newPassword} />
+              </div>
+
+              <div>
+                <AuthInput
+                  icon={Lock}
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(v) => { setConfirmPassword(v); setError('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleResetPassword() }}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  }
+                />
+                {!passwordsMatch && confirmPassword.length > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-[11px] text-red-400 mt-1.5 flex items-center gap-1"
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Passwords do not match
+                  </motion.p>
+                )}
+                {passwordsMatch && confirmPassword.length > 0 && newPassword.length >= 6 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1"
+                  >
+                    <Check className="w-3 h-3" />
+                    Passwords match
+                  </motion.p>
+                )}
+              </div>
+
+              {/* Password requirements */}
+              <div className="px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] space-y-1.5">
+                <p className="text-[11px] text-landing-muted/60 font-medium">Password requirements:</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <RequirementCheck label="At least 6 characters" met={newPassword.length >= 6} />
+                  <RequirementCheck label="Uppercase letter" met={/[A-Z]/.test(newPassword)} />
+                  <RequirementCheck label="Number" met={/[0-9]/.test(newPassword)} />
+                  <RequirementCheck label="Special character" met={/[^A-Za-z0-9]/.test(newPassword)} />
+                </div>
+              </div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {error}
+                </motion.div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleResetPassword}
+                disabled={loading || !passwordsMatch || newPassword.length < 6}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner />
+                    Resetting password...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Reset Password
+                    <KeyRound className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Step 3: Success ── */}
+        {step === 'success' && (
+          <motion.div
+            key="step-success"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.35 }}
+            className="flex flex-col items-center text-center py-4"
+          >
+            {/* Success icon with animated ring */}
+            <div className="relative mb-5">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.15, type: 'spring', stiffness: 200 }}
+                className="w-20 h-20 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 flex items-center justify-center"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: 'spring', stiffness: 250 }}
+                  className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center"
+                >
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                </motion.div>
+              </motion.div>
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 2.5, opacity: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="absolute inset-0 w-20 h-20 rounded-full border-2 border-emerald-400/40"
+              />
+            </div>
+
+            <h2 className="text-2xl font-bold text-landing-foreground mb-2">Password Reset!</h2>
+            <p className="text-sm text-landing-muted max-w-[260px] leading-relaxed mb-8">
+              Your password has been changed successfully. You can now sign in with your new password.
+            </p>
+
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleBackToLogin}
+              className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300"
+            >
+              <span className="flex items-center justify-center gap-2">
+                Back to Sign In
+                <ArrowRight className="w-4 h-4" />
+              </span>
+            </motion.button>
+
+            <p className="text-[11px] text-landing-muted/50 mt-4">
+              Use your email and new password to log in
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+/* ═══════════════════════════════════════════════
+   PASSWORD REQUIREMENT CHECK
+   ═══════════════════════════════════════════════ */
+
+function RequirementCheck({ label, met }: { label: string; met: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <motion.div
+        animate={{ scale: met ? 1 : 0.8, opacity: met ? 1 : 0.3 }}
+        transition={{ duration: 0.2 }}
+        className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+        style={{ backgroundColor: met ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)' }}
+      >
+        {met && <Check className="w-2 h-2 text-emerald-400" />}
+      </motion.div>
+      <span className={`text-[10px] transition-colors duration-200 ${met ? 'text-emerald-400/80' : 'text-landing-muted/40'}`}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════
    SIGNUP FORM
    ═══════════════════════════════════════════════ */
 
-function SignupForm({ onSwitch }: { onSwitch: () => void }) {
+function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onForgotPassword: () => void }) {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
   const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
   const [fullName, setFullName] = useState('')
@@ -285,10 +732,30 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
     if (!fullName || !pharmacyName || !email || !phone || !password || !confirmPassword || !agreed) return
     if (password !== confirmPassword) return
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setLoading(false)
-    setShowAuth(false)
-    setLaunchedApp(true)
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fullName,
+          businessName: pharmacyName,
+          email,
+          phone,
+          password,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Signup error:', data.error)
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+      setShowAuth(false)
+      setLaunchedApp(true)
+    } catch {
+      setLoading(false)
+    }
   }
 
   return (
@@ -388,11 +855,7 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-              />
+              <Spinner />
               Creating account...
             </span>
           ) : (
@@ -494,9 +957,13 @@ function BrandShowcase() {
    MAIN AUTH PAGE OVERLAY
    ═══════════════════════════════════════════════ */
 
+type AuthMode = 'login' | 'signup' | 'forgot-password'
+
 export function AuthPage() {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<AuthMode>('login')
+
+  const isForgotPassword = mode === 'forgot-password'
 
   return (
     <motion.div
@@ -518,7 +985,7 @@ export function AuthPage() {
         transition={{ delay: 0.2 }}
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setShowAuth(false)}
+        onClick={() => { setShowAuth(false); if (isForgotPassword) setMode('login') }}
         className="fixed top-5 right-5 z-[101] w-10 h-10 rounded-full glass-landing-card flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all duration-200"
       >
         <X className="w-5 h-5" />
@@ -551,30 +1018,47 @@ export function AuthPage() {
                 <span className="text-base font-bold text-landing-foreground">PharmPOS</span>
               </div>
 
-              {/* Mode toggle tabs */}
-              <div className="flex mb-8 rounded-xl bg-white/5 p-1 border border-white/5">
-                {(['login', 'signup'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setMode(tab)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      mode === tab
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-white/40 hover:text-white/60'
-                    }`}
-                  >
-                    {tab === 'login' ? 'Sign In' : 'Sign Up'}
-                  </button>
-                ))}
-              </div>
+              {/* Mode toggle tabs — hidden during forgot password */}
+              {!isForgotPassword && (
+                <div className="flex mb-8 rounded-xl bg-white/5 p-1 border border-white/5">
+                  {(['login', 'signup'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setMode(tab)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        mode === tab
+                          ? 'bg-white/10 text-white shadow-sm'
+                          : 'text-white/40 hover:text-white/60'
+                      }`}
+                    >
+                      {tab === 'login' ? 'Sign In' : 'Sign Up'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Forms with AnimatePresence */}
               <AnimatePresence mode="wait">
-                {mode === 'login' ? (
-                  <LoginForm onSwitch={() => setMode('signup')} />
-                ) : (
-                  <SignupForm onSwitch={() => setMode('login')} />
+                {mode === 'login' && (
+                  <LoginForm
+                    key="login-form"
+                    onSwitch={() => setMode('signup')}
+                    onForgotPassword={() => setMode('forgot-password')}
+                  />
+                )}
+                {mode === 'signup' && (
+                  <SignupForm
+                    key="signup-form"
+                    onSwitch={() => setMode('login')}
+                    onForgotPassword={() => setMode('forgot-password')}
+                  />
+                )}
+                {mode === 'forgot-password' && (
+                  <ForgotPasswordForm
+                    key="forgot-form"
+                    onBack={() => setMode('login')}
+                  />
                 )}
               </AnimatePresence>
             </div>

@@ -3092,3 +3092,72 @@ Removed the Admin Panel entry button from the user-facing sidebar and updated th
 - ESLint passes with zero errors
 - Server compiles successfully (HTTP 200)
 - Admin panel link completely removed from user sidebar
+
+---
+
+## Task — Forgot Password Flow & Auth Improvements
+
+**Date**: 2025-07-28
+**Author**: Agent
+
+---
+
+### Summary
+Made the "Forgot Password" button on the login page fully functional with a complete 3-step password reset flow. Also improved signup to call the real registration API, and verified that admin panel links were already removed from the user sidebar and super admin login through the regular login page was already working.
+
+### Files Modified
+
+1. **`src/components/auth-page.tsx`** — Major rewrite with forgot password flow:
+   - **ForgotPasswordForm component**: Multi-step password reset with 3 stages:
+     - Step 1 (enter-email): User enters email address, calls `POST /api/auth/forgot-password/verify` to check if account exists in both Admin and Tenant tables
+     - Step 2 (enter-password): Shows verified account info (masked email, account type badge, user name), user enters new password with strength indicator, requirement checklist, and confirm password field
+     - Step 3 (success): Animated success screen with CheckCircle2 icon, pulsing ring animation, and "Back to Sign In" button
+   - **RequirementCheck component**: Individual password requirement indicators (6 chars, uppercase, number, special char) with animated check marks
+   - **Spinner component**: Reusable loading spinner extracted from inline code
+   - **LoginForm**: Added `onForgotPassword` prop, wired to the "Forgot password?" button
+   - **SignupForm**: Now calls real `POST /api/auth/register` API instead of fake timeout
+   - **AuthPage**: Updated mode state to `'login' | 'signup' | 'forgot-password'`, hides tab bar during forgot password, proper AnimatePresence transitions for all 3 modes
+   - Added new icons: `ArrowLeft`, `MailCheck`, `CheckCircle2`, `KeyRound`, `AlertCircle`
+
+2. **`src/app/api/auth/forgot-password/reset/route.ts`** — Enhanced to handle Admin accounts:
+   - Now checks BOTH Admin and Tenant tables (previously only Tenant)
+   - Suspended/deactivated status checks for both account types
+   - Supabase admin API path updates both tenant and admin records
+   - Local fallback path handles Admin password reset
+   - Proper logging for all reset methods
+   - Returns clear error messages for Supabase-locked accounts
+
+### Key Features
+
+**Forgot Password Flow**:
+- Email verification step with loading state and error handling
+- Shows masked email (e.g., "jo***@example.com") and account type badge
+- Password strength indicator (weak/medium/strong with animated bar)
+- Real-time password requirement checklist with animated check marks
+- Password match indicator (green "Passwords match" / red "Passwords do not match")
+- Show/hide password toggles for both fields
+- Keyboard support (Enter to submit)
+- Step navigation with back button to return to email entry
+- Success screen with animated ring effect
+- Full error handling for all API responses
+
+**Backend Enhancements**:
+- Admin account password reset support
+- Suspended/deactivated account detection
+- Supabase + local fallback paths for both account types
+- System logging for audit trail
+
+### Verification
+- ESLint passes with zero errors
+- Dev server compiles successfully (HTTP 200)
+- All existing functionality preserved
+- Super admin login through regular login page confirmed working (was already implemented)
+- No admin panel link in user sidebar (was already clean)
+
+### Design Decisions
+- Multi-step flow with back navigation instead of modal dialogs for better UX
+- Password requirements displayed in a 2-column grid for compact layout
+- Account type indicator (Admin vs Pharmacy) shown after email verification for user confidence
+- Animated success screen provides clear feedback before redirecting back to login
+- Close button (X) on auth overlay resets to login mode when coming from forgot password
+
