@@ -3005,3 +3005,43 @@ Configured and activated Supabase Auth for the PharmPOS platform. Connected `raj
 - **Anon key non-functional**: The Supabase project's anon public key returns "Invalid API key". Root cause unclear (possibly rotated key or project setting). All operations use service role key as workaround.
 - **Password update on every login**: The admin auth route currently calls `updateUserById` with the password on every login to verify it. This is by design to handle migration but could be optimized with a session-based approach.
 
+
+---
+
+## Task 11 — Server Recovery & Verification
+
+**Date**: 2025-07-22
+**Author**: Main Agent (Session Recovery)
+
+---
+
+### Summary
+Recovered the PharmPOS development server from a non-running state. Verified all project files, database, and environment configuration are intact. Successfully started the Next.js 16.1.3 (Turbopack) dev server and confirmed the site renders correctly with HTTP 200.
+
+### Actions Taken
+1. Read worklog (3007 lines) to understand full project history (Tasks 2-10)
+2. Verified `.env.local` — Supabase credentials present (URL, anon key, service_role key)
+3. Verified database — ran `bun run db:push` successfully, Prisma Client generated
+4. Verified all key source files exist:
+   - `src/app/page.tsx` (routing: LandingPage → AuthPage → AppShell → AdminShell)
+   - `src/components/landing-page.tsx`
+   - `src/components/app-shell.tsx`
+   - `src/components/admin/admin-shell.tsx`
+   - `src/components/auth-page.tsx`
+   - `src/lib/store.ts`, `src/lib/db.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`
+5. Started dev server: `bun run dev` on port 3000
+6. Verified compilation: **GET / 200** in ~3.5s (first compile), ~80ms (subsequent)
+
+### Project Status
+- **Server**: Running on port 3000, compiled successfully
+- **Database**: SQLite, schema pushed, Prisma Client v6.19.2
+- **Supabase**: Credentials configured (URL + anon key + service_role key)
+- **Pages**: Landing page, Auth, App Shell (Dashboard, Billing, Medicines, Stock, Purchases, Reports, Customers, Settings, etc.), Admin Shell
+- **API Routes**: ~25+ routes covering auth, dashboard, medicines, billing, stock, purchases, reports, customers, settings, admin
+
+### Known Issues
+- Supabase API key 401 error from previous session (anon key) — not yet re-tested with service_role key
+- Background process persistence between bash tool invocations (environment limitation, not code issue)
+
+### Cron Job
+- Created recurring webDevReview task (every 15 minutes, Job ID: 120442)
