@@ -102,6 +102,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 })
     }
 
+    if (tenant.status === 'pending_verification') {
+      return NextResponse.json({ error: 'Please verify your email first. Check your inbox for the verification code.' }, { status: 403 })
+    }
+
     // ── Tenant Supabase Auth Path ──
     if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase) {
       const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({

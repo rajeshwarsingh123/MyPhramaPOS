@@ -961,12 +961,19 @@ function RequirementCheck({ label, met }: { label: string; met: boolean }) {
 }
 
 /* ═══════════════════════════════════════════════
-   SIGNUP FORM
+   SIGNUP FORM (OTP-based 2-step flow)
    ═══════════════════════════════════════════════ */
+
+type SignupStep = 'enter-details' | 'verify-otp' | 'success'
 
 function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onForgotPassword: () => void }) {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
   const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+
+  // Step state
+  const [step, setStep] = useState<SignupStep>('enter-details')
+
+  // Step 1: Form fields
   const [fullName, setFullName] = useState('')
   const [pharmacyName, setPharmacyName] = useState('')
   const [email, setEmail] = useState('')
@@ -976,14 +983,34 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  // Step 2: OTP verification
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  // Shared
   const [loading, setLoading] = useState(false)
 
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword
-  const passwordStrength = getPasswordStrength(password)
 
+  // ── Step 1: Submit signup form ──
   const handleSignup = async () => {
-    if (!fullName || !pharmacyName || !email || !phone || !password || !confirmPassword || !agreed) return
-    if (password !== confirmPassword) return
+    if (!fullName || !pharmacyName || !email || !phone || !password || !confirmPassword || !agreed) {
+      setFormError('Please fill in all fields and agree to the terms')
+      return
+    }
+    if (password !== confirmPassword) {
+      setFormError('Passwords do not match')
+      return
+    }
+    if (password.length < 6) {
+      setFormError('Password must be at least 6 characters')
+      return
+    }
+    setFormError('')
     setLoading(true)
     try {
       const res = await fetch('/api/auth/register', {
@@ -998,17 +1025,115 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
         }),
       })
       const data = await res.json()
+
       if (!res.ok) {
-        console.error('Signup error:', data.error)
+        setFormError(data.error || 'Registration failed')
         setLoading(false)
         return
       }
-      setLoading(false)
-      setShowAuth(false)
-      setLaunchedApp(true)
+
+      // Move to OTP verification step
+      setMaskedEmail(data.maskedEmail || email)
+      setOtp('')
+      setOtpError('')
+      setResendCooldown(60)
+      setStep('verify-otp')
     } catch {
+      setFormError('Something went wrong. Please try again.')
+    } finally {
       setLoading(false)
     }
+  }
+
+  // ── Step 2: Verify OTP ──
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      setOtpError('Please enter the complete 6-digit code')
+      return
+    }
+    setOtpError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/verify-signup-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), otp }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setOtpError(data.error || 'Verification failed')
+        setLoading(false)
+        return
+      }
+
+      setStep('success')
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Resend OTP ──
+  const handleResendOtp = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/resend-signup-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setOtpError(data.error || 'Failed to resend code')
+        setLoading(false)
+        return
+      }
+
+      setOtp('')
+      setOtpError('')
+      setResendCooldown(60)
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Back navigation ──
+  const handleBack = () => {
+    if (step === 'enter-details') {
+      onSwitch()
+    } else if (step === 'verify-otp') {
+      setStep('enter-details')
+      setOtp('')
+      setOtpError('')
+    }
+  }
+
+  // ── Success → go to login ──
+  const handleGoToLogin = () => {
+    setStep('enter-details')
+    setFullName('')
+    setPharmacyName('')
+    setEmail('')
+    setPhone('')
+    setPassword('')
+    setConfirmPassword('')
+    setAgreed(false)
+    setOtp('')
+    setMaskedEmail('')
+    setFormError('')
+    setOtpError('')
+    setShowAuth(false)
+    // Brief delay then show login
+    setTimeout(() => {
+      setShowAuth(true)
+      // The parent will handle switching to login mode
+      onSwitch()
+    }, 100)
   }
 
   return (
@@ -1019,117 +1144,355 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
       exit={{ opacity: 0, x: -30 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
-      <h2 className="text-2xl font-bold text-landing-foreground mb-1">Create your account</h2>
-      <p className="text-sm text-landing-muted mb-7">Get started with PharmPOS for free</p>
-
-      <div className="space-y-3.5 max-h-[52vh] overflow-y-auto pr-1 scroll-container">
-        <AuthInput icon={User} type="text" placeholder="Full Name" value={fullName} onChange={setFullName} />
-        <AuthInput icon={Building2} type="text" placeholder="Pharmacy Name" value={pharmacyName} onChange={setPharmacyName} />
-        <AuthInput icon={Mail} type="email" placeholder="Email address" value={email} onChange={setEmail} />
-        <AuthInput icon={Phone} type="tel" placeholder="Phone Number" value={phone} onChange={setPhone} />
-
-        <div>
-          <AuthInput
-            icon={Lock}
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Password"
-            value={password}
-            onChange={setPassword}
-            rightElement={
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-white/30 hover:text-white/60 transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            }
-          />
-          <StrengthBar password={password} />
-        </div>
-
-        <div>
-          <AuthInput
-            icon={Lock}
-            type={showConfirm ? 'text' : 'password'}
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            rightElement={
-              <button
-                type="button"
-                onClick={() => setShowConfirm(!showConfirm)}
-                className="text-white/30 hover:text-white/60 transition-colors"
-              >
-                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            }
-          />
-          {!passwordsMatch && confirmPassword.length > 0 && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-[11px] text-red-400 mt-1"
-            >
-              Passwords do not match
-            </motion.p>
-          )}
-        </div>
-
-        <label className="flex items-start gap-2.5 cursor-pointer group py-1">
-          <div
-            onClick={() => setAgreed(!agreed)}
-            className={`w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-all duration-200 shrink-0 ${
-              agreed
-                ? 'bg-primary border-primary'
-                : 'border-white/20 group-hover:border-white/40'
-            }`}
-          >
-            {agreed && <Check className="w-2.5 h-2.5 text-white" />}
-          </div>
-          <span className="text-xs text-landing-muted leading-relaxed">
-            I agree to the{' '}
-            <button type="button" className="text-primary/80 hover:text-primary transition-colors font-medium">
-              Terms &amp; Conditions
-            </button>{' '}
-            and{' '}
-            <button type="button" className="text-primary/80 hover:text-primary transition-colors font-medium">
-              Privacy Policy
-            </button>
-          </span>
-        </label>
-
-        <motion.button
-          whileHover={{ scale: 1.02, y: -1 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSignup}
-          disabled={loading || !agreed || !passwordsMatch}
-          className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <Spinner />
-              Creating account...
-            </span>
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              Create Account
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </motion.button>
-      </div>
-
-      <p className="text-center text-sm text-landing-muted mt-5">
-        Already have an account?{' '}
+      {/* Back button */}
+      {step !== 'success' && (
         <button
           type="button"
-          onClick={onSwitch}
-          className="text-primary hover:text-primary/80 font-semibold transition-colors"
+          onClick={handleBack}
+          className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
         >
-          Log in
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          {step === 'enter-details' ? 'Back to login' : 'Change details'}
         </button>
-      </p>
+      )}
+
+      <AnimatePresence mode="wait">
+        {/* ═══ Step 1: Enter Details ═══ */}
+        {step === 'enter-details' && (
+          <motion.div
+            key="signup-details"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <h2 className="text-2xl font-bold text-landing-foreground mb-1">Create your account</h2>
+            <p className="text-sm text-landing-muted mb-6">Get started with PharmPOS for free</p>
+
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1 scroll-container">
+              <AuthInput icon={User} type="text" placeholder="Full Name" value={fullName} onChange={setFullName} />
+              <AuthInput icon={Building2} type="text" placeholder="Pharmacy Name" value={pharmacyName} onChange={setPharmacyName} />
+              <AuthInput icon={Mail} type="email" placeholder="Email address" value={email} onChange={setEmail} />
+              <AuthInput icon={Phone} type="tel" placeholder="Phone Number" value={phone} onChange={setPhone} />
+
+              <div>
+                <AuthInput
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={setPassword}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  }
+                />
+                <StrengthBar password={password} />
+              </div>
+
+              <div>
+                <AuthInput
+                  icon={Lock}
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  }
+                />
+                {!passwordsMatch && confirmPassword.length > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-[11px] text-red-400 mt-1.5 flex items-center gap-1"
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Passwords do not match
+                  </motion.p>
+                )}
+              </div>
+
+              {/* Password requirements */}
+              <div className="px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] space-y-1.5">
+                <p className="text-[11px] text-landing-muted/60 font-medium">Password requirements:</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <RequirementCheck label="At least 6 characters" met={password.length >= 6} />
+                  <RequirementCheck label="Uppercase letter" met={/[A-Z]/.test(password)} />
+                  <RequirementCheck label="Number" met={/[0-9]/.test(password)} />
+                  <RequirementCheck label="Special character" met={/[^A-Za-z0-9]/.test(password)} />
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2.5 cursor-pointer group py-1">
+                <div
+                  onClick={() => setAgreed(!agreed)}
+                  className={`w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-all duration-200 shrink-0 ${
+                    agreed
+                      ? 'bg-primary border-primary'
+                      : 'border-white/20 group-hover:border-white/40'
+                  }`}
+                >
+                  {agreed && <Check className="w-2.5 h-2.5 text-white" />}
+                </div>
+                <span className="text-xs text-landing-muted leading-relaxed">
+                  I agree to the{' '}
+                  <button type="button" className="text-primary/80 hover:text-primary transition-colors font-medium">
+                    Terms &amp; Conditions
+                  </button>{' '}
+                  and{' '}
+                  <button type="button" className="text-primary/80 hover:text-primary transition-colors font-medium">
+                    Privacy Policy
+                  </button>
+                </span>
+              </label>
+
+              {formError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {formError}
+                </motion.div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSignup}
+                disabled={loading || !agreed || !passwordsMatch || !fullName || !pharmacyName || !email || !phone || !password || !confirmPassword}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner />
+                    Creating account...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Create Account
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+            </div>
+
+            <p className="text-center text-sm text-landing-muted mt-5">
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={onSwitch}
+                className="text-primary hover:text-primary/80 font-semibold transition-colors"
+              >
+                Log in
+              </button>
+            </p>
+          </motion.div>
+        )}
+
+        {/* ═══ Step 2: Verify OTP ═══ */}
+        {step === 'verify-otp' && (
+          <motion.div
+            key="signup-otp"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <MailCheck className="w-5 h-5 text-sky-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-landing-foreground">Verify Your Email</h2>
+                <p className="text-sm text-landing-muted">
+                  We sent a code to <span className="text-landing-foreground font-medium">{maskedEmail}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Email preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="mt-5 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
+            >
+              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-400/60" />
+                <div className="w-2 h-2 rounded-full bg-amber-400/60" />
+                <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
+                <span className="ml-2 text-[10px] text-landing-muted/50 font-mono">mail.pharmpos.com</span>
+              </div>
+              <div className="p-4">
+                <p className="text-[11px] text-landing-muted/40 mb-1">From: PharmPOS &lt;noreply@pharmpos.com&gt;</p>
+                <p className="text-[11px] text-landing-muted/40 mb-2">To: {maskedEmail}</p>
+                <p className="text-sm text-landing-foreground font-medium">Welcome to PharmPOS!</p>
+                <p className="text-xs text-landing-muted mt-1.5 leading-relaxed">
+                  Your 6-digit verification code is:
+                </p>
+                <div className="mt-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-center">
+                  <span className="text-xl font-bold font-mono tracking-[0.3em] text-primary">
+                    {/* OTP shown here — in production, only sent to email */}
+                    {'••••••'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-landing-muted/40 mt-2 leading-relaxed">
+                  Enter this code below to activate your account.
+                </p>
+              </div>
+            </motion.div>
+
+            <div className="space-y-4 mt-5">
+              <div>
+                <p className="text-xs text-landing-muted mb-3 text-center font-medium">Enter verification code</p>
+                <OtpInput value={otp} onChange={(v) => { setOtp(v); setOtpError('') }} error={!!otpError} />
+              </div>
+
+              {otpError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {otpError}
+                </motion.div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleVerifyOtp}
+                disabled={loading || otp.length !== 6}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner />
+                    Verifying...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Verify &amp; Activate
+                    <CheckCircle2 className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+
+              {/* Resend / Timer */}
+              <div className="flex items-center justify-center gap-2 text-xs">
+                {resendCooldown > 0 ? (
+                  <span className="text-landing-muted/60">
+                    Resend code in <CountdownTimer seconds={resendCooldown} onExpire={() => setResendCooldown(0)} />
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="text-primary/80 hover:text-primary font-medium transition-colors disabled:opacity-50"
+                  >
+                    Didn&apos;t receive the code? Resend
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[11px] text-landing-muted/40 text-center leading-relaxed">
+                The code expires in 10 minutes. Check your spam folder if you don&apos;t see it.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ Step 3: Success ═══ */}
+        {step === 'success' && (
+          <motion.div
+            key="signup-success"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.35 }}
+            className="flex flex-col items-center text-center py-4"
+          >
+            <div className="relative mb-5">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.15, type: 'spring', stiffness: 200 }}
+                className="w-20 h-20 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 flex items-center justify-center"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: 'spring', stiffness: 250 }}
+                  className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center"
+                >
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                </motion.div>
+              </motion.div>
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 2.5, opacity: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="absolute inset-0 w-20 h-20 rounded-full border-2 border-emerald-400/40"
+              />
+            </div>
+
+            <h2 className="text-2xl font-bold text-landing-foreground mb-2">Account Created!</h2>
+            <p className="text-sm text-landing-muted max-w-[260px] leading-relaxed mb-3">
+              Your email has been verified. Welcome to PharmPOS!
+            </p>
+
+            {/* Quick stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+              className="w-full mb-6 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-medium text-emerald-400">Free 30-day trial activated</p>
+                  <p className="text-[11px] text-landing-muted truncate">{maskedEmail}</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleGoToLogin}
+              className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300"
+            >
+              <span className="flex items-center justify-center gap-2">
+                Continue to Sign In
+                <ArrowRight className="w-4 h-4" />
+              </span>
+            </motion.button>
+
+            <p className="text-[11px] text-landing-muted/50 mt-4">
+              Use your email and password to log in
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

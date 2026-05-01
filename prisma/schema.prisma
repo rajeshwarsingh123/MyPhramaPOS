@@ -310,6 +310,7 @@ model PasswordResetToken {
   otp       String   // 6-digit OTP code
   userType  String   // admin, tenant
   userId    String?  // Admin.id or Tenant.id
+  purpose   String   @default("password_reset") // password_reset, signup_verification
   isUsed    Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())

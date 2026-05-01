@@ -3279,3 +3279,34 @@ Rebuilt the forgot password flow to use a secure 3-step OTP verification process
 - ESLint passes with zero errors
 - Dev server compiles successfully
 
+---
+Task ID: 11
+Agent: Main Agent
+Task: Implement OTP-based signup system with email verification
+
+Work Log:
+- Analyzed current auth system: login, signup (direct), forgot password (OTP-based)
+- Added `purpose` field to `PasswordResetToken` model in Prisma schema (values: password_reset, signup_verification)
+- Pushed schema changes with `prisma db push`
+- Rewrote `/api/auth/register` endpoint: creates Supabase user (unconfirmed) + local Tenant (status: pending_verification) + generates 6-digit OTP
+- Created `/api/auth/verify-signup-otp` endpoint: verifies OTP, confirms Supabase user, activates Tenant (status: trial)
+- Created `/api/auth/resend-signup-otp` endpoint: rate-limited OTP resend (60s cooldown)
+- Updated `/api/auth/login` endpoint: blocks unverified tenants with clear error message
+- Completely rewrote `SignupForm` component to 2-step flow:
+  - Step 1: Enter details (name, pharmacy, email, phone, password, confirm, agree to terms)
+  - Step 2: Enter 6-digit OTP with email preview, countdown timer, resend option
+  - Step 3: Success screen with trial activation badge → redirects to login
+- Fixed Turbopack + Prisma compatibility by adding `serverExternalPackages` to next.config.ts
+- Fixed Prisma client hash resolution issue by removing `output: "standalone"` and regenerating client
+- Re-seeded super admin after DB reset
+- Ran complete E2E test suite: signup → verify OTP → login → unverified blocked → resend rate limiting
+
+Stage Summary:
+- All 5 test cases pass successfully
+- OTP-based signup flow fully functional end-to-end
+- Unverified users cannot log in (proper security)
+- Rate limiting on OTP resend (60 seconds)
+- OTP expires in 10 minutes
+- Email preview UI shows simulated email with masked code
+- Password strength indicator and requirements checklist included in signup form
+- Zero ESLint errors
