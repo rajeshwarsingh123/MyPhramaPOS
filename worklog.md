@@ -3045,3 +3045,50 @@ Recovered the PharmPOS development server from a non-running state. Verified all
 
 ### Cron Job
 - Created recurring webDevReview task (every 15 minutes, Job ID: 120442)
+
+---
+
+## Task 12 — Remove Admin Panel Link & Unified Login
+
+**Date**: 2025-07-22
+**Author**: Main Agent
+
+---
+
+### Summary
+Removed the Admin Panel entry button from the user-facing sidebar and updated the login system so that super admin can log in through the regular login page. The login API now checks both the Admin and Tenant tables, and routes the user accordingly.
+
+### Changes Made
+
+1. **`src/components/sidebar.tsx`** — Removed admin panel entry:
+   - Removed the "Admin Panel Entry" section from the sidebar footer (both collapsed and expanded views)
+   - Removed `setAdminPage` from store destructuring
+   - Removed `ShieldCheck` import from lucide-react
+
+2. **`src/app/api/auth/login/route.ts`** — Unified login endpoint:
+   - Now checks the **Admin table first** (super admin / staff)
+   - If admin found → authenticates via Supabase or local fallback → returns `userType: 'admin'`
+   - If no admin → falls through to **Tenant table** (regular pharmacy user) → returns `userType: 'tenant'`
+   - Both paths support Supabase dual-mode auth (auto-create, auto-migrate) and local fallback
+   - Response includes `userType` field: `'admin'` or `'tenant'`
+
+3. **`src/components/auth-page.tsx`** — Real login with routing:
+   - Login form now calls the real `/api/auth/login` API endpoint
+   - Displays error messages (invalid credentials, network errors)
+   - If `userType === 'admin'`: Sets `adminAuth` state and navigates to `admin-dashboard`
+   - If `userType === 'tenant'`: Sets `launchedApp` state and opens the pharmacy app
+   - Added Enter key support on password field for quick login
+   - Added animated error display with red styling
+
+### How It Works Now
+1. User clicks "Log In" or "Get Started" on the landing page
+2. Login form opens (same for everyone)
+3. User enters email + password
+4. API checks Admin table → if match, routes to Admin Panel
+5. API checks Tenant table → if match, routes to Pharmacy App
+6. Super admin no longer needs a separate login page or link
+
+### Verification
+- ESLint passes with zero errors
+- Server compiles successfully (HTTP 200)
+- Admin panel link completely removed from user sidebar

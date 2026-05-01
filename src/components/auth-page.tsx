@@ -106,20 +106,58 @@ function AuthInput({
 function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
   const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
+  const setAdminPage = useAppStore((s) => s.setAdminPage)
+  const setAdminAuth = useAppStore((s) => s.setAdminAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleLogin = async () => {
-    if (!email || !password) return
+    if (!email || !password) {
+      setError('Please enter email and password')
+      return
+    }
+    setError('')
     setLoading(true)
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 800))
-    setLoading(false)
-    setShowAuth(false)
-    setLaunchedApp(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      setShowAuth(false)
+
+      if (data.userType === 'admin') {
+        // Super admin / staff — route to admin panel
+        setAdminAuth({
+          isAuthenticated: true,
+          adminId: data.id,
+          adminName: data.name,
+          adminEmail: data.email,
+          adminRole: data.role,
+          loginTime: data.lastLogin,
+        })
+        setAdminPage('admin-dashboard')
+      } else {
+        // Regular tenant — route to pharmacy app
+        setLaunchedApp(true)
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -136,12 +174,12 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
       <div className="space-y-4">
         <AuthInput icon={Mail} type="email" placeholder="Email address" value={email} onChange={setEmail} />
 
-        <AuthInput
-          icon={Lock}
+        <AuthInput icon={Lock}
           type={showPassword ? 'text' : 'password'}
           placeholder="Password"
           value={password}
           onChange={setPassword}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleLogin() }}
           rightElement={
             <button
               type="button"
@@ -171,6 +209,17 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
             Forgot password?
           </button>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center"
+          >
+            {error}
+          </motion.div>
+        )}
 
         <motion.button
           whileHover={{ scale: 1.02, y: -1 }}

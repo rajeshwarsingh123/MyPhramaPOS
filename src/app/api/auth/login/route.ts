@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isSupabaseConfigured, adminSupabase, hasServiceRoleKey, supabase } from '@/lib/supabase/server'
+import { isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
@@ -13,7 +13,86 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    let tenant = await db.tenant.findUnique({ where: { email: normalizedEmail } })
+    // ── Check Admin table first (super admin / staff) ──
+    const admin = await db.admin.findUnique({ where: { email: normalizedEmail } })
+
+    if (admin) {
+      if (!admin.isActive) {
+        return NextResponse.json({ error: 'Account is deactivated' }, { status: 403 })
+      }
+
+      // ── Admin Supabase Auth Path ──
+      if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase) {
+        const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
+          filters: { email: normalizedEmail },
+        })
+
+        if (!listError && usersData?.users?.length > 0) {
+          const userId = usersData.users[0].id
+          const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, {
+            password: password,
+            email_confirm: true,
+            user_metadata: { name: admin.name, role: admin.role },
+          })
+
+          if (!updateError) {
+            await db.admin.update({
+              where: { id: admin.id },
+              data: { password: `supabase:${userId}`, lastLogin: new Date() },
+            })
+
+            return NextResponse.json({
+              id: admin.id, name: admin.name, email: admin.email,
+              role: admin.role, lastLogin: new Date(), authProvider: 'supabase',
+              userType: 'admin',
+            })
+          }
+        }
+
+        // Auto-create admin in Supabase
+        const { data: newUserData, error: createError } = await adminSupabase.auth.admin.createUser({
+          email: normalizedEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: { name: admin.name, role: admin.role },
+        })
+
+        if (!createError && newUserData.user) {
+          await db.admin.update({
+            where: { id: admin.id },
+            data: { password: `supabase:${newUserData.user.id}`, lastLogin: new Date() },
+          })
+
+          return NextResponse.json({
+            id: admin.id, name: admin.name, email: admin.email,
+            role: admin.role, lastLogin: new Date(), authProvider: 'supabase',
+            userType: 'admin',
+          })
+        }
+
+        console.error('Supabase auth failed for admin, falling back to local:', createError)
+      }
+
+      // ── Admin Local Fallback Path ──
+      if (admin.password.startsWith('supabase:')) {
+        return NextResponse.json({ error: 'This account uses Supabase authentication.' }, { status: 401 })
+      }
+
+      if (admin.password !== password) {
+        return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      }
+
+      await db.admin.update({ where: { id: admin.id }, data: { lastLogin: new Date() } })
+
+      return NextResponse.json({
+        id: admin.id, name: admin.name, email: admin.email,
+        role: admin.role, lastLogin: new Date(), authProvider: 'local',
+        userType: 'admin',
+      })
+    }
+
+    // ── Check Tenant table (regular pharmacy user) ──
+    const tenant = await db.tenant.findUnique({ where: { email: normalizedEmail } })
 
     if (!tenant) {
       return NextResponse.json({ error: 'No account found with this email. Please sign up first.' }, { status: 401 })
@@ -23,9 +102,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 })
     }
 
-    // ── Supabase Auth Path (using admin API) ──
+    // ── Tenant Supabase Auth Path ──
     if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase) {
-      // Find user in Supabase
       const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
         filters: { email: normalizedEmail },
       })
@@ -33,15 +111,12 @@ export async function POST(request: NextRequest) {
       if (!listError && usersData?.users?.length > 0) {
         const userId = usersData.users[0].id
 
-        // Update password in Supabase to match the provided password
-        // This handles first-time migration from local to Supabase
         const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, {
           password: password,
           email_confirm: true,
         })
 
         if (!updateError) {
-          // Update local DB reference
           await db.tenant.update({
             where: { id: tenant.id },
             data: { passwordHash: `supabase:${userId}` },
@@ -56,11 +131,11 @@ export async function POST(request: NextRequest) {
             businessName: tenant.businessName, phone: tenant.phone,
             plan: tenant.plan, status: tenant.status,
             authProvider: 'supabase',
+            userType: 'tenant',
           })
         }
       }
 
-      // User doesn't exist in Supabase — auto-create
       const { data: newUserData, error: createError } = await adminSupabase.auth.admin.createUser({
         email: normalizedEmail,
         password: password,
@@ -83,14 +158,14 @@ export async function POST(request: NextRequest) {
           businessName: tenant.businessName, phone: tenant.phone,
           plan: tenant.plan, status: tenant.status,
           authProvider: 'supabase',
+          userType: 'tenant',
         })
       }
 
-      // Both Supabase operations failed — fall through to local
       console.error('Supabase auth failed for tenant, falling back to local:', createError)
     }
 
-    // ── Local Fallback Path ──
+    // ── Tenant Local Fallback Path ──
     if (tenant.passwordHash.startsWith('supabase:')) {
       return NextResponse.json({ error: 'This account uses Supabase authentication.' }, { status: 401 })
     }
@@ -108,6 +183,7 @@ export async function POST(request: NextRequest) {
       businessName: tenant.businessName, phone: tenant.phone,
       plan: tenant.plan, status: tenant.status,
       authProvider: 'local',
+      userType: 'tenant',
     })
   } catch (error) {
     console.error('POST /api/auth/login error:', error)
