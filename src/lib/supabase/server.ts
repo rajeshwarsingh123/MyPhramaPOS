@@ -48,6 +48,13 @@ export const adminSupabase: SupabaseClient | null = hasServiceRoleKey
     })
   : null
 
+// Anon-key client — required for signInWithOtp and verifyOtp (these APIs reject service-role auth)
+export const anonSupabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : null
+
 if (isSupabaseConfigured && !hasServiceRoleKey) {
   console.warn(
     '[Supabase] Service role key not configured. Some features may not work.'
