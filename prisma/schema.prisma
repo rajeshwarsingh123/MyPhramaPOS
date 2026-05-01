@@ -301,3 +301,20 @@ model PlatformSetting {
   description     String?
   updatedAt       DateTime @updatedAt
 }
+
+// ==================== PASSWORD RESET TOKEN ====================
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String   // 6-digit OTP code
+  userType  String   // admin, tenant
+  userId    String?  // Admin.id or Tenant.id
+  isUsed    Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([otp])
+  @@index([expiresAt])
+}

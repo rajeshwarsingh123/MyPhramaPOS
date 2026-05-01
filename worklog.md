@@ -3210,3 +3210,72 @@ Recovered the dev server from a stopped state, verified the entire forgot passwo
 - Previous task "remove admin panel link from user panel" was not addressed in this session
 - Supabase anon key 401 error from previous sessions may have been resolved (credentials appear valid now)
 
+
+---
+
+## Task 12 — OTP-Based Forgot Password Flow (Secure)
+
+**Date**: 2025-07-22
+**Author**: Agent (Task ID: 12)
+
+---
+
+### Summary
+Rebuilt the forgot password flow to use a secure 3-step OTP verification process instead of directly resetting the password. The new flow requires users to verify their email with a 6-digit code before setting a new password, matching industry-standard security practices.
+
+### Changes Made
+
+#### Database
+1. **`prisma/schema.prisma`** — Added `PasswordResetToken` model:
+   - `email`, `otp` (6-digit code), `userType`, `userId`, `isUsed`, `expiresAt`
+   - Indexed on email, otp, and expiresAt for fast lookups
+   - OTP expires in 10 minutes
+
+#### API Routes (3 files)
+2. **`src/app/api/auth/forgot-password/verify/route.ts`** — Rewritten:
+   - Generates cryptographically random 6-digit OTP via `crypto.getRandomValues`
+   - Stores OTP in `PasswordResetToken` table with 10-minute expiry
+   - Rate-limits to 1 request per 60 seconds per email (returns 429 with retryAfter)
+   - Invalidates all previous unused tokens for the email
+   - Returns masked email, user info, and OTP (for demo — in production, OTP would be sent via email)
+
+3. **`src/app/api/auth/forgot-password/verify-otp/route.ts`** — New API:
+   - Validates 6-digit OTP format
+   - Checks token exists, is unused, and not expired
+   - Returns distinct error messages for expired vs invalid codes (410 vs 401)
+   - Does NOT consume the token (consumed on actual password reset)
+
+4. **`src/app/api/auth/forgot-password/reset/route.ts`** — Rewritten:
+   - Now requires `email`, `otp`, AND `newPassword` (previously only email + password)
+   - Validates OTP before allowing password change
+   - Marks token as used and invalidates all remaining tokens for the email after reset
+   - Supports both Supabase admin API and local fallback password updates
+
+#### Frontend Components
+5. **`src/components/auth-page.tsx`** — Major rewrite of ForgotPasswordForm:
+
+**New components:**
+- `OtpInput` — 6-digit OTP input with individual boxes, auto-focus, backspace navigation, arrow keys, paste support, color-coded states (filled/empty/error)
+- `CountdownTimer` — MM:SS countdown timer with callback on expiry
+
+**New 3-step flow:**
+- **Step 1 (enter-email)**: "Forgot Password?" → enter email → "Send Reset Code" button → navigates to step 2
+- **Step 2 (verify-otp)**: "Check Your Email" → shows simulated email preview with masked OTP (`••••••`) → 6-digit OTP input boxes → "Verify Code" button → 60s resend cooldown with countdown → navigates to step 3
+- **Step 3 (enter-password)**: "Set New Password" → green "Email verified successfully" badge → new password + confirm → strength bar + requirements → "Reset Password" button → navigates to step 4
+- **Step 4 (success)**: "Password Reset!" → animated success icon with pulse ring → "Back to Sign In" button
+
+**Security features:**
+- OTP cannot be reused after password reset (token marked as used)
+- Rate limiting: 60-second cooldown between OTP sends
+- All previous tokens invalidated when new OTP is generated
+- OTP expires after 10 minutes
+- Invalid vs expired code get different error messages
+- Password cannot be reset without valid OTP
+
+### Verification
+- All APIs tested via curl: OTP generation, verification, wrong OTP error, expired OTP error, password reset with OTP, login with new password
+- Full browser UI flow tested via agent-browser:
+  - Email step → OTP step → Password step → Success → Login with new password → Dashboard
+- ESLint passes with zero errors
+- Dev server compiles successfully
+

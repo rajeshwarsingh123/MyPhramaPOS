@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import {
@@ -283,10 +283,94 @@ function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFor
 }
 
 /* ═══════════════════════════════════════════════
-   FORGOT PASSWORD FORM (Multi-step)
+   FORGOT PASSWORD FORM (OTP-based 3-step flow)
    ═══════════════════════════════════════════════ */
 
-type ForgotStep = 'enter-email' | 'enter-password' | 'success'
+type ForgotStep = 'enter-email' | 'verify-otp' | 'enter-password' | 'success'
+
+function OtpInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  const handleChange = (index: number, char: string) => {
+    if (!/^\d*$/.test(char)) return
+    const newValue = value.split('')
+    newValue[index] = char
+    const joined = newValue.join('').slice(0, 6)
+    onChange(joined)
+    if (char && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace') {
+      const newValue = value.split('')
+      if (!newValue[index] && index > 0) {
+        newValue[index - 1] = ''
+        onChange(newValue.join('').slice(0, 6))
+        inputRefs.current[index - 1]?.focus()
+      } else {
+        newValue[index] = ''
+        onChange(newValue.join('').slice(0, 6))
+      }
+    }
+    if (e.key === 'ArrowLeft' && index > 0) inputRefs.current[index - 1]?.focus()
+    if (e.key === 'ArrowRight' && index < 5) inputRefs.current[index + 1]?.focus()
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    onChange(pasted)
+    if (pasted.length > 0) {
+      const focusIndex = Math.min(pasted.length, 5)
+      inputRefs.current[focusIndex]?.focus()
+    }
+  }
+
+  return (
+    <div className="flex gap-2 justify-center">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <input
+          key={i}
+          ref={(el) => { inputRefs.current[i] = el }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] || ''}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          className={`w-11 h-13 rounded-xl text-center text-lg font-bold bg-white/5 border-2 text-landing-foreground placeholder:text-white/15 focus:outline-none focus:ring-2 transition-all duration-200 ${
+            error
+              ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20'
+              : value[i]
+                ? 'border-primary/50 focus:border-primary focus:ring-primary/20'
+                : 'border-white/10 focus:border-primary/50 focus:ring-primary/10'
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
+
+function CountdownTimer({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
+  const [remaining, setRemaining] = useState(seconds)
+
+  useEffect(() => {
+    if (remaining <= 0) { onExpire(); return }
+    const timer = setInterval(() => setRemaining((r) => r - 1), 1000)
+    return () => clearInterval(timer)
+  }, [remaining, onExpire])
+
+  const minutes = Math.floor(remaining / 60)
+  const secs = remaining % 60
+  return (
+    <span className="text-xs font-mono text-landing-muted">
+      {minutes}:{secs.toString().padStart(2, '0')}
+    </span>
+  )
+}
 
 function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState<ForgotStep>('enter-email')
@@ -294,17 +378,39 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const [maskedEmail, setMaskedEmail] = useState('')
   const [userName, setUserName] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpExpired, setOtpExpired] = useState(false)
 
   const passwordsMatch = confirmPassword.length === 0 || newPassword === confirmPassword
-  const strength = getPasswordStrength(newPassword)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
-  // Step 1: Verify email
+  const handleBack = () => {
+    if (step === 'enter-email') {
+      onBack()
+    } else if (step === 'verify-otp') {
+      setStep('enter-email')
+      setOtp('')
+      setOtpError('')
+      setOtpSent(false)
+      setOtpExpired(false)
+      setError('')
+    } else if (step === 'enter-password') {
+      setStep('verify-otp')
+      setNewPassword('')
+      setConfirmPassword('')
+      setError('')
+    }
+  }
+
+  // Step 1: Verify email & send OTP
   const handleVerifyEmail = async () => {
     if (!email.trim()) {
       setError('Please enter your email address')
@@ -329,7 +435,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       setMaskedEmail(data.maskedEmail || email)
       setUserName(data.name || '')
       setIsAdmin(data.isAdmin || false)
-      setStep('enter-password')
+      setOtpSent(true)
+      setOtpExpired(false)
+      setOtp('')
+      setOtpError('')
+      setResendCooldown(60)
+      setStep('verify-otp')
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -337,7 +448,37 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     }
   }
 
-  // Step 2: Reset password
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      setOtpError('Please enter the complete 6-digit code')
+      return
+    }
+    setOtpError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), otp }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setOtpError(data.error || 'Invalid code')
+        setLoading(false)
+        return
+      }
+
+      setStep('enter-password')
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Step 3: Reset password
   const handleResetPassword = async () => {
     if (!newPassword) {
       setError('Please enter a new password')
@@ -357,7 +498,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       const res = await fetch('/api/auth/forgot-password/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), newPassword }),
+        body: JSON.stringify({ email: email.trim(), otp, newPassword }),
       })
       const data = await res.json()
 
@@ -381,10 +522,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     setEmail('')
     setNewPassword('')
     setConfirmPassword('')
+    setOtp('')
     setMaskedEmail('')
     setUserName('')
     setIsAdmin(false)
     setError('')
+    setOtpSent(false)
     onBack()
   }
 
@@ -399,16 +542,11 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       {/* Back button */}
       <button
         type="button"
-        onClick={step === 'enter-email' ? onBack : () => {
-          setStep('enter-email')
-          setNewPassword('')
-          setConfirmPassword('')
-          setError('')
-        }}
+        onClick={handleBack}
         className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
       >
         <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-        Back to login
+        {step === 'enter-email' ? 'Back to login' : step === 'verify-otp' ? 'Change email' : 'Back to verify'}
       </button>
 
       <AnimatePresence mode="wait">
@@ -464,24 +602,141 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <Spinner />
-                    Verifying...
+                    Sending code...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    Continue
+                    Send Reset Code
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
               </motion.button>
 
               <p className="text-[11px] text-landing-muted/60 text-center leading-relaxed">
-                Enter the email associated with your account. We&apos;ll verify it and let you set a new password.
+                We&apos;ll send a 6-digit verification code to your email address.
               </p>
             </div>
           </motion.div>
         )}
 
-        {/* ── Step 2: Enter New Password ── */}
+        {/* ── Step 2: Verify OTP ── */}
+        {step === 'verify-otp' && (
+          <motion.div
+            key="step-otp"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <MailCheck className="w-5 h-5 text-sky-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-landing-foreground">Check Your Email</h2>
+                <p className="text-sm text-landing-muted">
+                  We sent a code to <span className="text-landing-foreground font-medium">{maskedEmail}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Simulated email preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="mt-5 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
+            >
+              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-400/60" />
+                <div className="w-2 h-2 rounded-full bg-amber-400/60" />
+                <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
+                <span className="ml-2 text-[10px] text-landing-muted/50 font-mono">mail.pharmpos.com</span>
+              </div>
+              <div className="p-4">
+                <p className="text-[11px] text-landing-muted/40 mb-1">From: PharmPOS Security &lt;noreply@pharmpos.com&gt;</p>
+                <p className="text-[11px] text-landing-muted/40 mb-2">To: {maskedEmail}</p>
+                <p className="text-sm text-landing-foreground font-medium">Password Reset Verification</p>
+                <p className="text-xs text-landing-muted mt-1.5 leading-relaxed">
+                  Your 6-digit verification code is:
+                </p>
+                <div className="mt-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-center">
+                  <span className="text-xl font-bold font-mono tracking-[0.3em] text-primary">
+                    {/* OTP digits shown here — in production, this would only be sent to the email */}
+                    {email.includes('@') ? '••••••' : '------'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-landing-muted/40 mt-2 leading-relaxed">
+                  If you didn&apos;t request this code, you can safely ignore this email.
+                </p>
+              </div>
+            </motion.div>
+
+            <div className="space-y-4 mt-5">
+              {/* OTP Input */}
+              <div>
+                <p className="text-xs text-landing-muted mb-3 text-center font-medium">Enter verification code</p>
+                <OtpInput value={otp} onChange={(v) => { setOtp(v); setOtpError('') }} error={!!otpError} />
+              </div>
+
+              {otpError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {otpError}
+                </motion.div>
+              )}
+
+              {/* Verify button */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleVerifyOtp}
+                disabled={loading || otp.length !== 6}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner />
+                    Verifying...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Verify Code
+                    <CheckCircle2 className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+
+              {/* Resend / Timer */}
+              <div className="flex items-center justify-center gap-2 text-xs">
+                {resendCooldown > 0 ? (
+                  <span className="text-landing-muted/60">
+                    Resend code in <CountdownTimer seconds={resendCooldown} onExpire={() => setResendCooldown(0)} />
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVerifyEmail}
+                    disabled={loading}
+                    className="text-primary/80 hover:text-primary font-medium transition-colors disabled:opacity-50"
+                  >
+                    Didn&apos;t receive the code? Resend
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[11px] text-landing-muted/40 text-center leading-relaxed">
+                The code expires in 10 minutes. Check your spam folder if you don&apos;t see it.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Step 3: Enter New Password ── */}
         {step === 'enter-password' && (
           <motion.div
             key="step-password"
@@ -492,29 +747,28 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
           >
             <div className="flex items-center gap-3 mb-1">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <MailCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-landing-foreground">Account Found</h2>
+                <h2 className="text-2xl font-bold text-landing-foreground">Set New Password</h2>
                 <p className="text-sm text-landing-muted">
                   {userName
-                    ? <>Welcome back, <span className="text-landing-foreground font-medium">{userName}</span></>
-                    : <>Email verified</>
+                    ? <>For <span className="text-landing-foreground font-medium">{userName}</span></>
+                    : <>Create a new password for your account</>
                   }
                 </p>
               </div>
             </div>
 
-            {/* Account info card */}
-            <div className="mt-5 px-4 py-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                {isAdmin ? <ShieldCheck className="w-4 h-4 text-primary" /> : <Cross className="w-4 h-4 text-primary" />}
+            {/* Verified badge */}
+            <div className="mt-5 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-landing-muted">{isAdmin ? 'Admin Account' : 'Pharmacy Account'}</p>
-                <p className="text-sm font-medium text-landing-foreground truncate">{maskedEmail}</p>
+                <p className="text-xs font-medium text-emerald-400">Email verified successfully</p>
+                <p className="text-sm text-landing-foreground truncate">{maskedEmail}</p>
               </div>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-auto" />
             </div>
 
             <div className="space-y-4 mt-5">
@@ -623,7 +877,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
           </motion.div>
         )}
 
-        {/* ── Step 3: Success ── */}
+        {/* ── Step 4: Success ── */}
         {step === 'success' && (
           <motion.div
             key="step-success"
@@ -633,7 +887,6 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
             transition={{ duration: 0.35 }}
             className="flex flex-col items-center text-center py-4"
           >
-            {/* Success icon with animated ring */}
             <div className="relative mb-5">
               <motion.div
                 initial={{ scale: 0 }}
