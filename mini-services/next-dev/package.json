@@ -1,0 +1,6 @@
+{
+  "name": "next-dev-runner",
+  "scripts": {
+    "dev": "bash index.sh"
+  }
+}
