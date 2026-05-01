@@ -286,7 +286,7 @@ function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFor
    FORGOT PASSWORD FORM (OTP-based 3-step flow)
    ═══════════════════════════════════════════════ */
 
-type ForgotStep = 'enter-email' | 'verify-otp' | 'enter-password' | 'success'
+type ForgotStep = 'enter-email' | 'not-found' | 'verify-otp' | 'enter-password' | 'success'
 
 function OtpInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -395,6 +395,9 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const handleBack = () => {
     if (step === 'enter-email') {
       onBack()
+    } else if (step === 'not-found') {
+      setStep('enter-email')
+      setError('')
     } else if (step === 'verify-otp') {
       setStep('enter-email')
       setOtp('')
@@ -427,7 +430,14 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Account not found')
+        setError(data.error || 'Something went wrong')
+        setLoading(false)
+        return
+      }
+
+      // Account not found — show helpful not-found step
+      if (data.found === false) {
+        setStep('not-found')
         setLoading(false)
         return
       }
@@ -546,7 +556,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
       >
         <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-        {step === 'enter-email' ? 'Back to login' : step === 'verify-otp' ? 'Change email' : 'Back to verify'}
+        {step === 'enter-email' ? 'Back to login' : step === 'not-found' ? 'Try another email' : step === 'verify-otp' ? 'Change email' : 'Back to verify'}
       </button>
 
       <AnimatePresence mode="wait">
@@ -615,6 +625,93 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
               <p className="text-[11px] text-landing-muted/60 text-center leading-relaxed">
                 We&apos;ll send a 6-digit verification code to your email address.
               </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Not Found Step ── */}
+        {step === 'not-found' && (
+          <motion.div
+            key="step-not-found"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-landing-foreground">Account Not Found</h2>
+                <p className="text-sm text-landing-muted">We couldn&apos;t find an account with that email</p>
+              </div>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="mt-5 rounded-xl bg-white/[0.03] border border-white/[0.08] p-4"
+            >
+              <p className="text-sm text-landing-muted leading-relaxed mb-4">
+                No account is registered with <span className="text-landing-foreground font-medium">{email}</span>. 
+                This could mean:
+              </p>
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-[10px] font-bold text-amber-400">1</span>
+                  </div>
+                  <p className="text-xs text-landing-muted leading-relaxed">You might have signed up with a different email address</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-[10px] font-bold text-amber-400">2</span>
+                  </div>
+                  <p className="text-xs text-landing-muted leading-relaxed">There might be a typo in the email you entered</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-[10px] font-bold text-amber-400">3</span>
+                  </div>
+                  <p className="text-xs text-landing-muted leading-relaxed">You might not have created an account yet</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="space-y-3 mt-5">
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { setStep('enter-email'); setEmail(''); setError('') }}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  Try a Different Email
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { onBack() }}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-all duration-300"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  Create a New Account
+                  <Sparkles className="w-4 h-4" />
+                </span>
+              </motion.button>
+
+              <button
+                type="button"
+                onClick={onBack}
+                className="w-full text-center text-xs text-landing-muted hover:text-landing-foreground transition-colors py-2"
+              >
+                Back to Sign In
+              </button>
             </div>
           </motion.div>
         )}

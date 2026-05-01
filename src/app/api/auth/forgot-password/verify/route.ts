@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 function generateOTP(): string {
-  // Generate a cryptographically random 6-digit OTP
   const array = new Uint32Array(1)
   crypto.getRandomValues(array)
   return (array[0] % 1000000).toString().padStart(6, '0')
@@ -24,8 +23,12 @@ export async function POST(request: NextRequest) {
       db.admin.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, role: true, isActive: true } }),
     ])
 
+    // Account not found — return found: false so frontend can guide user
     if (!tenant && !admin) {
-      return NextResponse.json({ error: 'No account found with this email address' }, { status: 404 })
+      return NextResponse.json({
+        found: false,
+        message: 'No account found with this email address',
+      }, { status: 200 })
     }
 
     const isSuspended = tenant?.status === 'suspended' || (admin && !admin.isActive)
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
     const recentToken = await db.passwordResetToken.findFirst({
       where: {
         email: normalizedEmail,
-        createdAt: { gte: new Date(Date.now() - 60 * 1000) }, // within last 60 seconds
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -84,9 +87,8 @@ export async function POST(request: NextRequest) {
       isAdmin: !!admin,
       isTenant: !!tenant,
       userType,
-      // OTP is returned here for demo/testing — in production, send via email
       otp,
-      expiresIn: 600, // 10 minutes in seconds
+      expiresIn: 600,
     })
   } catch (error) {
     console.error('POST /api/auth/forgot-password/verify error:', error)
