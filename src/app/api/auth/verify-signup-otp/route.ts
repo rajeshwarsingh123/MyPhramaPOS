@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
+import { isSupabaseConfigured, adminSupabase, anonSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
@@ -18,35 +18,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please enter a valid 6-digit code' }, { status: 400 })
     }
 
-    // Find valid signup verification token
-    const token = await db.passwordResetToken.findFirst({
-      where: {
-        email: normalizedEmail,
-        otp: normalizedOtp,
-        purpose: 'signup_verification',
-        isUsed: false,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    let isVerified = false
 
-    if (!token) {
-      // Check if expired
-      const expiredToken = await db.passwordResetToken.findFirst({
+    // ── Supabase Auth Verification ──
+    if (isSupabaseConfigured && anonSupabase) {
+      const { data, error: verifyError } = await anonSupabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token: normalizedOtp,
+        type: 'signup',
+      })
+
+      if (verifyError) {
+        console.error('Supabase OTP verification failed:', verifyError)
+        // Fallback to local OTP check below if Supabase fails (optional)
+      } else if (data.user) {
+        isVerified = true
+      }
+    }
+
+    // ── Local OTP Fallback (if not already verified by Supabase) ──
+    let token = null
+    if (!isVerified) {
+      token = await db.passwordResetToken.findFirst({
         where: {
           email: normalizedEmail,
           otp: normalizedOtp,
           purpose: 'signup_verification',
           isUsed: false,
+          expiresAt: { gte: new Date() },
         },
         orderBy: { createdAt: 'desc' },
       })
+      if (token) isVerified = true
+    }
 
-      if (expiredToken) {
-        return NextResponse.json({ error: 'This verification code has expired. Please request a new one.' }, { status: 410 })
-      }
-
-      return NextResponse.json({ error: 'Invalid verification code. Please check and try again.' }, { status: 401 })
+    if (!isVerified) {
+      return NextResponse.json({ error: 'Invalid or expired verification code. Please check and try again.' }, { status: 401 })
     }
 
     // Find the tenant
@@ -91,11 +98,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Mark token as used
-    await db.passwordResetToken.update({
-      where: { id: token.id },
-      data: { isUsed: true },
-    })
+    // Mark local token as used if it was found
+    if (token) {
+      await db.passwordResetToken.update({
+        where: { id: token.id },
+        data: { isUsed: true },
+      })
+    }
 
     // Invalidate all remaining signup tokens for this email
     await db.passwordResetToken.updateMany({

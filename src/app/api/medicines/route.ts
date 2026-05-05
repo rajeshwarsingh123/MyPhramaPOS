@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,105 +8,75 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const skip = (page - 1) * limit
     const unitType = searchParams.get('unitType') || ''
-    const compositionKeyword = searchParams.get('compositionKeyword') || ''
     const category = searchParams.get('category') || ''
 
-    const where: Prisma.MedicineWhereInput = {
-      isActive: true,
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const conditions: Prisma.MedicineWhereInput[] = []
+    let query = supabase
+      .from('medicines')
+      .select('*, batches(*)', { count: 'exact' })
+      .eq('tenant_id', tenantId)
 
     if (search) {
-      conditions.push({
-        OR: [
-          { name: { contains: search } },
-          { composition: { contains: search } },
-          { companyName: { contains: search } },
-          { genericName: { contains: search } },
-        ],
-      })
+      query = query.or(`name.ilike.%${search}%,composition.ilike.%${search}%,company_name.ilike.%${search}%,generic_name.ilike.%${search}%`)
     }
 
     if (unitType) {
-      conditions.push({ unitType })
-    }
-
-    if (compositionKeyword) {
-      conditions.push({
-        OR: [
-          { composition: { contains: compositionKeyword } },
-          { genericName: { contains: compositionKeyword } },
-          { name: { contains: compositionKeyword } },
-        ],
-      })
+      query = query.eq('unit_type', unitType)
     }
 
     if (category) {
-      conditions.push({
-        category: { contains: category, mode: 'insensitive' },
-      })
+      query = query.ilike('category', `%${category}%`)
     }
 
-    if (conditions.length > 0) {
-      where.AND = conditions
-    }
+    const { data: medicines, count, error } = await query
+      .order('name', { ascending: true })
+      .range(skip, skip + limit - 1)
 
-    const [medicines, total] = await Promise.all([
-      db.medicine.findMany({
-        where,
-        include: {
-          batches: {
-            where: { isActive: true },
-            select: {
-              id: true,
-              batchNumber: true,
-              expiryDate: true,
-              mfgDate: true,
-              purchasePrice: true,
-              mrp: true,
-              quantity: true,
-              initialQuantity: true,
-            },
-            orderBy: { expiryDate: 'asc' },
-          },
-        },
-        orderBy: { name: 'asc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      db.medicine.count({ where }),
-    ])
+    if (error) throw error
 
-    const formattedMedicines = medicines.map((med) => {
-      const totalStock = med.batches.reduce((sum, b) => sum + b.quantity, 0)
-      const activeBatches = med.batches.filter((b) => b.quantity > 0)
-      const earliestExpiry =
-        activeBatches.length > 0
-          ? activeBatches.reduce((earliest, b) =>
-              b.expiryDate < earliest ? b.expiryDate : earliest,
-              activeBatches[0].expiryDate,
-            )
-          : null
+    const formattedMedicines = (medicines || []).map((med) => {
+      const activeBatches = (med.batches || []).filter((b: any) => b.is_active && b.quantity > 0)
+      const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+      const earliestExpiry = activeBatches.length > 0
+        ? activeBatches.reduce((earliest: string, b: any) =>
+            new Date(b.expiry_date) < new Date(earliest) ? b.expiry_date : earliest,
+            activeBatches[0].expiry_date
+          )
+        : null
 
       return {
-        ...med,
+        id: med.id,
+        name: med.name,
+        genericName: med.generic_name,
+        companyName: med.company_name,
+        composition: med.composition,
+        strength: med.strength,
+        category: med.category,
+        unitType: med.unit_type,
+        gstPercent: med.gst_percent,
+        sellingPrice: med.selling_price,
         totalStock,
         earliestExpiry,
-        batchCount: med.batches.length,
+        batchCount: (med.batches || []).length,
+        batches: med.batches || []
       }
     })
 
     return NextResponse.json({
       medicines: formattedMedicines,
-      total,
+      total: count || 0,
       page,
       limit,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('GET /api/medicines error:', error)
-    return NextResponse.json({ error: 'Failed to fetch medicines' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to fetch medicines' }, { status: 500 })
   }
 }
 
@@ -121,70 +91,41 @@ export async function POST(request: NextRequest) {
       strength,
       category,
       unitType,
-      packSize,
       gstPercent,
       sellingPrice,
-      marginPercent,
-      batch,
     } = body
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Medicine name is required' }, { status: 400 })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const medicine = await db.medicine.create({
-      data: {
+    if (!name?.trim()) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    const { data: medicine, error } = await supabase
+      .from('medicines')
+      .insert({
+        tenant_id: tenantId,
         name: name.trim(),
-        genericName: genericName?.trim() || null,
-        companyName: companyName?.trim() || null,
+        generic_name: genericName?.trim() || null,
+        company_name: companyName?.trim() || null,
         composition: composition?.trim() || null,
         strength: strength?.trim() || null,
         category: category?.trim() || null,
-        unitType: unitType || 'tablet',
-        packSize: packSize?.trim() || null,
-        gstPercent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,
-        sellingPrice: sellingPrice !== undefined ? parseFloat(sellingPrice) : 0,
-        marginPercent: marginPercent !== undefined ? parseFloat(marginPercent) : 0,
-        batches: batch
-          ? {
-              create: {
-                batchNumber: batch.batchNumber?.trim() || `BATCH-${Date.now()}`,
-                expiryDate: new Date(batch.expiryDate),
-                mfgDate: batch.mfgDate ? new Date(batch.mfgDate) : null,
-                purchasePrice: parseFloat(batch.purchasePrice) || 0,
-                mrp: parseFloat(batch.mrp) || 0,
-                quantity: parseInt(batch.quantity) || 0,
-                initialQuantity: parseInt(batch.quantity) || 0,
-              },
-            }
-          : undefined,
-      },
-      include: {
-        batches: true,
-      },
-    })
+        unit_type: unitType || 'tablet',
+        gst_percent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,
+        selling_price: sellingPrice !== undefined ? parseFloat(sellingPrice) : 0,
+      })
+      .select()
+      .single()
 
-    const totalStock = medicine.batches.reduce((sum, b) => sum + b.quantity, 0)
-    const activeBatches = medicine.batches.filter((b) => b.quantity > 0)
-    const earliestExpiry =
-      activeBatches.length > 0
-        ? activeBatches.reduce((earliest, b) =>
-            b.expiryDate < earliest ? b.expiryDate : earliest,
-            activeBatches[0].expiryDate,
-          )
-        : null
+    if (error) throw error
 
-    return NextResponse.json(
-      {
-        ...medicine,
-        totalStock,
-        earliestExpiry,
-        batchCount: medicine.batches.length,
-      },
-      { status: 201 },
-    )
-  } catch (error) {
+    return NextResponse.json(medicine, { status: 201 })
+  } catch (error: any) {
     console.error('POST /api/medicines error:', error)
-    return NextResponse.json({ error: 'Failed to create medicine' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to create medicine' }, { status: 500 })
   }
 }

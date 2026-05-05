@@ -457,21 +457,20 @@ function DailySalesTab() {
       ) : null}
 
       {/* Sales Table */}
-  return (
-    <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
-      <CardHeader className="p-4 dark:p-5 pb-2">
-      <div className="flex items-center gap-3 mb-2">
-        <FileBarChart className="h-4 w-4 text-primary/70" />
-        <CardTitle className="text-base">Sales for {format(selectedDate, 'dd MMM yyyy')}</CardTitle>
-      </div>
-      <CardDescription className="mb-2">
-          {data ? `${data.sales.length} transaction${data.sales.length !== 1 ? 's' : ''}` : ''}
-        </CardDescription>
-      </CardHeader>
+      <Card className="rounded-xl border bg-muted/20 dark:bg-muted/10 card-spotlight overflow-hidden transition-all duration-200">
+        <CardHeader className="p-4 dark:p-5 pb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <FileBarChart className="h-4 w-4 text-primary/70" />
+            <CardTitle className="text-base">Sales for {format(selectedDate, 'dd MMM yyyy')}</CardTitle>
+          </div>
+          <CardDescription className="mb-2">
+            {data?.sales ? `${data.sales.length} transaction${data.sales.length !== 1 ? 's' : ''}` : ''}
+          </CardDescription>
+        </CardHeader>
         <CardContent className="px-0 pb-0">
           {isLoading ? (
             <TableSkeleton rows={6} />
-          ) : data && data.sales.length > 0 ? (
+          ) : data?.sales?.length ? (
             <ScrollArea className="scroll-container max-h-[420px]">
               <Table>
                 <TableHeader>
@@ -680,7 +679,7 @@ function MonthlySalesTab() {
         <CardHeader className="p-4 dark:p-5 pb-0">
           <CardTitle className="text-base">Daily Breakdown</CardTitle>
           <CardDescription className="mb-3">
-            {data ? `${data.dailyBreakdown.length} day${data.dailyBreakdown.length !== 1 ? 's' : ''} with sales` : ''}
+            {data?.dailyBreakdown ? `${data.dailyBreakdown.length} day${data.dailyBreakdown.length !== 1 ? 's' : ''} with sales` : ''}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0 pb-0">
@@ -746,7 +745,7 @@ function ProfitReportTab() {
   })
 
   const chartData = useMemo(() => {
-    if (!data) return []
+    if (!data?.items) return []
     return data.items.slice(0, 15).map((item) => ({
       name: item.medicineName.length > 20 ? item.medicineName.slice(0, 20) + '...' : item.medicineName,
       revenue: item.revenue,

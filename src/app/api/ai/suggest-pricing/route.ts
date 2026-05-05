@@ -1,58 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
+import ZAI from 'z-ai-web-dev-sdk'
+
+const PRICING_PROMPT = `You are a pharmaceutical pricing expert. Given a medicine name and its purchase price, suggest an optimal selling price (MRP) and margin.
+Consider typical pharmacy margins in India (usually 15-30% for branded, higher for generics).
+Provide:
+- suggested_mrp: The total selling price
+- suggested_margin: The percentage margin
+- reasoning: Short explanation of why this price is suggested
+- market_context: Typical price range for this medicine in the market
+
+Return ONLY a valid JSON object. Do not include any explanation.
+
+Example:
+{
+  "suggested_mrp": 120.00,
+  "suggested_margin": 20,
+  "reasoning": "Standard margin for this antibiotic category.",
+  "market_context": "Ranges from ₹110 to ₹140 across brands."
+}`
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { purchasePrice, marginPercent = 20, gstPercent = 5 } = body
+    const { name, purchasePrice } = body
 
-    if (purchasePrice === undefined || purchasePrice === null) {
+    if (!name || purchasePrice === undefined) {
       return NextResponse.json(
-        { error: 'purchasePrice is required' },
+        { error: 'Medicine name and purchasePrice are required' },
         { status: 400 }
       )
     }
 
     const price = parseFloat(purchasePrice)
-    const margin = parseFloat(marginPercent)
-    const gst = parseFloat(gstPercent)
+    const zai = await ZAI.create()
 
-    if (isNaN(price) || price < 0) {
-      return NextResponse.json(
-        { error: 'purchasePrice must be a valid non-negative number' },
-        { status: 400 }
-      )
+    const response = await zai.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `${PRICING_PROMPT}\n\nMedicine: ${name}\nPurchase Price: ₹${price}`
+        }
+      ],
+      thinking: { type: 'disabled' }
+    })
+
+    const rawContent = response.choices?.[0]?.message?.content || ''
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/)
+    
+    if (jsonMatch) {
+      const data = JSON.parse(jsonMatch[0])
+      return NextResponse.json({
+        success: true,
+        pricing: {
+          ...data,
+          purchasePrice: price,
+        },
+      })
     }
 
-    if (isNaN(margin) || margin < 0) {
-      return NextResponse.json(
-        { error: 'marginPercent must be a valid non-negative number' },
-        { status: 400 }
-      )
-    }
-
-    if (isNaN(gst) || gst < 0 || gst > 28) {
-      return NextResponse.json(
-        { error: 'gstPercent must be between 0 and 28' },
-        { status: 400 }
-      )
-    }
-
-    // Calculate pricing
-    const basePrice = price * (1 + margin / 100)
-    const gstAmount = Math.round((basePrice * gst / 100) * 100) / 100
-    const sellingPrice = Math.round((basePrice + gstAmount) * 100) / 100
-    const profitPerUnit = Math.round((basePrice - price) * 100) / 100
-
+    // Fallback to simple calculation if AI fails
+    const margin = 20
+    const suggested_mrp = Math.round(price * 1.25 * 100) / 100
     return NextResponse.json({
       success: true,
       pricing: {
+        suggested_mrp,
+        suggested_margin: 25,
+        reasoning: "Fallback calculation (25% margin). AI was unable to provide a specific suggestion.",
+        market_context: "N/A",
         purchasePrice: price,
-        marginPercent: margin,
-        gstPercent: gst,
-        basePrice: Math.round(basePrice * 100) / 100,
-        gstAmount,
-        sellingPrice,
-        profitPerUnit,
       },
     })
   } catch (error) {

@@ -119,6 +119,7 @@ interface PurchaseHistoryItem {
   invoiceDate: string
   totalAmount: number
   totalGst: number
+  paymentType: string
   notes: string | null
   supplier: { id: string; name: string }
   itemCount: number
@@ -150,6 +151,7 @@ interface PurchaseDetail {
   invoiceDate: string
   totalAmount: number
   totalGst: number
+  paymentType: string
   notes: string | null
   createdAt: string
   supplier: {
@@ -349,88 +351,128 @@ function PurchaseDetailDialog({
             <Skeleton className="h-40 w-full" />
           </div>
         ) : purchase ? (
-          <div className="flex-1 overflow-auto space-y-4">
-            {/* Order Info */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Invoice #:</span>
-                <span className="ml-2 font-medium font-mono">
-                  {purchase.invoiceNo || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Date:</span>
-                <span className="ml-2 font-medium">
-                  {format(parseISO(purchase.invoiceDate), 'dd MMM yyyy')}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Supplier:</span>
-                <span className="ml-2 font-medium">{purchase.supplier.name}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">GST #:</span>
-                <span className="ml-2 font-medium">
-                  {purchase.supplier.gstNumber || 'N/A'}
-                </span>
-              </div>
-            </div>
-            {purchase.notes && (
-              <div className="text-sm">
-                <span className="text-muted-foreground">Notes:</span>
-                <p className="mt-0.5 text-foreground">{purchase.notes}</p>
-              </div>
-            )}
-            <Separator />
-            {/* Items Table */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">#</TableHead>
-                  <TableHead className="text-xs">Medicine</TableHead>
-                  <TableHead className="text-xs">Batch</TableHead>
-                  <TableHead className="text-xs text-right">Qty</TableHead>
-                  <TableHead className="text-xs text-right">Price</TableHead>
-                  <TableHead className="text-xs text-right">GST %</TableHead>
-                  <TableHead className="text-xs text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {purchase.items.map((item, idx) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell className="text-xs font-medium">{item.batch.medicine.name}</TableCell>
-                    <TableCell className="text-xs font-mono">{item.batch.batchNumber}</TableCell>
-                    <TableCell className="text-xs text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-xs text-right">{formatCurrency(item.purchasePrice)}</TableCell>
-                    <TableCell className="text-xs text-right">{item.gstPercent}%</TableCell>
-                    <TableCell className="text-xs text-right font-medium">
-                      {formatCurrency(item.totalAmount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {/* Totals */}
-            <div className="flex justify-end">
-              <div className="w-56 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total GST:</span>
-                  <span>{formatCurrency(purchase.totalGst)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-bold text-base">
-                  <span>Grand Total:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(purchase.totalAmount)}
+          <>
+            <div className="flex-1 overflow-auto space-y-4 print-area p-1">
+              {/* Order Info */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Invoice #:</span>
+                  <span className="ml-2 font-medium font-mono">
+                    {purchase.invoiceNo || 'N/A'}
                   </span>
                 </div>
+                <div>
+                  <span className="text-muted-foreground">Date:</span>
+                  <span className="ml-2 font-medium">
+                    {format(parseISO(purchase.invoiceDate), 'dd MMM yyyy')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Supplier:</span>
+                  <span className="ml-2 font-medium">{purchase.supplier.name}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Payment:</span>
+                  <span className="ml-2 font-medium uppercase text-xs px-1.5 py-0.5 rounded bg-muted">
+                    {purchase.paymentType || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">GST #:</span>
+                  <span className="ml-2 font-medium">
+                    {purchase.supplier.gstNumber || 'N/A'}
+                  </span>
+                </div>
+                {purchase.supplier.phone && (
+                  <div>
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="ml-2 font-medium">{purchase.supplier.phone}</span>
+                  </div>
+                )}
+              </div>
+              {purchase.notes && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Notes:</span>
+                  <p className="mt-0.5 text-foreground">{purchase.notes}</p>
+                </div>
+              )}
+              <Separator />
+              {/* Items Table */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">#</TableHead>
+                    <TableHead className="text-xs">Medicine</TableHead>
+                    <TableHead className="text-xs">Batch</TableHead>
+                    <TableHead className="text-xs text-right">Qty</TableHead>
+                    <TableHead className="text-xs text-right">Price</TableHead>
+                    <TableHead className="text-xs text-right">GST %</TableHead>
+                    <TableHead className="text-xs text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {purchase.items.map((item, idx) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="text-xs font-medium">{item.batch.medicine.name}</TableCell>
+                      <TableCell className="text-xs font-mono text-[10px]">{item.batch.batchNumber}</TableCell>
+                      <TableCell className="text-xs text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-xs text-right">{formatCurrency(item.purchasePrice)}</TableCell>
+                      <TableCell className="text-xs text-right">{item.gstPercent}%</TableCell>
+                      <TableCell className="text-xs text-right font-medium">
+                        {formatCurrency(item.totalAmount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-56 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total GST:</span>
+                    <span>{formatCurrency(purchase.totalGst)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-base">
+                    <span>Grand Total:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(purchase.totalAmount)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+            <DialogFooter className="print:hidden">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="gap-2 btn-gradient-primary" onClick={() => window.print()}>
+                <FileText className="h-4 w-4" />
+                Print Bill
+              </Button>
+            </DialogFooter>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground text-center py-8">Purchase not found.</p>
         )}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-area, .print-area * {
+            visibility: visible;
+          }
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
       </DialogContent>
     </Dialog>
   )
@@ -676,6 +718,13 @@ interface ScannedItem {
   [key: string]: unknown
 }
 
+interface ScannedData {
+  supplier_name?: string
+  invoice_number?: string
+  invoice_date?: string
+  items: ScannedItem[]
+}
+
 function ScanBillDialog({
   open,
   onOpenChange,
@@ -683,13 +732,13 @@ function ScanBillDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddItems: (items: ScannedItem[]) => void
+  onAddItems: (data: ScannedData) => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [results, setResults] = useState<ScannedItem[] | null>(null)
+  const [results, setResults] = useState<ScannedData | null>(null)
   const [rawText, setRawText] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -743,8 +792,8 @@ function ScanBillDialog({
         return
       }
 
-      if (data.success && data.items) {
-        setResults(data.items)
+      if (data.success && data.data) {
+        setResults(data.data)
       } else {
         setError(data.error || 'Could not extract structured data from the bill.')
         if (data.raw) setRawText(data.raw)
@@ -757,7 +806,7 @@ function ScanBillDialog({
   }
 
   const handleAddToPurchase = () => {
-    if (results && results.length > 0) {
+    if (results && results.items?.length > 0) {
       onAddItems(results)
       toast.success(`${results.length} item(s) added to purchase form!`)
       resetState()
@@ -952,12 +1001,33 @@ function ScanBillDialog({
           )}
 
           {/* Results Table */}
-          {results && results.length > 0 && (
+          {results && results.items?.length > 0 && (
             <div className="space-y-4">
+              <div className="flex flex-col gap-2 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/50">
+                <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
+                  <FileText className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Bill Details</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-1">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Supplier</p>
+                    <p className="text-sm font-medium">{results.supplier_name || 'Not detected'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Invoice #</p>
+                    <p className="text-sm font-medium">{results.invoice_number || 'Not detected'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Date</p>
+                    <p className="text-sm font-medium">{results.invoice_date || 'Not detected'}</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-violet-500" />
                 <span className="text-sm font-semibold">
-                  {results.length} Item{results.length !== 1 ? 's' : ''} Extracted
+                  {results.items.length} Item{results.items.length !== 1 ? 's' : ''} Extracted
                 </span>
                 <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
                   AI Generated
@@ -976,9 +1046,9 @@ function ScanBillDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {results.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                    {results.items.map((item, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell className="text-xs font-medium max-w-[200px]">
                           <div className="truncate" title={item.medicine_name}>
                             {item.medicine_name}
@@ -1005,14 +1075,14 @@ function ScanBillDialog({
         </div>
 
         {/* Footer */}
-        {results && results.length > 0 && (
+          {results && results.items?.length > 0 && (
           <DialogFooter>
             <Button variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
             <Button className="gap-2 btn-gradient-primary" onClick={handleAddToPurchase}>
               <Plus className="h-4 w-4" />
-              Add to Purchase ({results.length} items)
+              Add to Purchase ({results.items.length} items)
             </Button>
           </DialogFooter>
         )}
@@ -1074,6 +1144,9 @@ export function PurchasesPage() {
   const [detailPurchaseId, setDetailPurchaseId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
+  const [quickMedOpen, setQuickMedOpen] = useState(false)
+  const [paymentType, setPaymentType] = useState('cash')
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
 
   // Fetch suppliers
   const { data: suppliersData } = useQuery<{ suppliers: Supplier[] }>({
@@ -1115,6 +1188,7 @@ export function PurchasesPage() {
       supplierId: string
       invoiceNo?: string
       invoiceDate?: string
+      paymentType: string
       notes?: string
       items: Array<{
         medicineId: string
@@ -1148,6 +1222,7 @@ export function PurchasesPage() {
       setInvoiceNo('')
       setInvoiceDate(undefined)
       setNotes('')
+      setPaymentType('cash')
       setItems([createEmptyItem()])
     },
     onError: (err: Error) => {
@@ -1206,7 +1281,52 @@ export function PurchasesPage() {
     }, 0)
   }, [items])
 
-  const selectedSupplier = suppliersData?.suppliers.find((s) => s.id === selectedSupplierId)
+  const selectedSupplier = (suppliersData?.suppliers || []).find((s) => s.id === selectedSupplierId)
+
+  // Grouped Purchases logic
+  const groupedPurchases = useMemo(() => {
+    if (!historyData?.purchases) return []
+    const groups: Record<string, Record<string, PurchaseHistoryItem[]>> = {}
+    
+    historyData.purchases.forEach(po => {
+      const date = parseISO(po.invoiceDate)
+      const year = format(date, 'yyyy')
+      const month = format(date, 'MMMM')
+      
+      if (!groups[year]) groups[year] = {}
+      if (!groups[year][month]) groups[year][month] = []
+      groups[year][month].push(po)
+    })
+    
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])).map(([year, months]) => ({
+      year,
+      months: Object.entries(months).sort((a, b) => {
+          const monthsOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          return monthsOrder.indexOf(b[0]) - monthsOrder.indexOf(a[0]);
+      })
+    }))
+  }, [historyData])
+
+  // Check for duplicate invoice
+  const checkDuplicateInvoice = async (val: string) => {
+    setInvoiceNo(val)
+    if (val.trim().length > 2) {
+      try {
+        const res = await fetch(`/api/purchases?search=${val}&tenantId=current`) // Simulating tenant check
+        const data = await res.json()
+        const match = data.purchases?.find((p: any) => p.invoiceNo?.toLowerCase() === val.toLowerCase())
+        if (match) {
+          setDuplicateWarning(`Invoice #${val} already exists for ${match.supplier.name}`)
+        } else {
+          setDuplicateWarning(null)
+        }
+      } catch (e) {
+        // Ignore error
+      }
+    } else {
+      setDuplicateWarning(null)
+    }
+  }
 
   const handleSave = () => {
     if (!selectedSupplierId) {
@@ -1233,6 +1353,7 @@ export function PurchasesPage() {
       supplierId: selectedSupplierId,
       invoiceNo: invoiceNo.trim() || undefined,
       invoiceDate: invoiceDate ? format(invoiceDate, 'yyyy-MM-dd') : undefined,
+      paymentType,
       notes: notes.trim() || undefined,
       items: validItems.map((item) => ({
         medicineId: item.medicineId,
@@ -1247,12 +1368,52 @@ export function PurchasesPage() {
     })
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this purchase bill? Stock will be reverted.')) return
+    
+    try {
+      const res = await fetch(`/api/purchases/${id}?tenantId=current`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Purchase bill deleted')
+        queryClient.invalidateQueries({ queryKey: ['purchases-history'] })
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to delete')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    }
+  }
+
   const totalPages = historyData ? Math.ceil(historyData.total / 10) : 1
   const medicines = medicinesData?.medicines || []
 
   // Handle scanned items from AI Bill Scanner
-  const handleScannedItems = useCallback((scannedItems: ScannedItem[]) => {
-    const newItems: PurchaseFormItem[] = scannedItems.map((scanned) => {
+  const handleScannedItems = useCallback((scannedData: ScannedData) => {
+    // 1. Populate Header Info if available
+    if (scannedData.invoice_number) setInvoiceNo(scannedData.invoice_number)
+    if (scannedData.invoice_date) {
+      const parsedDate = new Date(scannedData.invoice_date)
+      if (!isNaN(parsedDate.getTime())) setInvoiceDate(parsedDate)
+    }
+
+    // Try to find matching supplier
+    if (scannedData.supplier_name && suppliersData?.suppliers) {
+      const matchedSupplier = suppliersData.suppliers.find(
+        s => s.name.toLowerCase().includes(scannedData.supplier_name!.toLowerCase()) ||
+             scannedData.supplier_name!.toLowerCase().includes(s.name.toLowerCase())
+      )
+      if (matchedSupplier) {
+        setSelectedSupplierId(matchedSupplier.id)
+      } else {
+        // If no match, we could potentially prompt to add a new supplier
+        // For now just keep it empty or log it
+        console.log('Supplier not found in DB:', scannedData.supplier_name)
+      }
+    }
+
+    // 2. Populate Items
+    const newItems: PurchaseFormItem[] = scannedData.items.map((scanned) => {
       // Try to match with existing medicine in DB
       const matchedMedicine = medicines.find(
         (m) =>
@@ -1282,8 +1443,18 @@ export function PurchasesPage() {
         gstPercent: String(scanned.gst_percent || 5),
       }
     })
-    setItems((prev) => [...prev, ...newItems])
-  }, [medicines])
+
+    // If the form has only one empty item, replace it. Otherwise append.
+    setItems((prev) => {
+      if (prev.length === 1 && !prev[0].medicineId && !prev[0].quantity) {
+        return newItems
+      }
+      return [...prev, ...newItems]
+    })
+    
+    // Open the form if it was closed
+    setFormOpen(true)
+  }, [medicines, suppliersData])
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -1325,22 +1496,23 @@ export function PurchasesPage() {
               ) : (
                 <>
                   {/* Supplier + Invoice Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Supplier *</Label>
+                      <Label className="text-sm font-semibold">Supplier *</Label>
                       <div className="flex gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
                               variant="outline"
                               role="combobox"
-                              className="flex-1 justify-between text-sm font-normal h-9"
+                              className="flex-1 justify-between text-sm font-normal h-9 overflow-hidden"
                             >
                               {selectedSupplier ? (
                                 <span className="truncate">{selectedSupplier.name}</span>
                               ) : (
                                 <span className="text-muted-foreground">Select supplier...</span>
                               )}
+                              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[300px] p-0" align="start">
@@ -1378,22 +1550,45 @@ export function PurchasesPage() {
                         </Button>
                       </div>
                     </div>
+
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Invoice Number</Label>
-                      <Input
-                        className="h-9 text-sm"
-                        value={invoiceNo}
-                        onChange={(e) => setInvoiceNo(e.target.value)}
-                        placeholder="e.g. INV-001"
-                      />
+                      <Label className="text-sm font-semibold">Invoice Number *</Label>
+                      <div className="relative">
+                        <Input
+                          className={`input-focus-smooth h-9 text-sm ${duplicateWarning ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : ''}`}
+                          placeholder="e.g. INV-001"
+                          value={invoiceNo}
+                          onChange={(e) => checkDuplicateInvoice(e.target.value)}
+                        />
+                        {duplicateWarning && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {duplicateWarning}
+                          </p>
+                        )}
+                      </div>
                     </div>
+
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Invoice Date</Label>
+                      <Label className="text-sm font-semibold">Invoice Date *</Label>
                       <DatePickerField
                         value={invoiceDate}
                         onChange={setInvoiceDate}
-                        placeholder="Invoice date"
+                        placeholder="Pick date"
                       />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold">Payment Type *</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value)}
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="credit">Credit</option>
+                        <option value="upi">UPI</option>
+                      </select>
                     </div>
                   </div>
 
@@ -1404,6 +1599,15 @@ export function PurchasesPage() {
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-semibold">Items</Label>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 h-8 text-xs"
+                          onClick={() => setQuickMedOpen(true)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                          Quick Add Medicine
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1518,9 +1722,13 @@ export function PurchasesPage() {
                 Purchase History
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                {historyData
-                  ? `${historyData.total} purchase order${historyData.total !== 1 ? 's' : ''} found`
-                  : 'Loading...'}
+                {historyLoading ? (
+                  'Loading...'
+                ) : historyData?.purchases ? (
+                  `${historyData.total || 0} purchase order${historyData.total !== 1 ? 's' : ''} found`
+                ) : (
+                  'Error loading history'
+                )}
               </CardDescription>
             </div>
           </div>
@@ -1602,58 +1810,79 @@ export function PurchasesPage() {
             <div className="px-6">
               <HistorySkeleton />
             </div>
-          ) : historyData && historyData.purchases.length > 0 ? (
+          ) : historyData?.purchases?.length ? (
             <>
-              <div className="table-header-sticky max-h-[480px] overflow-y-auto custom-scrollbar">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="pl-6 text-xs">Invoice #</TableHead>
-                      <TableHead className="text-xs">Supplier</TableHead>
-                      <TableHead className="text-xs hidden sm:table-cell">Date</TableHead>
-                      <TableHead className="text-xs text-center hidden md:table-cell">Items</TableHead>
-                      <TableHead className="text-xs text-right pr-6">Total Amount</TableHead>
-                      <TableHead className="text-xs text-right pr-6">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {historyData.purchases.map((po) => (
-                      <TableRow key={po.id} className="group">
-                        <TableCell className="pl-6">
-                          <span className="font-mono text-xs font-medium">
-                            {po.invoiceNo || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">{po.supplier.name}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">
-                          {format(parseISO(po.invoiceDate), 'dd MMM yyyy')}
-                        </TableCell>
-                        <TableCell className="text-center hidden md:table-cell">
-                          <Badge variant="secondary" className="text-xs h-5">
-                            {po.itemCount}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-sm pr-6">
-                          {formatCurrency(po.totalAmount)}
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => {
-                              setDetailPurchaseId(po.id)
-                              setDetailOpen(true)
-                            }}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+              <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                {groupedPurchases.map((yearGroup) => (
+                  <div key={yearGroup.year} className="mb-6">
+                    <div className="bg-muted/50 px-6 py-2 sticky top-0 z-10 flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold tracking-tight">{yearGroup.year}</span>
+                    </div>
+                    {yearGroup.months.map(([month, monthPurchases]) => (
+                      <div key={`${yearGroup.year}-${month}`} className="mb-4">
+                        <div className="px-8 py-1.5 border-b flex items-center justify-between bg-background/50">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{month}</span>
+                          <span className="text-[10px] text-muted-foreground">{monthPurchases.length} bill(s)</span>
+                        </div>
+                        <Table>
+                          <TableHeader className="hidden">
+                            <TableRow>
+                              <TableHead className="pl-6">Invoice #</TableHead>
+                              <TableHead>Supplier</TableHead>
+                              <TableHead className="hidden sm:table-cell">Date</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right pr-6">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {monthPurchases.map((po) => (
+                              <TableRow key={po.id} className="group border-none hover:bg-muted/30">
+                                <TableCell className="pl-10 w-[150px]">
+                                  <span className="font-mono text-xs font-medium">
+                                    {po.invoiceNo || '—'}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {po.supplier.name}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground hidden sm:table-cell w-[120px]">
+                                  {format(parseISO(po.invoiceDate), 'dd MMM')}
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-sm w-[150px]">
+                                  {formatCurrency(po.totalAmount)}
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-primary"
+                                      onClick={() => {
+                                        setDetailPurchaseId(po.id)
+                                        setDetailOpen(true)
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => handleDelete(po.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                ))}
               </div>
 
               {/* Pagination */}
@@ -1717,6 +1946,121 @@ export function PurchasesPage() {
           if (!open) setDetailPurchaseId(null)
         }}
       />
+
+      {/* Quick Add Medicine Dialog */}
+      <QuickAddMedicineDialog
+        open={quickMedOpen}
+        onOpenChange={setQuickMedOpen}
+        onSuccess={(med) => {
+          queryClient.invalidateQueries({ queryKey: ['medicines-list'] })
+          // Optionally auto-add the new medicine to the current purchase items
+          addItem()
+          const lastIdx = items.length
+          updateItem(items[lastIdx-1].id, { medicineId: med.id, medicineName: med.name })
+        }}
+      />
     </div>
+  )
+}
+
+// ── Quick Add Medicine Dialog ───────────────────────────────────────────────
+
+function QuickAddMedicineDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: (medicine: any) => void
+}) {
+  const [form, setForm] = useState({
+    name: '',
+    composition: '',
+    unitType: 'tablet',
+    gstPercent: '5',
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/medicines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error('Failed to create medicine')
+      return res.json()
+    },
+    onSuccess: (data) => {
+      toast.success('Medicine added successfully')
+      onSuccess(data)
+      onOpenChange(false)
+      setForm({ name: '', composition: '', unitType: 'tablet', gstPercent: '5' })
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="dialog-header-gradient">
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-500" />
+            Quick Add Medicine
+          </DialogTitle>
+          <DialogDescription>Add a new medicine to your database</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>Name *</Label>
+            <Input
+              placeholder="e.g. Paracetamol 500mg"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Composition</Label>
+            <Input
+              placeholder="e.g. Paracetamol"
+              value={form.composition}
+              onChange={(e) => setForm((f) => ({ ...f, composition: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Unit Type</Label>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                value={form.unitType}
+                onChange={(e) => setForm((f) => ({ ...f, unitType: e.target.value }))}
+              >
+                <option value="tablet">Tablet</option>
+                <option value="capsule">Capsule</option>
+                <option value="syrup">Syrup</option>
+                <option value="injection">Injection</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>GST %</Label>
+              <Input
+                type="number"
+                value={form.gstPercent}
+                onChange={(e) => setForm((f) => ({ ...f, gstPercent: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            onClick={() => mutation.mutate(form)}
+            disabled={!form.name.trim() || mutation.isPending}
+            className="btn-gradient-primary"
+          >
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Medicine'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

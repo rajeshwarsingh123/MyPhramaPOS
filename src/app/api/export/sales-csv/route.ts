@@ -1,33 +1,46 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { format, startOfMonth, endOfMonth, isValid, parseISO } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const tenantId = searchParams.get('tenantId')
     const fromDateParam = searchParams.get('fromDate')
     const toDateParam = searchParams.get('toDate')
+    const year = searchParams.get('year')
+    const month = searchParams.get('month')
 
-    const now = new Date()
-    const fromDate = fromDateParam
-      ? new Date(fromDateParam)
-      : startOfMonth(now)
-    const toDate = toDateParam
-      ? new Date(toDateParam)
-      : endOfMonth(now)
-
-    // Validate dates
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD.' }, { status: 400 })
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 })
     }
 
-    // Start and end of the range
-    const rangeStart = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())
-    const rangeEnd = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate() + 1)
+    let rangeStart: Date
+    let rangeEnd: Date
+
+    if (fromDateParam && toDateParam) {
+      const from = parseISO(fromDateParam)
+      const to = parseISO(toDateParam)
+      if (!isValid(from) || !isValid(to)) {
+        return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+      }
+      rangeStart = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+      rangeEnd = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999)
+    } else if (year && month) {
+      rangeStart = new Date(parseInt(year), parseInt(month) - 1, 1)
+      rangeEnd = endOfMonth(rangeStart)
+      rangeEnd.setHours(23, 59, 59, 999)
+    } else {
+      const now = new Date()
+      rangeStart = startOfMonth(now)
+      rangeEnd = endOfMonth(now)
+      rangeEnd.setHours(23, 59, 59, 999)
+    }
 
     const sales = await db.sale.findMany({
       where: {
-        saleDate: { gte: rangeStart, lt: rangeEnd },
+        tenantId,
+        saleDate: { gte: rangeStart, lte: rangeEnd },
       },
       include: {
         customer: {
@@ -37,6 +50,8 @@ export async function GET(request: NextRequest) {
           select: {
             medicineName: true,
             quantity: true,
+            mrp: true,
+            totalAmount: true,
           },
         },
       },
@@ -44,24 +59,21 @@ export async function GET(request: NextRequest) {
     })
 
     // Build CSV
-    const header = 'Invoice#,Date,Customer,Items,Subtotal,Discount,GST,Total,Payment Mode'
+    const header = 'Invoice#,Date,Customer,Items,Total,Payment Mode'
     const rows = sales.map((s) => {
-      const itemList = s.items.map((i) => `${i.medicineName} x${i.quantity}`).join('; ')
+      const itemList = s.items.map((i) => `${i.medicineName} (x${i.quantity})`).join('; ')
       return [
         s.invoiceNo,
         format(s.saleDate, 'yyyy-MM-dd HH:mm'),
         s.customer?.name ?? 'Walk-in',
         `"${itemList.replace(/"/g, '""')}"`,
-        s.subtotal.toFixed(2),
-        s.totalDiscount.toFixed(2),
-        s.totalGst.toFixed(2),
         s.totalAmount.toFixed(2),
-        s.paymentMode,
+        s.paymentMode.toUpperCase(),
       ].join(',')
     })
 
     const csv = [header, ...rows].join('\n')
-    const filename = `sales-report-${format(rangeStart, 'yyyy-MM-dd')}-to-${format(toDate, 'yyyy-MM-dd')}.csv`
+    const filename = `sales-history-${format(rangeStart, 'yyyy-MM-dd')}-to-${format(rangeEnd, 'yyyy-MM-dd')}.csv`
 
     return new NextResponse(csv, {
       headers: {

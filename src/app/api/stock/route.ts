@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +16,13 @@ export async function GET(request: NextRequest) {
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
     const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Build base where clause for medicines
-    const medicineWhere: Record<string, unknown> = { isActive: true }
+    const medicineWhere: any = { tenantId, isActive: true }
 
     if (search) {
       medicineWhere.OR = [

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getTenantId } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
@@ -10,13 +11,20 @@ export async function PUT(
     const body = await request.json()
     const { name, phone, email, address, gstNumber, isActive } = body
 
-    const existing = await db.supplier.findUnique({ where: { id } })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const existing = await db.supplier.findFirst({
+      where: { id, tenantId }
+    })
     if (!existing) {
       return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
     }
 
     const supplier = await db.supplier.update({
-      where: { id },
+      where: { id, tenantId },
       data: {
         name: name !== undefined ? name.trim() : undefined,
         phone: phone !== undefined ? (phone?.trim() || null) : undefined,
@@ -41,19 +49,26 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const existing = await db.supplier.findUnique({ where: { id } })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const existing = await db.supplier.findFirst({
+      where: { id, tenantId }
+    })
     if (!existing) {
       return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
     }
 
     // Check if supplier has purchase orders
     const purchaseCount = await db.purchaseOrder.count({
-      where: { supplierId: id },
+      where: { supplierId: id, tenantId },
     })
 
     // Soft delete
     await db.supplier.update({
-      where: { id },
+      where: { id, tenantId },
       data: { isActive: false },
     })
 

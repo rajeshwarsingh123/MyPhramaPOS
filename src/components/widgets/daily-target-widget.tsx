@@ -33,7 +33,8 @@ interface SalesTargetData {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
-  return '\u20B9' + amount.toLocaleString('en-IN', {
+  const safeAmount = typeof amount === 'number' ? amount : 0
+  return '\u20B9' + safeAmount.toLocaleString('en-IN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })
@@ -176,7 +177,7 @@ function AnimatedCounter({ target, duration = 1200 }: { target: number; duration
 
 function SetTargetDialog({ currentTarget }: { currentTarget: number }) {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState(currentTarget.toString())
+  const [value, setValue] = useState((currentTarget ?? 0).toString())
   const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
@@ -213,7 +214,7 @@ function SetTargetDialog({ currentTarget }: { currentTarget: number }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setValue(currentTarget.toString()) }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setValue((currentTarget ?? 0).toString()) }}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -329,7 +330,7 @@ export function DailyTargetWidget() {
     )
   }
 
-  const percentage = Math.round(data.percentage)
+  const percentage = Math.round(data?.percentage ?? 0)
   const config = getColorConfig(percentage)
   const isCelebration = percentage >= 100
 
@@ -364,7 +365,7 @@ export function DailyTargetWidget() {
               {isCelebration && <span className="text-xs">🎉</span>}
               {config.label}
             </Badge>
-            <SetTargetDialog currentTarget={data.target} />
+            <SetTargetDialog currentTarget={data?.target ?? 0} />
           </div>
         </div>
 
@@ -373,7 +374,7 @@ export function DailyTargetWidget() {
           {/* Circular progress ring */}
           <div className="relative shrink-0">
             <CircularProgressRing
-              percentage={data.percentage}
+              percentage={data?.percentage ?? 0}
               size={110}
               strokeWidth={8}
               color={config.ring}
@@ -395,7 +396,7 @@ export function DailyTargetWidget() {
                 Target
               </p>
               <p className="text-base font-bold gradient-text-teal tabular-nums">
-                {formatCurrency(data.target)}
+                {formatCurrency(data?.target ?? 0)}
               </p>
             </div>
 
@@ -407,19 +408,19 @@ export function DailyTargetWidget() {
               <div className="flex items-center gap-1.5">
                 <TrendingUp className={cn('h-3.5 w-3.5', config.text)} />
                 <p className={cn('text-base font-bold tabular-nums', config.text)}>
-                  {formatCurrency(data.actual)}
+                  {formatCurrency(data?.actual ?? 0)}
                 </p>
               </div>
             </div>
 
             {/* Remaining */}
-            {data.remaining > 0 ? (
+            {(data?.remaining ?? 0) > 0 ? (
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Remaining
                 </p>
                 <p className="text-sm font-semibold text-muted-foreground tabular-nums">
-                  {formatCurrency(data.remaining)}
+                  {formatCurrency(data?.remaining ?? 0)}
                 </p>
               </div>
             ) : (
@@ -428,7 +429,7 @@ export function DailyTargetWidget() {
                   Exceeded by
                 </p>
                 <p className="text-sm font-semibold text-green-600 dark:text-green-400 tabular-nums">
-                  +{formatCurrency(data.actual - data.target)}
+                  +{formatCurrency((data?.actual ?? 0) - (data?.target ?? 0))}
                 </p>
               </div>
             )}
@@ -440,14 +441,14 @@ export function DailyTargetWidget() {
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-medium text-muted-foreground">Progress</span>
             <span className={cn('text-[10px] font-bold tabular-nums', config.text)}>
-              {formatCurrency(data.actual)} / {formatCurrency(data.target)}
+              {formatCurrency(data?.actual ?? 0)} / {formatCurrency(data?.target ?? 0)}
             </span>
           </div>
           <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
-                width: `${Math.min(data.percentage, 100)}%`,
+                width: `${Math.min(data?.percentage ?? 0, 100)}%`,
                 backgroundColor: config.ring,
               }}
             />

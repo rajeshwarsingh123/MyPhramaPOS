@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isSupabaseConfigured, anonSupabase } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 
 function generateOTP(): string {
@@ -81,12 +82,23 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // ── Supabase Auth Resend ──
+    if (isSupabaseConfigured && anonSupabase) {
+      const { error: resendError } = await anonSupabase.auth.resend({
+        email: normalizedEmail,
+        type: 'signup',
+      })
+
+      if (resendError) {
+        console.error('Supabase OTP resend failed:', resendError)
+        return NextResponse.json({ error: resendError.message }, { status: 400 })
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Verification code resent.',
+      message: 'Verification code resent to your email.',
       maskedEmail: maskEmail(normalizedEmail),
-      // OTP returned for testing — in production, send via email
-      otp,
       expiresIn: 600,
     })
   } catch (error) {

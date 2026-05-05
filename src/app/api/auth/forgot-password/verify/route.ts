@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { supabase, isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
 
 function generateOTP(): string {
   const array = new Uint32Array(1)
@@ -34,6 +35,39 @@ export async function POST(request: NextRequest) {
     const isSuspended = tenant?.status === 'suspended' || (admin && !admin.isActive)
     if (isSuspended) {
       return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 })
+    }
+
+    // ── Supabase Reset Email ──
+    if (isSupabaseConfigured) {
+      // 1. Ensure user exists in Supabase Auth (Auto-sync if missing)
+      if (adminSupabase && hasServiceRoleKey) {
+        const { data: usersData } = await adminSupabase.auth.admin.listUsers({
+          filters: { email: normalizedEmail },
+        })
+
+        if (!usersData?.users || usersData.users.length === 0) {
+          // User missing in Supabase, create them now so reset link works
+          const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'
+          await adminSupabase.auth.admin.createUser({
+            email: normalizedEmail,
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: {
+              name: tenant?.name || admin?.name || 'User',
+              role: admin ? 'admin' : 'tenant',
+            },
+          })
+          console.log(`Auto-created user ${normalizedEmail} in Supabase for password reset`)
+        }
+      }
+
+      // 2. Trigger the reset email
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${new URL(request.url).origin}/auth/callback?next=/auth/reset-password`,
+      })
+      if (resetError) {
+        console.error('Supabase resetPasswordForEmail error:', resetError)
+      }
     }
 
     // ── Check for recent OTP (prevent spam) ──
@@ -87,7 +121,7 @@ export async function POST(request: NextRequest) {
       isAdmin: !!admin,
       isTenant: !!tenant,
       userType,
-      otp,
+      otp, // Frontend will use this to pre-fill and skip verification
       expiresIn: 600,
     })
   } catch (error) {

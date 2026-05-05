@@ -578,9 +578,21 @@ export function BillingPage() {
     printWindow.print()
   }, [completedSale])
 
-  // Handle medicines selected from prescription scanner
-  const handleScannedMedicines = useCallback(
-    async (medicines: ScannedMedicine[]) => {
+  // Handle results from prescription scanner
+  const handleScanResults = useCallback(
+    async (result: any) => {
+      // 1. Populate Doctor Name
+      if (result.doctor_name) {
+        setDoctorName(result.doctor_name)
+      }
+
+      // 2. Populate Patient Name if possible
+      if (result.patient_name && !selectedCustomer) {
+        setCustomerQuery(result.patient_name)
+      }
+
+      // 3. Add medicines to cart
+      const medicines = result.medicines || []
       for (const med of medicines) {
         try {
           const res = await fetch(`/api/billing/search?q=${encodeURIComponent(med.name)}`)
@@ -595,7 +607,7 @@ export function BillingPage() {
         }
       }
     },
-    [addToCart]
+    [addToCart, selectedCustomer]
   )
 
   // Customer filtered
@@ -1358,7 +1370,7 @@ export function BillingPage() {
       <PrescriptionScanner
         open={showScanDialog}
         onOpenChange={setShowScanDialog}
-        onMedicinesSelected={handleScannedMedicines}
+        onScanComplete={handleScanResults}
       />
 
       {/* ==================== INVOICE DIALOG ==================== */}

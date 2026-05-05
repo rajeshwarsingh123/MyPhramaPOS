@@ -3,252 +3,250 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ==================== MEDICINE ====================
-
 model Medicine {
-  id          String   @id @default(cuid())
-  name        String
-  genericName String?
-  companyName String?
-  composition String?
-  strength    String?
-  category    String?  // Pain/Fever, Antibiotics, Diabetes, etc.
-  unitType    String   @default("tablet") // tablet, capsule, syrup, injection, cream, drops, inhaler, powder
-  packSize    String?
-  gstPercent  Float    @default(5)
-  sellingPrice Float   @default(0)
-  marginPercent Float  @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String     @id @default(cuid())
+  name          String
+  genericName   String?
+  companyName   String?
+  composition   String?
+  strength      String?
+  category      String?
+  unitType      String     @default("tablet")
+  packSize      String?
+  gstPercent    Float      @default(5)
+  sellingPrice  Float      @default(0)
+  marginPercent Float      @default(0)
+  tenantId      String
+  batches       Batch[]
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  saleItems     SaleItem[]
 
-  batches Batch[]
-  saleItems SaleItem[]
+  @@index([tenantId])
 }
 
 model Batch {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   medicineId      String
   batchNumber     String
   expiryDate      DateTime
   mfgDate         DateTime?
   purchasePrice   Float
   mrp             Float
-  quantity        Int      @default(0)
-  initialQuantity Int      @default(0)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  quantity        Int           @default(0)
+  initialQuantity Int           @default(0)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenantId        String
+  medicine        Medicine      @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseItem    PurchaseItem?
+  saleItems       SaleItem[]
 
-  medicine     Medicine        @relation(fields: [medicineId], references: [id], onDelete: Cascade)
-  purchaseItem PurchaseItem[]
-  saleItems    SaleItem[]
-
+  @@index([tenantId])
   @@index([medicineId])
   @@index([expiryDate])
   @@index([batchNumber])
 }
 
-// ==================== SUPPLIER ====================
-
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  gstNumber String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String          @id @default(cuid())
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  gstNumber      String?
+  tenantId       String
   purchaseOrders PurchaseOrder[]
-}
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-// ==================== CUSTOMER ====================
+  @@index([tenantId])
+}
 
 model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  email     String?
-  address   String?
+  id         String  @id @default(cuid())
+  name       String
+  phone      String?
+  email      String?
+  address    String?
   doctorName String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tenantId   String
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sales      Sale[]
 
-  sales Sale[]
+  @@index([tenantId])
 }
 
-// ==================== PURCHASE ====================
-
 model PurchaseOrder {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   supplierId  String
   invoiceNo   String?
-  invoiceDate DateTime @default(now())
-  totalAmount Float    @default(0)
-  totalGst    Float    @default(0)
+  invoiceDate DateTime       @default(now())
+  totalAmount Float          @default(0)
+  totalGst    Float          @default(0)
   notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenantId    String
+  items       PurchaseItem[]
+  supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  supplier Supplier       @relation(fields: [supplierId], references: [id])
-  items    PurchaseItem[]
-
+  @@index([tenantId])
   @@index([supplierId])
   @@index([invoiceDate])
 }
 
 model PurchaseItem {
-  id             String @id @default(cuid())
+  id              String        @id @default(cuid())
   purchaseOrderId String
-  batchId        String @unique
-  quantity       Int
-  purchasePrice  Float
-  mrp            Float
-  gstPercent     Float @default(5)
-  totalAmount    Float @default(0)
-
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  batch         Batch         @relation(fields: [batchId], references: [id])
+  batchId         String        @unique
+  quantity        Int
+  purchasePrice   Float
+  mrp             Float
+  gstPercent      Float         @default(5)
+  totalAmount     Float         @default(0)
+  batch           Batch         @relation(fields: [batchId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@index([purchaseOrderId])
 }
 
-// ==================== SALES ====================
-
 model Sale {
-  id           String   @id @default(cuid())
-  customerId   String?
-  doctorName   String?
-  invoiceNo    String   @unique
-  saleDate     DateTime @default(now())
-  subtotal     Float    @default(0)
-  totalGst     Float    @default(0)
-  totalDiscount Float   @default(0)
-  totalAmount  Float    @default(0)
-  paymentMode  String   @default("cash") // cash, card, upi, credit
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String     @id @default(cuid())
+  customerId    String?
+  doctorName    String?
+  invoiceNo     String     @unique
+  saleDate      DateTime   @default(now())
+  subtotal      Float      @default(0)
+  totalGst      Float      @default(0)
+  totalDiscount Float      @default(0)
+  totalAmount   Float      @default(0)
+  paymentMode   String     @default("cash")
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  tenantId      String
+  returns       Return[]
+  customer      Customer?  @relation(fields: [customerId], references: [id])
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items         SaleItem[]
 
-  customer Customer?  @relation(fields: [customerId], references: [id])
-  items    SaleItem[]
-  returns  Return[]
-
+  @@index([tenantId])
   @@index([customerId])
   @@index([saleDate])
 }
 
 model SaleItem {
-  id         String @id @default(cuid())
-  saleId     String
-  batchId    String
-  medicineId String
+  id           String   @id @default(cuid())
+  saleId       String
+  batchId      String
+  medicineId   String
   medicineName String
-  quantity   Int
-  mrp        Float
-  discount   Float @default(0)
-  gstPercent Float @default(5)
-  gstAmount  Float @default(0)
-  totalAmount Float @default(0)
-
-  sale     Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  batch    Batch  @relation(fields: [batchId], references: [id])
-  medicine Medicine @relation(fields: [medicineId], references: [id])
-  returns  Return[]
+  quantity     Int
+  mrp          Float
+  discount     Float    @default(0)
+  gstPercent   Float    @default(5)
+  gstAmount    Float    @default(0)
+  totalAmount  Float    @default(0)
+  returns      Return[]
+  batch        Batch    @relation(fields: [batchId], references: [id])
+  medicine     Medicine @relation(fields: [medicineId], references: [id])
+  sale         Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([saleId])
   @@index([batchId])
 }
 
-// ==================== RETURNS ====================
-
 model Return {
-  id          String   @id @default(cuid())
-  saleId      String
-  saleItemId  String
-  returnQty   Int
-  reason      String
+  id           String   @id @default(cuid())
+  saleId       String
+  saleItemId   String
+  returnQty    Int
+  reason       String
   refundAmount Float
-  returnDate  DateTime @default(now())
+  returnDate   DateTime @default(now())
+  tenantId     String
+  sale         Sale     @relation(fields: [saleId], references: [id])
+  saleItem     SaleItem @relation(fields: [saleItemId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  sale     Sale     @relation(fields: [saleId], references: [id])
-  saleItem SaleItem @relation(fields: [saleItemId], references: [id])
-
+  @@index([tenantId])
   @@index([saleId])
 }
 
-// ==================== SETTINGS ====================
-
 model StoreSetting {
-  id         String @id @default(cuid())
-  storeName  String @default("My Pharmacy")
-  phone      String?
-  email      String?
-  address    String?
-  gstNumber  String?
-  licenseNo  String?
-  logoUrl    String?
-  invoicePrefix String @default("INV")
-  nextInvoiceNo Int @default(1)
-  dailySalesTarget Float @default(10000)
-  updatedAt  DateTime @updatedAt
+  id               String   @id @default(cuid())
+  storeName        String   @default("My Pharmacy")
+  phone            String?
+  email            String?
+  address          String?
+  gstNumber        String?
+  licenseNo        String?
+  logoUrl          String?
+  invoicePrefix    String   @default("INV")
+  nextInvoiceNo    Int      @default(1)
+  dailySalesTarget Float    @default(10000)
+  updatedAt        DateTime @updatedAt
+  tenantId         String   @unique
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
-// ==================== SaaS ADMIN ====================
-
 model Admin {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String    @unique
   password  String
-  role      String   @default("staff") // super_admin, staff
-  isActive  Boolean  @default(true)
+  role      String    @default("staff")
+  isActive  Boolean   @default(true)
   lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Tenant {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  phone         String?
-  businessName  String
-  businessPhone String?
+  id              String          @id @default(cuid())
+  name            String
+  email           String          @unique
+  phone           String?
+  businessName    String
+  businessPhone   String?
   businessAddress String?
-  gstNumber     String?
-  plan          String   @default("free") // free, pro
-  status        String   @default("active") // active, suspended, trial
-  passwordHash  String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  subscriptions Subscription[]
-  supportTickets SupportTicket[]
-  systemLogs     SystemLog[]
+  gstNumber       String?
+  plan            String          @default("free")
+  status          String          @default("active")
+  passwordHash    String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  batches         Batch[]
+  customers       Customer[]
+  medicines       Medicine[]
+  purchaseOrders  PurchaseOrder[]
+  returns         Return[]
+  sales           Sale[]
+  storeSetting    StoreSetting?
+  subscriptions   Subscription[]
+  suppliers       Supplier[]
+  supportTickets  SupportTicket[]
+  systemLogs      SystemLog[]
 }
 
 model Subscription {
   id          String   @id @default(cuid())
   tenantId    String
-  plan        String   @default("free") // free, pro
+  plan        String   @default("free")
   amount      Float    @default(0)
-  status      String   @default("active") // active, expired, cancelled
+  status      String   @default("active")
   startDate   DateTime @default(now())
   endDate     DateTime
-  paymentMode String?  // upi, card, bank_transfer
+  paymentMode String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([status])
@@ -259,13 +257,12 @@ model SupportTicket {
   tenantId    String
   subject     String
   description String
-  status      String   @default("open") // open, in_progress, resolved, closed
-  priority    String   @default("medium") // low, medium, high, urgent
-  replies     String   @default("[]") // JSON array of replies
+  status      String   @default("open")
+  priority    String   @default("medium")
+  replies     String   @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([status])
@@ -277,8 +274,7 @@ model SystemLog {
   action    String
   details   String?
   createdAt DateTime @default(now())
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([createdAt])
@@ -288,29 +284,27 @@ model Announcement {
   id        String   @id @default(cuid())
   title     String
   message   String
-  type      String   @default("info") // info, warning, maintenance, promotion
+  type      String   @default("info")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model PlatformSetting {
-  id              String @id @default(cuid())
-  key             String @unique
-  value           String
-  description     String?
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
 }
-
-// ==================== PASSWORD RESET TOKEN ====================
 
 model PasswordResetToken {
   id        String   @id @default(cuid())
   email     String
-  otp       String   // 6-digit OTP code
-  userType  String   // admin, tenant
-  userId    String?  // Admin.id or Tenant.id
-  purpose   String   @default("password_reset") // password_reset, signup_verification
+  otp       String
+  userType  String
+  userId    String?
+  purpose   String   @default("password_reset")
   isUsed    Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())

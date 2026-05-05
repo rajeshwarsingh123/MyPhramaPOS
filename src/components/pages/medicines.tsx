@@ -292,7 +292,9 @@ export function MedicinesPage() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [expandedMedicineId, setExpandedMedicineId] = useState<string | null>(null)
   const [showMedicineDialog, setShowMedicineDialog] = useState(false)
-  const [showBatchDialog, setShowBatchDialog] = useState(false)
+  const [isSmartFilling, setIsSmartFilling] = useState(false)
+  const [isSuggestingPrice, setIsSuggestingPrice] = useState(false)
+  const [priceSuggestion, setPriceSuggestion] = useState<any>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false)
   const [editingMedicine, setEditingMedicine] = useState<MedicineInfo | null>(null)
@@ -653,11 +655,43 @@ export function MedicinesPage() {
     setShowBatchDialog(true)
   }
 
+  async function handleSuggestPrice() {
+    const name = batchDialogMedicineName || editingMedicine?.name
+    const purchasePrice = batchForm.getValues('purchasePrice')
+
+    if (!name || !purchasePrice) {
+      toast.error('Medicine name and purchase price are required for suggestion')
+      return
+    }
+
+    setIsSuggestingPrice(true)
+    setPriceSuggestion(null)
+    try {
+      const res = await fetch('/api/ai/suggest-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, purchasePrice }),
+      })
+      const data = await res.json()
+      if (data.success && data.pricing) {
+        setPriceSuggestion(data.pricing)
+        toast.success('AI pricing suggestion ready!')
+      } else {
+        toast.error(data.error || 'Failed to get pricing suggestion')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setIsSuggestingPrice(false)
+    }
+  }
+
   function closeBatchDialog() {
     setShowBatchDialog(false)
     setBatchDialogMedicineId(null)
     setBatchDialogMedicineName('')
     setEditingBatch(null)
+    setPriceSuggestion(null)
     batchForm.reset()
   }
 
@@ -676,6 +710,40 @@ export function MedicinesPage() {
       updateBatchMutation.mutate({ id: editingBatch.id, ...values })
     } else if (batchDialogMedicineId) {
       addBatchMutation.mutate({ medicineId: batchDialogMedicineId, ...values })
+    }
+  }
+
+  async function handleSmartFill() {
+    const name = medicineForm.getValues('name')
+    if (!name) {
+      toast.error('Please enter a medicine name first')
+      return
+    }
+
+    setIsSmartFilling(true)
+    try {
+      const res = await fetch('/api/ai/medicine-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const data = await res.json()
+      if (data.success && data.data) {
+        const info = data.data
+        if (info.generic_name) medicineForm.setValue('genericName', info.generic_name)
+        if (info.composition) medicineForm.setValue('composition', info.composition)
+        if (info.strength) medicineForm.setValue('strength', info.strength)
+        if (info.unit_type) medicineForm.setValue('unitType', info.unit_type)
+        if (info.packSize) medicineForm.setValue('packSize', String(info.pack_size))
+        if (info.gst_percent) medicineForm.setValue('gstPercent', info.gst_percent)
+        toast.success('Fields filled using AI!')
+      } else {
+        toast.error(data.error || 'Failed to get AI suggestions')
+      }
+    } catch (e) {
+      toast.error('Network error while fetching AI info')
+    } finally {
+      setIsSmartFilling(false)
     }
   }
 
@@ -1193,9 +1261,26 @@ export function MedicinesPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem className="sm:col-span-2">
-                        <FormLabel>
-                          Medicine Name <span className="text-destructive">*</span>
-                        </FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>
+                            Medicine Name <span className="text-destructive">*</span>
+                          </FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleSmartFill}
+                            disabled={isSmartFilling}
+                            className="h-7 text-[10px] gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30 font-bold uppercase tracking-wider"
+                          >
+                            {isSmartFilling ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            Smart Fill with AI
+                          </Button>
+                        </div>
                         <FormControl>
                           <Input placeholder="e.g. Paracetamol 500mg" {...field} />
                         </FormControl>
@@ -1584,7 +1669,24 @@ export function MedicinesPage() {
               </div>
 
               <div>
-                <Label className="text-xs">MRP (₹)</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">MRP (₹)</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSuggestPrice}
+                    disabled={isSuggestingPrice}
+                    className="h-6 text-[9px] gap-1 text-emerald-600 hover:text-emerald-700 font-bold uppercase tracking-wider"
+                  >
+                    {isSuggestingPrice ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-2.5 w-2.5" />
+                    )}
+                    AI Suggest
+                  </Button>
+                </div>
                 <Input
                   type="number"
                   step="0.01"
@@ -1604,6 +1706,41 @@ export function MedicinesPage() {
                 />
               </div>
             </div>
+
+            {/* Price Suggestion Box */}
+            {priceSuggestion && (
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 space-y-2 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    AI PRICING SUGGESTION
+                  </span>
+                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 text-[10px]">
+                    MRP: ₹{priceSuggestion.suggested_mrp}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  {priceSuggestion.reasoning}
+                </p>
+                {priceSuggestion.market_context && (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Market Info: {priceSuggestion.market_context}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-7 text-[10px] border-amber-300 text-amber-800 bg-white hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700"
+                  onClick={() => {
+                    batchForm.setValue('mrp', priceSuggestion.suggested_mrp)
+                    setPriceSuggestion(null)
+                  }}
+                >
+                  Apply Suggested MRP
+                </Button>
+              </div>
+            )}
 
             {/* Auto-calculated selling price */}
             {batchAutoSellingPrice && (

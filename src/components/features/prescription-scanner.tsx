@@ -42,7 +42,7 @@ export interface ScannedMedicine {
 interface PrescriptionScannerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onMedicinesSelected: (medicines: ScannedMedicine[]) => void
+  onScanComplete: (response: ScanResponse) => void
 }
 
 interface ScanResponse {
@@ -60,7 +60,7 @@ interface ScanResponse {
 export function PrescriptionScanner({
   open,
   onOpenChange,
-  onMedicinesSelected,
+  onScanComplete,
 }: PrescriptionScannerProps) {
   // File & preview state
   const [file, setFile] = useState<File | null>(null)
@@ -237,10 +237,15 @@ export function PrescriptionScanner({
       toast.error('Please select at least one medicine')
       return
     }
-    onMedicinesSelected(selected)
+    
+    onScanComplete({
+      ...scanResults,
+      medicines: selected
+    })
+    
     handleOpenChange(false)
     toast.success(`${selected.length} medicine${selected.length > 1 ? 's' : ''} added to bill!`)
-  }, [scanResults, selectedIds, onMedicinesSelected, handleOpenChange])
+  }, [scanResults, selectedIds, onScanComplete, handleOpenChange])
 
   // Retry scan (reset results but keep image)
   const handleRetry = useCallback(() => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,51 +8,45 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const skip = (page - 1) * limit
 
-    const where: Prisma.SupplierWhereInput = {
-      isActive: true,
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    let query = supabase
+      .from('suppliers')
+      .select('*', { count: 'exact' })
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
 
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-        { email: { contains: search } },
-        { gstNumber: { contains: search } },
-      ]
+      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,gst_number.ilike.%${search}%`)
     }
 
-    const [suppliers, total] = await Promise.all([
-      db.supplier.findMany({
-        where,
-        include: {
-          _count: {
-            select: { purchaseOrders: true },
-          },
-          purchaseOrders: {
-            orderBy: { invoiceDate: 'desc' },
-            take: 1,
-            select: {
-              invoiceDate: true,
-              totalAmount: true,
-            },
-          },
-        },
-        orderBy: { name: 'asc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      db.supplier.count({ where }),
-    ])
+    const { data: suppliers, count, error } = await query
+      .order('name', { ascending: true })
+      .range(skip, skip + limit - 1)
 
-    // Aggregate total orders and total amount per supplier
+    if (error) throw error
+
+    // Fetch stats for each supplier (Total Bills, Total Amount, Last Bill Date)
+    // In a real app, this could be a view or a join.
     const suppliersWithStats = await Promise.all(
-      suppliers.map(async (supplier) => {
-        const aggregated = await db.purchaseOrder.aggregate({
-          where: { supplierId: supplier.id },
-          _sum: { totalAmount: true },
-          _count: true,
-        })
+      (suppliers || []).map(async (supplier) => {
+        const { data: bills, error: billsErr } = await supabase
+          .from('purchase_bills')
+          .select('total_amount, invoice_date')
+          .eq('supplier_id', supplier.id)
+          .eq('tenant_id', tenantId)
+
+        if (billsErr) throw billsErr
+
+        const totalAmount = bills?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0
+        const lastBillDate = bills?.length 
+          ? bills.reduce((latest, b) => new Date(b.invoice_date) > new Date(latest) ? b.invoice_date : latest, bills[0].invoice_date)
+          : null
 
         return {
           id: supplier.id,
@@ -60,25 +54,25 @@ export async function GET(request: NextRequest) {
           phone: supplier.phone,
           email: supplier.email,
           address: supplier.address,
-          gstNumber: supplier.gstNumber,
-          createdAt: supplier.createdAt,
-          updatedAt: supplier.updatedAt,
-          totalOrders: aggregated._count,
-          totalAmount: aggregated._sum.totalAmount || 0,
-          lastOrderDate: supplier.purchaseOrders[0]?.invoiceDate || null,
+          gstNumber: supplier.gst_number,
+          createdAt: supplier.created_at,
+          updatedAt: supplier.updated_at,
+          totalOrders: bills?.length || 0,
+          totalAmount: totalAmount,
+          lastOrderDate: lastBillDate,
         }
       })
     )
 
     return NextResponse.json({
       suppliers: suppliersWithStats,
-      total,
+      total: count || 0,
       page,
       limit,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('GET /api/suppliers error:', error)
-    return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to fetch suppliers' }, { status: 500 })
   }
 }
 
@@ -87,23 +81,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, phone, email, address, gstNumber } = body
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Supplier name is required' }, { status: 400 })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supplier = await db.supplier.create({
-      data: {
+    if (!name?.trim()) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .insert({
+        tenant_id: tenantId,
         name: name.trim(),
         phone: phone?.trim() || null,
         email: email?.trim() || null,
         address: address?.trim() || null,
-        gstNumber: gstNumber?.trim() || null,
-      },
-    })
+        gst_number: gstNumber?.trim() || null,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
 
     return NextResponse.json(supplier, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('POST /api/suppliers error:', error)
-    return NextResponse.json({ error: 'Failed to create supplier' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to create supplier' }, { status: 500 })
   }
 }

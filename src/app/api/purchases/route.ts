@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,225 +8,206 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const skip = (page - 1) * limit
     const fromDate = searchParams.get('fromDate')
     const toDate = searchParams.get('toDate')
 
-    const where: Prisma.PurchaseOrderWhereInput = {}
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let query = supabase
+      .from('purchase_bills')
+      .select('*, supplier:suppliers(name), items:purchase_items(count)', { count: 'exact' })
+      .eq('tenant_id', tenantId)
 
     if (search) {
-      where.OR = [
-        { invoiceNo: { contains: search } },
-        { supplier: { name: { contains: search } } },
-        { notes: { contains: search } },
-      ]
+      // Searching invoice_no or join-related fields can be tricky in Supabase without nested searches.
+      // We'll search invoice_no for now.
+      query = query.ilike('invoice_no', `%${search}%`)
     }
 
-    if (fromDate || toDate) {
-      where.invoiceDate = {}
-      if (fromDate) {
-        where.invoiceDate.gte = new Date(fromDate)
-      }
-      if (toDate) {
-        // Include the full end day
-        const end = new Date(toDate)
-        end.setHours(23, 59, 59, 999)
-        where.invoiceDate.lte = end
-      }
-    }
+    if (fromDate) query = query.gte('invoice_date', fromDate)
+    if (toDate) query = query.lte('invoice_date', toDate)
 
-    const [purchases, total] = await Promise.all([
-      db.purchaseOrder.findMany({
-        where,
-        include: {
-          supplier: {
-            select: { id: true, name: true },
-          },
-          items: {
-            include: {
-              batch: {
-                include: {
-                  medicine: {
-                    select: { id: true, name: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      db.purchaseOrder.count({ where }),
-    ])
+    const { data: bills, count, error } = await query
+      .order('invoice_date', { ascending: false })
+      .range(skip, skip + limit - 1)
 
-    const formattedPurchases = purchases.map((po) => ({
-      id: po.id,
-      invoiceNo: po.invoiceNo,
-      invoiceDate: po.invoiceDate,
-      totalAmount: po.totalAmount,
-      totalGst: po.totalGst,
-      notes: po.notes,
-      supplier: po.supplier,
-      itemCount: po.items.length,
-      createdAt: po.createdAt,
-      updatedAt: po.updatedAt,
+    if (error) throw error
+
+    const formattedBills = (bills || []).map(b => ({
+      id: b.id,
+      invoiceNo: b.invoice_no,
+      invoiceDate: b.invoice_date,
+      totalAmount: b.total_amount,
+      totalGst: b.total_gst,
+      paymentType: b.payment_type,
+      notes: b.notes,
+      supplier: b.supplier,
+      itemCount: b.items?.[0]?.count || 0,
+      createdAt: b.created_at
     }))
 
     return NextResponse.json({
-      purchases: formattedPurchases,
-      total,
+      purchases: formattedBills,
+      total: count || 0,
       page,
       limit,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('GET /api/purchases error:', error)
-    return NextResponse.json({ error: 'Failed to fetch purchases' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to fetch purchases' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { supplierId, invoiceNo, invoiceDate, notes, items } = body
+    const { supplierId, invoiceNo, invoiceDate, paymentType, notes, items } = body
 
-    if (!supplierId) {
-      return NextResponse.json({ error: 'Supplier is required' }, { status: 400 })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'At least one item is required' }, { status: 400 })
+    if (!supplierId || !invoiceNo || !items || items.length === 0) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Validate each item
-    for (const item of items) {
-      if (!item.medicineId) {
-        return NextResponse.json({ error: 'Medicine is required for each item' }, { status: 400 })
-      }
-      if (!item.quantity || item.quantity <= 0) {
-        return NextResponse.json({ error: 'Valid quantity is required for each item' }, { status: 400 })
-      }
-      if (!item.expiryDate) {
-        return NextResponse.json({ error: 'Expiry date is required for each item' }, { status: 400 })
-      }
+    // Check for duplicate invoice number
+    const { data: existingBill } = await supabase
+      .from('purchase_bills')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('invoice_no', invoiceNo)
+      .single()
+
+    if (existingBill) {
+      return NextResponse.json({ error: `Invoice number ${invoiceNo} already exists for this tenant.` }, { status: 400 })
     }
 
     let totalAmount = 0
     let totalGst = 0
-    const purchaseItemsData: {
-      batchId: string
-      quantity: number
-      purchasePrice: number
-      mrp: number
-      gstPercent: number
-      totalAmount: number
-    }[] = []
 
-    // Process each item: create/find batch, calculate totals
+    // 1. Create the Purchase Bill
+    const { data: bill, error: billErr } = await supabase
+      .from('purchase_bills')
+      .insert({
+        tenant_id: tenantId,
+        supplier_id: supplierId,
+        invoice_no: invoiceNo,
+        invoice_date: invoiceDate || new Date().toISOString(),
+        payment_type: paymentType || 'cash',
+        notes: notes || null,
+      })
+      .select()
+      .single()
+
+    if (billErr) throw billErr
+
+    // 2. Process each item
     for (const item of items) {
-      const gstPercent = item.gstPercent !== undefined ? parseFloat(item.gstPercent) : 5
-      const purchasePrice = parseFloat(item.purchasePrice) || 0
+      const qty = parseInt(item.quantity) || 0
+      const price = parseFloat(item.purchasePrice) || 0
       const mrp = parseFloat(item.mrp) || 0
-      const quantity = parseInt(item.quantity) || 0
-
-      // Calculate item total (price * qty)
-      const itemBaseAmount = purchasePrice * quantity
-      const itemGst = (itemBaseAmount * gstPercent) / 100
-      const itemTotal = itemBaseAmount + itemGst
+      const gstPercent = parseFloat(item.gstPercent) || 5
+      
+      const itemSubtotal = qty * price
+      const itemGst = (itemSubtotal * gstPercent) / 100
+      const itemTotal = itemSubtotal + itemGst
 
       totalAmount += itemTotal
       totalGst += itemGst
 
-      // Find or create the batch
-      const batchNumber = item.batchNumber?.trim() || `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      const expiryDate = new Date(item.expiryDate)
-
-      // Check if batch already exists for this medicine
-      const existingBatch = await db.batch.findFirst({
-        where: {
-          medicineId: item.medicineId,
-          batchNumber: batchNumber,
-        },
-      })
-
+      // Find or Create Batch
       let batchId: string
+      const { data: existingBatch } = await supabase
+        .from('batches')
+        .select('id, quantity')
+        .eq('tenant_id', tenantId)
+        .eq('medicine_id', item.medicineId)
+        .eq('batch_number', item.batchNumber)
+        .single()
 
       if (existingBatch) {
-        // Update existing batch: add quantity
-        const updatedBatch = await db.batch.update({
-          where: { id: existingBatch.id },
-          data: {
-            quantity: existingBatch.quantity + quantity,
-            initialQuantity: existingBatch.initialQuantity + quantity,
-            purchasePrice: purchasePrice,
+        batchId = existingBatch.id
+        await supabase
+          .from('batches')
+          .update({
+            quantity: (existingBatch.quantity || 0) + qty,
+            purchase_price: price,
             mrp: mrp,
-            expiryDate: expiryDate,
-            mfgDate: item.mfgDate ? new Date(item.mfgDate) : existingBatch.mfgDate,
-            isActive: true,
-          },
-        })
-        batchId = updatedBatch.id
+            expiry_date: item.expiryDate,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', batchId)
       } else {
-        // Create new batch
-        const newBatch = await db.batch.create({
-          data: {
-            medicineId: item.medicineId,
-            batchNumber: batchNumber,
-            expiryDate: expiryDate,
-            mfgDate: item.mfgDate ? new Date(item.mfgDate) : null,
-            purchasePrice: purchasePrice,
+        const { data: newBatch, error: batchErr } = await supabase
+          .from('batches')
+          .insert({
+            tenant_id: tenantId,
+            medicine_id: item.medicineId,
+            batch_number: item.batchNumber,
+            expiry_date: item.expiryDate,
+            purchase_price: price,
             mrp: mrp,
-            quantity: quantity,
-            initialQuantity: quantity,
-          },
-        })
+            quantity: qty,
+            initial_quantity: qty,
+          })
+          .select()
+          .single()
+        
+        if (batchErr) throw batchErr
         batchId = newBatch.id
       }
 
-      purchaseItemsData.push({
-        batchId,
-        quantity,
-        purchasePrice,
-        mrp,
-        gstPercent,
-        totalAmount: itemTotal,
-      })
+      // Create Purchase Item
+      const { error: itemErr } = await supabase
+        .from('purchase_items')
+        .insert({
+          tenant_id: tenantId,
+          bill_id: bill.id,
+          medicine_id: item.medicineId,
+          batch_id: batchId,
+          quantity: qty,
+          purchase_price: price,
+          mrp: mrp,
+          gst_percent: gstPercent,
+          total_amount: itemTotal,
+        })
+      
+      if (itemErr) throw itemErr
+
+      // Update Medicine total_stock
+      const { data: med } = await supabase
+        .from('medicines')
+        .select('total_stock')
+        .eq('id', item.medicineId)
+        .single()
+
+      await supabase
+        .from('medicines')
+        .update({
+          total_stock: (med?.total_stock || 0) + qty,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', item.medicineId)
     }
 
-    // Round totals
-    totalAmount = Math.round(totalAmount * 100) / 100
-    totalGst = Math.round(totalGst * 100) / 100
+    // 3. Update Bill with totals
+    await supabase
+      .from('purchase_bills')
+      .update({
+        total_amount: totalAmount,
+        total_gst: totalGst,
+      })
+      .eq('id', bill.id)
 
-    // Create the purchase order with all items
-    const purchaseOrder = await db.purchaseOrder.create({
-      data: {
-        supplierId,
-        invoiceNo: invoiceNo?.trim() || null,
-        invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(),
-        totalAmount,
-        totalGst,
-        notes: notes?.trim() || null,
-        items: {
-          create: purchaseItemsData,
-        },
-      },
-      include: {
-        supplier: true,
-        items: {
-          include: {
-            batch: {
-              include: {
-                medicine: true,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    return NextResponse.json(purchaseOrder, { status: 201 })
-  } catch (error) {
+    return NextResponse.json({ ...bill, total_amount: totalAmount, total_gst: totalGst }, { status: 201 })
+  } catch (error: any) {
     console.error('POST /api/purchases error:', error)
-    return NextResponse.json({ error: 'Failed to create purchase order' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to create purchase order' }, { status: 500 })
   }
 }

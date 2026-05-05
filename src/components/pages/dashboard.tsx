@@ -131,7 +131,8 @@ interface TopSellingItem {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
-  return '₹' + amount.toLocaleString('en-IN', {
+  const safeAmount = typeof amount === 'number' ? amount : 0
+  return '₹' + safeAmount.toLocaleString('en-IN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })
@@ -176,6 +177,7 @@ function StatCard({
   trend,
   trendLabel,
   delayMs = 0,
+  onClick,
 }: {
   label: string
   value: number
@@ -190,14 +192,17 @@ function StatCard({
   trend?: 'up' | 'down'
   trendLabel?: string
   delayMs?: number
+  onClick?: () => void
 }) {
   return (
     <Card
       className={cn(
         'card-spotlight card-shadow-lg card-elevated stat-card-accent group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fade-up rounded-xl',
-        borderClass
+        borderClass,
+        onClick && 'cursor-pointer active:scale-95'
       )}
       style={{ animationDelay: `${delayMs}ms` }}
+      onClick={onClick}
     >
       {/* Gradient overlay top-left to bottom-right */}
       <div
@@ -236,7 +241,7 @@ function StatCard({
               {label}
             </p>
             <p className={cn('text-3xl font-bold tracking-tight', colorClass)}>
-              {isCurrency ? formatCurrency(value) : value.toLocaleString('en-IN')}
+              {isCurrency ? formatCurrency(value) : (value ?? 0).toLocaleString('en-IN')}
             </p>
             {trend && trendLabel && (
               <div className={cn(
@@ -813,7 +818,9 @@ export function DashboardPage() {
       .slice(0, 8)
   }, [profitData])
 
-  const hasAlerts = alertsData && alertsData.alerts.length > 0
+  const hasAlerts = alertsData && alertsData.alerts?.length > 0
+
+  const { setSalesFilters } = useAppStore()
 
   // Group alerts by type
   const groupedAlerts = useMemo(() => {
@@ -914,6 +921,11 @@ export function DashboardPage() {
             trend="up"
             trendLabel="Sales today"
             delayMs={0}
+            onClick={() => {
+              const todayStr = new Date().toISOString().split('T')[0]
+              setSalesFilters({ fromDate: todayStr, toDate: todayStr })
+              setCurrentPage('sales-history')
+            }}
           />
           <StatCard
             label="Monthly Sales"
@@ -929,6 +941,13 @@ export function DashboardPage() {
             trend="up"
             trendLabel="This month"
             delayMs={40}
+            onClick={() => {
+              setSalesFilters({ 
+                year: new Date().getFullYear().toString(),
+                month: (new Date().getMonth() + 1).toString()
+              })
+              setCurrentPage('sales-history')
+            }}
           />
           <StatCard
             label="Total Medicines"
@@ -1011,7 +1030,7 @@ export function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-5">
-              {salesTrend && salesTrend.data.length > 0 ? (
+              {salesTrend && salesTrend.data?.length > 0 ? (
                 <div className="rounded-lg bg-muted/30 p-2">
                   <ResponsiveContainer width="100%" height={280}>
                     <AreaChart data={salesTrend.data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -1073,7 +1092,7 @@ export function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-5">
-              {stockDist && stockDist.data.length > 0 ? (
+              {stockDist && stockDist.data?.length > 0 ? (
                 <div className="rounded-lg bg-muted/30 p-2">
                   <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
@@ -1223,7 +1242,7 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          ) : activityData && activityData.activities.length > 0 ? (
+          ) : activityData?.activities && activityData.activities.length > 0 ? (
             <ScrollArea className="max-h-[340px]">
               <div className="space-y-1">
                 {activityData.activities.slice(0, 15).map((activity) => {
@@ -1543,7 +1562,7 @@ export function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setCurrentPage('reports')}
+                onClick={() => setCurrentPage('sales-history')}
                 className="gap-1 text-xs"
               >
                 View All
@@ -1558,7 +1577,7 @@ export function DashboardPage() {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : stats && stats.recentSales.length > 0 ? (
+            ) : stats && stats.recentSales?.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-b-2">
@@ -1570,7 +1589,7 @@ export function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats.recentSales.map((sale, idx) => (
+                  {stats.recentSales?.map((sale, idx) => (
                     <TableRow
                       key={sale.id}
                       className={cn(

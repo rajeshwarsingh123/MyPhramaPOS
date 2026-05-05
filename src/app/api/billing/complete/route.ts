@@ -1,10 +1,16 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { customerId, doctorName, paymentMode, discount, items } = body
+
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 })
@@ -13,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Validate items first - check stock availability
     const batchIds = items.map((item: { batchId: string }) => item.batchId)
     const batches = await db.batch.findMany({
-      where: { id: { in: batchIds } },
+      where: { id: { in: batchIds }, tenantId },
       include: { medicine: true },
     })
 
@@ -39,7 +45,9 @@ export async function POST(request: NextRequest) {
       String(today.getDate()).padStart(2, '0')
 
     // Try to get from StoreSetting
-    let storeSetting = await db.storeSetting.findFirst()
+    let storeSetting = await db.storeSetting.findUnique({
+      where: { tenantId }
+    })
     let invoiceNo: string
 
     if (storeSetting) {
@@ -54,7 +62,7 @@ export async function POST(request: NextRequest) {
       // Fallback: count existing sales today
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
       const salesCount = await db.sale.count({
-        where: { saleDate: { gte: startOfDay } },
+        where: { tenantId, saleDate: { gte: startOfDay } },
       })
       invoiceNo = `INV-${dateStr}-${String(salesCount + 1).padStart(3, '0')}`
     }
@@ -98,10 +106,10 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = subtotal - totalDiscount
 
-    // Create sale with items in a transaction
     const sale = await db.$transaction(async (tx) => {
       const newSale = await tx.sale.create({
         data: {
+          tenantId,
           customerId: customerId || null,
           doctorName: doctorName || null,
           invoiceNo,

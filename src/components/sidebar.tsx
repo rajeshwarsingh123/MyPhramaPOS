@@ -27,6 +27,7 @@ import {
   Truck,
   RotateCcw,
   FileText,
+  History,
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react'
@@ -42,6 +43,7 @@ const secondaryNavItems: { id: Page; label: string; icon: React.ElementType; bad
   { id: 'purchases', label: 'Purchases', icon: ShoppingCart },
   { id: 'suppliers', label: 'Suppliers', icon: Truck },
   { id: 'sales-returns', label: 'Returns', icon: RotateCcw },
+  { id: 'sales-history', label: 'Sales History', icon: History },
   { id: 'invoice-history', label: 'Invoice History', icon: FileText },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'customers', label: 'Customers', icon: Users },

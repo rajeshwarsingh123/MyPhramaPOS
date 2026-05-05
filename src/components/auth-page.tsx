@@ -130,6 +130,7 @@ function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFor
   const setLaunchedApp = useAppStore((s) => s.setLaunchedApp)
   const setAdminPage = useAppStore((s) => s.setAdminPage)
   const setAdminAuth = useAppStore((s) => s.setAdminAuth)
+  const setCurrentTenant = useAppStore((s) => s.setCurrentTenant)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -173,6 +174,12 @@ function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFor
         setAdminPage('admin-dashboard')
       } else {
         // Regular tenant — route to pharmacy app
+        setCurrentTenant({
+          id: data.id,
+          name: data.businessName || data.name || 'Pharmacy',
+          email: data.email,
+          phone: data.phone,
+        })
         setLaunchedApp(true)
       }
     } catch {
@@ -286,7 +293,7 @@ function LoginForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFor
    FORGOT PASSWORD FORM (OTP-based 3-step flow)
    ═══════════════════════════════════════════════ */
 
-type ForgotStep = 'enter-email' | 'not-found' | 'verify-otp' | 'enter-password' | 'success'
+type ForgotStep = 'enter-email' | 'not-found' | 'enter-password' | 'success'
 
 function OtpInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -327,6 +334,13 @@ function OtpInput({ value, onChange, error }: { value: string; onChange: (v: str
       inputRefs.current[focusIndex]?.focus()
     }
   }
+
+  useEffect(() => {
+    // Focus first input on mount
+    setTimeout(() => {
+      inputRefs.current[0]?.focus()
+    }, 100)
+  }, [])
 
   return (
     <div className="flex gap-2 justify-center">
@@ -387,7 +401,9 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [otpSent, setOtpSent] = useState(false)
+  const [serverOtp, setServerOtp] = useState('') // For testing
   const [otpExpired, setOtpExpired] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
 
   const passwordsMatch = confirmPassword.length === 0 || newPassword === confirmPassword
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -398,15 +414,8 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     } else if (step === 'not-found') {
       setStep('enter-email')
       setError('')
-    } else if (step === 'verify-otp') {
-      setStep('enter-email')
-      setOtp('')
-      setOtpError('')
-      setOtpSent(false)
-      setOtpExpired(false)
-      setError('')
     } else if (step === 'enter-password') {
-      setStep('verify-otp')
+      setStep('enter-email')
       setNewPassword('')
       setConfirmPassword('')
       setError('')
@@ -445,12 +454,14 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       setMaskedEmail(data.maskedEmail || email)
       setUserName(data.name || '')
       setIsAdmin(data.isAdmin || false)
+      setServerOtp(data.otp || '')
       setOtpSent(true)
       setOtpExpired(false)
-      setOtp('')
-      setOtpError('')
-      setResendCooldown(60)
-      setStep('verify-otp')
+      setOtp(data.otp || '') // Pre-fill OTP just in case, though we'll likely rely on email links now
+      setToastMessage('A password reset link has been sent to your email!')
+      
+      // Auto-transition removed as users must check their email.
+      // We stay on the email step to allow 'Resend' or 'Try Another'.
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -556,8 +567,20 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
       >
         <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-        {step === 'enter-email' ? 'Back to login' : step === 'not-found' ? 'Try another email' : step === 'verify-otp' ? 'Change email' : 'Back to verify'}
+        {step === 'enter-email' ? 'Back to login' : step === 'not-found' ? 'Try another email' : 'Back to email'}
       </button>
+
+      {toastMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2"
+        >
+          <MailCheck className="w-4 h-4" />
+          {toastMessage}
+        </motion.div>
+      )}
 
       <AnimatePresence mode="wait">
         {/* ── Step 1: Enter Email ── */}
@@ -716,122 +739,6 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
           </motion.div>
         )}
 
-        {/* ── Step 2: Verify OTP ── */}
-        {step === 'verify-otp' && (
-          <motion.div
-            key="step-otp"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-                <MailCheck className="w-5 h-5 text-sky-400" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-landing-foreground">Check Your Email</h2>
-                <p className="text-sm text-landing-muted">
-                  We sent a code to <span className="text-landing-foreground font-medium">{maskedEmail}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Simulated email preview */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="mt-5 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
-            >
-              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400/60" />
-                <div className="w-2 h-2 rounded-full bg-amber-400/60" />
-                <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
-                <span className="ml-2 text-[10px] text-landing-muted/50 font-mono">mail.pharmpos.com</span>
-              </div>
-              <div className="p-4">
-                <p className="text-[11px] text-landing-muted/40 mb-1">From: PharmPOS Security &lt;noreply@pharmpos.com&gt;</p>
-                <p className="text-[11px] text-landing-muted/40 mb-2">To: {maskedEmail}</p>
-                <p className="text-sm text-landing-foreground font-medium">Password Reset Verification</p>
-                <p className="text-xs text-landing-muted mt-1.5 leading-relaxed">
-                  Your 6-digit verification code is:
-                </p>
-                <div className="mt-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <span className="text-xl font-bold font-mono tracking-[0.3em] text-primary">
-                    {/* OTP digits shown here — in production, this would only be sent to the email */}
-                    {email.includes('@') ? '••••••' : '------'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-landing-muted/40 mt-2 leading-relaxed">
-                  If you didn&apos;t request this code, you can safely ignore this email.
-                </p>
-              </div>
-            </motion.div>
-
-            <div className="space-y-4 mt-5">
-              {/* OTP Input */}
-              <div>
-                <p className="text-xs text-landing-muted mb-3 text-center font-medium">Enter verification code</p>
-                <OtpInput value={otp} onChange={(v) => { setOtp(v); setOtpError('') }} error={!!otpError} />
-              </div>
-
-              {otpError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
-                >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  {otpError}
-                </motion.div>
-              )}
-
-              {/* Verify button */}
-              <motion.button
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleVerifyOtp}
-                disabled={loading || otp.length !== 6}
-                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Spinner />
-                    Verifying...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    Verify Code
-                    <CheckCircle2 className="w-4 h-4" />
-                  </span>
-                )}
-              </motion.button>
-
-              {/* Resend / Timer */}
-              <div className="flex items-center justify-center gap-2 text-xs">
-                {resendCooldown > 0 ? (
-                  <span className="text-landing-muted/60">
-                    Resend code in <CountdownTimer seconds={resendCooldown} onExpire={() => setResendCooldown(0)} />
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleVerifyEmail}
-                    disabled={loading}
-                    className="text-primary/80 hover:text-primary font-medium transition-colors disabled:opacity-50"
-                  >
-                    Didn&apos;t receive the code? Resend
-                  </button>
-                )}
-              </div>
-
-              <p className="text-[11px] text-landing-muted/40 text-center leading-relaxed">
-                The code expires in 10 minutes. Check your spam folder if you don&apos;t see it.
-              </p>
-            </div>
-          </motion.div>
-        )}
 
         {/* ── Step 3: Enter New Password ── */}
         {step === 'enter-password' && (
@@ -857,18 +764,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            {/* Verified badge */}
-            <div className="mt-5 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-emerald-400">Email verified successfully</p>
-                <p className="text-sm text-landing-foreground truncate">{maskedEmail}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4 mt-5">
+            <div className="space-y-4 mt-8">
               <div>
                 <AuthInput
                   icon={Lock}
@@ -1061,7 +957,7 @@ function RequirementCheck({ label, met }: { label: string; met: boolean }) {
    SIGNUP FORM (OTP-based 2-step flow)
    ═══════════════════════════════════════════════ */
 
-type SignupStep = 'enter-details' | 'verify-otp' | 'success'
+type SignupStep = 'enter-details' | 'success'
 
 function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onForgotPassword: () => void }) {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
@@ -1084,6 +980,7 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
 
   // Step 2: OTP verification
   const [maskedEmail, setMaskedEmail] = useState('')
+  const [serverOtp, setServerOtp] = useState('') // For testing/display
   const [otp, setOtp] = useState('')
   const [otpError, setOtpError] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -1129,12 +1026,8 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
         return
       }
 
-      // Move to OTP verification step
-      setMaskedEmail(data.maskedEmail || email)
-      setOtp('')
-      setOtpError('')
-      setResendCooldown(60)
-      setStep('verify-otp')
+      // Move directly to success (OTP removed)
+      setStep('success')
     } catch {
       setFormError('Something went wrong. Please try again.')
     } finally {
@@ -1189,6 +1082,7 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
         return
       }
 
+      setServerOtp(data.otp || '')
       setOtp('')
       setOtpError('')
       setResendCooldown(60)
@@ -1203,10 +1097,6 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
   const handleBack = () => {
     if (step === 'enter-details') {
       onSwitch()
-    } else if (step === 'verify-otp') {
-      setStep('enter-details')
-      setOtp('')
-      setOtpError('')
     }
   }
 
@@ -1249,7 +1139,7 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
           className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-landing-foreground transition-colors mb-4 group"
         >
           <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          {step === 'enter-details' ? 'Back to login' : 'Change details'}
+          {step === 'enter-details' ? 'Back to login' : 'Back to details'}
         </button>
       )}
 
@@ -1400,120 +1290,6 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
           </motion.div>
         )}
 
-        {/* ═══ Step 2: Verify OTP ═══ */}
-        {step === 'verify-otp' && (
-          <motion.div
-            key="signup-otp"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-                <MailCheck className="w-5 h-5 text-sky-400" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-landing-foreground">Verify Your Email</h2>
-                <p className="text-sm text-landing-muted">
-                  We sent a code to <span className="text-landing-foreground font-medium">{maskedEmail}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Email preview */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="mt-5 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
-            >
-              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-400/60" />
-                <div className="w-2 h-2 rounded-full bg-amber-400/60" />
-                <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
-                <span className="ml-2 text-[10px] text-landing-muted/50 font-mono">mail.pharmpos.com</span>
-              </div>
-              <div className="p-4">
-                <p className="text-[11px] text-landing-muted/40 mb-1">From: PharmPOS &lt;noreply@pharmpos.com&gt;</p>
-                <p className="text-[11px] text-landing-muted/40 mb-2">To: {maskedEmail}</p>
-                <p className="text-sm text-landing-foreground font-medium">Welcome to PharmPOS!</p>
-                <p className="text-xs text-landing-muted mt-1.5 leading-relaxed">
-                  Your 6-digit verification code is:
-                </p>
-                <div className="mt-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <span className="text-xl font-bold font-mono tracking-[0.3em] text-primary">
-                    {/* OTP shown here — in production, only sent to email */}
-                    {'••••••'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-landing-muted/40 mt-2 leading-relaxed">
-                  Enter this code below to activate your account.
-                </p>
-              </div>
-            </motion.div>
-
-            <div className="space-y-4 mt-5">
-              <div>
-                <p className="text-xs text-landing-muted mb-3 text-center font-medium">Enter verification code</p>
-                <OtpInput value={otp} onChange={(v) => { setOtp(v); setOtpError('') }} error={!!otpError} />
-              </div>
-
-              {otpError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center flex items-center justify-center gap-1.5"
-                >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  {otpError}
-                </motion.div>
-              )}
-
-              <motion.button
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleVerifyOtp}
-                disabled={loading || otp.length !== 6}
-                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Spinner />
-                    Verifying...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    Verify &amp; Activate
-                    <CheckCircle2 className="w-4 h-4" />
-                  </span>
-                )}
-              </motion.button>
-
-              {/* Resend / Timer */}
-              <div className="flex items-center justify-center gap-2 text-xs">
-                {resendCooldown > 0 ? (
-                  <span className="text-landing-muted/60">
-                    Resend code in <CountdownTimer seconds={resendCooldown} onExpire={() => setResendCooldown(0)} />
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={loading}
-                    className="text-primary/80 hover:text-primary font-medium transition-colors disabled:opacity-50"
-                  >
-                    Didn&apos;t receive the code? Resend
-                  </button>
-                )}
-              </div>
-
-              <p className="text-[11px] text-landing-muted/40 text-center leading-relaxed">
-                The code expires in 10 minutes. Check your spam folder if you don&apos;t see it.
-              </p>
-            </div>
-          </motion.div>
-        )}
 
         {/* ═══ Step 3: Success ═══ */}
         {step === 'success' && (
@@ -1551,7 +1327,7 @@ function SignupForm({ onSwitch, onForgotPassword }: { onSwitch: () => void; onFo
 
             <h2 className="text-2xl font-bold text-landing-foreground mb-2">Account Created!</h2>
             <p className="text-sm text-landing-muted max-w-[260px] leading-relaxed mb-3">
-              Your email has been verified. Welcome to PharmPOS!
+              Your account has been created successfully. Welcome to PharmPOS!
             </p>
 
             {/* Quick stats */}

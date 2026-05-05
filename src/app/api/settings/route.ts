@@ -1,15 +1,24 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // There should be exactly one StoreSetting record
-    let settings = await db.storeSetting.findFirst()
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Find settings for this tenant
+    let settings = await db.storeSetting.findUnique({
+      where: { tenantId }
+    })
 
     if (!settings) {
       // Create default settings if none exist
       settings = await db.storeSetting.create({
         data: {
+          tenantId,
           storeName: 'My Pharmacy',
           invoicePrefix: 'INV',
           nextInvoiceNo: 1,
@@ -39,39 +48,38 @@ export async function PUT(request: NextRequest) {
       nextInvoiceNo,
     } = body
 
-    // There should be exactly one record — find or create
-    let settings = await db.storeSetting.findFirst()
-
-    if (!settings) {
-      settings = await db.storeSetting.create({
-        data: {
-          storeName: storeName?.trim() || 'My Pharmacy',
-          phone: phone?.trim() || null,
-          email: email?.trim() || null,
-          address: address?.trim() || null,
-          gstNumber: gstNumber?.trim() || null,
-          licenseNo: licenseNo?.trim() || null,
-          logoUrl: logoUrl?.trim() || null,
-          invoicePrefix: invoicePrefix?.trim() || 'INV',
-          nextInvoiceNo: nextInvoiceNo ?? 1,
-        },
-      })
-    } else {
-      settings = await db.storeSetting.update({
-        where: { id: settings.id },
-        data: {
-          storeName: storeName !== undefined ? storeName.trim() : undefined,
-          phone: phone !== undefined ? (phone?.trim() || null) : undefined,
-          email: email !== undefined ? (email?.trim() || null) : undefined,
-          address: address !== undefined ? (address?.trim() || null) : undefined,
-          gstNumber: gstNumber !== undefined ? (gstNumber?.trim() || null) : undefined,
-          licenseNo: licenseNo !== undefined ? (licenseNo?.trim() || null) : undefined,
-          logoUrl: logoUrl !== undefined ? (logoUrl?.trim() || null) : undefined,
-          invoicePrefix: invoicePrefix !== undefined ? invoicePrefix.trim() : undefined,
-          nextInvoiceNo: nextInvoiceNo !== undefined ? nextInvoiceNo : undefined,
-        },
-      })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Upsert settings for this tenant
+    const settings = await db.storeSetting.upsert({
+      where: { tenantId },
+      update: {
+        storeName: storeName !== undefined ? storeName.trim() : undefined,
+        phone: phone !== undefined ? (phone?.trim() || null) : undefined,
+        email: email !== undefined ? (email?.trim() || null) : undefined,
+        address: address !== undefined ? (address?.trim() || null) : undefined,
+        gstNumber: gstNumber !== undefined ? (gstNumber?.trim() || null) : undefined,
+        licenseNo: licenseNo !== undefined ? (licenseNo?.trim() || null) : undefined,
+        logoUrl: logoUrl !== undefined ? (logoUrl?.trim() || null) : undefined,
+        invoicePrefix: invoicePrefix !== undefined ? invoicePrefix.trim() : undefined,
+        nextInvoiceNo: nextInvoiceNo !== undefined ? nextInvoiceNo : undefined,
+      },
+      create: {
+        tenantId,
+        storeName: storeName?.trim() || 'My Pharmacy',
+        phone: phone?.trim() || null,
+        email: email?.trim() || null,
+        address: address?.trim() || null,
+        gstNumber: gstNumber?.trim() || null,
+        licenseNo: licenseNo?.trim() || null,
+        logoUrl: logoUrl?.trim() || null,
+        invoicePrefix: invoicePrefix?.trim() || 'INV',
+        nextInvoiceNo: nextInvoiceNo ?? 1,
+      },
+    })
 
     return NextResponse.json(settings)
   } catch (error) {

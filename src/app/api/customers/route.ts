@@ -1,12 +1,18 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')?.trim()
 
-    const whereClause: Record<string, unknown> = { isActive: true }
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const whereClause: any = { tenantId, isActive: true }
     if (search) {
       whereClause.OR = [
         { name: { contains: search } },
@@ -63,12 +69,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, phone, email, address, doctorName } = body
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Customer name is required' }, { status: 400 })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const customer = await db.customer.create({
       data: {
+        tenantId,
         name: name.trim(),
         phone: phone?.trim() || null,
         email: email?.trim() || null,

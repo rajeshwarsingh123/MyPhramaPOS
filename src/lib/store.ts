@@ -12,6 +12,7 @@ export type Page =
   | 'customers'
   | 'sales-returns'
   | 'invoice-history'
+  | 'sales-history'
   | 'settings'
 
 export type AdminPage =
@@ -36,6 +37,23 @@ export interface AdminAuthState {
   loginTime: string | null
 }
 
+export interface Tenant {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  address?: string
+}
+
+export interface SalesFilters {
+  search?: string
+  year?: string
+  month?: string
+  paymentMode?: string
+  fromDate?: string
+  toDate?: string
+}
+
 interface AppState {
   currentPage: Page
   setCurrentPage: (page: Page) => void
@@ -58,6 +76,10 @@ interface AppState {
   setAdminSidebarCollapsed: (v: boolean) => void
   adminSidebarMobileOpen: boolean
   setAdminSidebarMobileOpen: (v: boolean) => void
+  currentTenant: Tenant | null
+  setCurrentTenant: (tenant: Tenant | null) => void
+  salesFilters: SalesFilters
+  setSalesFilters: (filters: SalesFilters) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -91,6 +113,10 @@ export const useAppStore = create<AppState>()(
       setAdminSidebarCollapsed: (v) => set({ adminSidebarCollapsed: v }),
       adminSidebarMobileOpen: false,
       setAdminSidebarMobileOpen: (v) => set({ adminSidebarMobileOpen: v }),
+      currentTenant: null,
+      setCurrentTenant: (tenant) => set({ currentTenant: tenant }),
+      salesFilters: {},
+      setSalesFilters: (filters) => set({ salesFilters: filters }),
     }),
     {
       name: 'pharmpos-store',
@@ -105,6 +131,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         adminAuth: state.adminAuth,
         adminSidebarCollapsed: state.adminSidebarCollapsed,
+        currentTenant: state.currentTenant,
       }),
     }
   )

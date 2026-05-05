@@ -1,28 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
-const SCAN_PROMPT = `This is a pharmacy supplier bill/invoice. Extract all medicines/items listed. For each item, provide:
-- medicine_name (exact name on bill)
-- quantity (number)
-- batch_number (if visible)
-- expiry_date (if visible, in YYYY-MM-DD format)
-- mrp_or_price (the price per unit)
-- any other details visible (like company, strength, pack_size, gst_percent, total_amount).
+const SCAN_PROMPT = `This is a pharmacy supplier bill/invoice. Extract the following information:
+- supplier_name: The name of the wholesale supplier/company
+- invoice_number: The bill or invoice number
+- invoice_date: The date of the invoice (in YYYY-MM-DD format if possible)
 
-Return ONLY a valid JSON array of objects. Each object must have at least medicine_name, quantity, and mrp_or_price. Do not include any explanation or text outside the JSON array.
+Also extract all medicines/items listed. For each item, provide:
+- medicine_name: exact name on bill
+- quantity: number
+- batch_number: if visible
+- expiry_date: if visible, in YYYY-MM-DD format
+- mrp_or_price: the price per unit
+- gst_percent: if visible
+- any other details visible (like company, strength, pack_size).
 
-Example format:
-[
-  {
-    "medicine_name": "Paracetamol 500mg",
-    "quantity": 100,
-    "batch_number": "BN-2024-001",
-    "expiry_date": "2026-06-30",
-    "mrp_or_price": 25.50,
-    "gst_percent": 12,
-    "company_name": "Cipla Ltd"
-  }
-]`
+Return ONLY a valid JSON object with the following structure:
+{
+  "supplier_name": "Supplier Name",
+  "invoice_number": "INV-123",
+  "invoice_date": "2024-05-01",
+  "items": [
+    {
+      "medicine_name": "Paracetamol 500mg",
+      "quantity": 100,
+      "batch_number": "BN-001",
+      "expiry_date": "2026-06-30",
+      "mrp_or_price": 25.50,
+      "gst_percent": 12
+    }
+  ]
+}
+
+Do not include any explanation or text outside the JSON object.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -104,13 +114,13 @@ export async function POST(request: NextRequest) {
 function parseAndReturn(rawContent: string) {
   try {
     // Try to extract JSON from the response (might be wrapped in markdown code blocks)
-    const jsonMatch = rawContent.match(/\[[\s\S]*\]/)
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
-      const items = JSON.parse(jsonMatch[0])
-      if (Array.isArray(items) && items.length > 0) {
+      const data = JSON.parse(jsonMatch[0])
+      if (data && (data.items || data.supplier_name)) {
         return NextResponse.json({
           success: true,
-          items,
+          data,
           raw: rawContent,
         })
       }

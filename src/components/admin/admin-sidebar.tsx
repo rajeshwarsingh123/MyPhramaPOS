@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Database,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -43,6 +44,7 @@ const adminNavItems: { id: string; label: string; icon: LucideIcon; badgeKey?: s
   { id: 'admin-tickets', label: 'Support', icon: MessageSquare, badgeKey: 'tickets' },
   { id: 'admin-announcements', label: 'Announcements', icon: Megaphone },
   { id: 'admin-settings', label: 'Settings', icon: Settings },
+  { id: 'admin-supabase', label: 'Supabase Setup', icon: Database },
   { id: 'admin-pharmacy-monitor', label: 'Pharmacy Data', icon: Building2 },
 ]
 
