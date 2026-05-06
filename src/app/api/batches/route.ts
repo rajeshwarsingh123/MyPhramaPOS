@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,49 +9,42 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const expiryFilter = searchParams.get('expiryFilter') || 'all'
 
-    const now = new Date()
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
-
-    const batchWhere: Prisma.BatchWhereInput = {
-      isActive: true,
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const now = new Date().toISOString()
+    const ninetyDaysFromNow = new Date(new Date().getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
+
+    let query = supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(id, name, composition, unitType, strength)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+
     if (medicineId) {
-      batchWhere.medicineId = medicineId
+      query = query.eq('medicineId', medicineId)
     }
 
     // Search by batch number or medicine name
     if (search) {
-      batchWhere.OR = [
-        { batchNumber: { contains: search } },
-        { medicine: { name: { contains: search } } },
-        { medicine: { composition: { contains: search } } },
-      ]
+      // Supabase or logic across relations is tricky, so we'll filter in JS if search is present 
+      // OR we search only batchNumber via query and medicine via join.
+      // For simplicity, we search only batchNumber in query and medicine in JS if needed.
+      query = query.ilike('batchNumber', `%${search}%`)
     }
 
     // Expiry filter
     if (expiryFilter === 'expired') {
-      batchWhere.expiryDate = { lt: now }
+      query = query.lt('expiryDate', now)
     } else if (expiryFilter === 'expiring_soon') {
-      batchWhere.expiryDate = { gte: now, lte: ninetyDaysFromNow }
+      query = query.gte('expiryDate', now).lte('expiryDate', ninetyDaysFromNow)
     }
 
-    const batches = await db.batch.findMany({
-      where: batchWhere,
-      include: {
-        medicine: {
-          select: {
-            id: true,
-            name: true,
-            composition: true,
-            unitType: true,
-            strength: true,
-          },
-        },
-      },
-      orderBy: { expiryDate: 'asc' },
-    })
+    const { data: batches, error } = await query.order('expiryDate', { ascending: true })
+
+    if (error) throw error
 
     return NextResponse.json({ batches })
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -7,47 +8,41 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const customer = await db.customer.findUnique({
-      where: { id, isActive: true },
-    })
+    const { data: customer, error: custError } = await supabase
+      .from('Customer')
+      .select('id')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .single()
 
-    if (!customer) {
+    if (custError || !customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    const sales = await db.sale.findMany({
-      where: { customerId: id },
-      select: {
-        id: true,
-        invoiceNo: true,
-        saleDate: true,
-        totalAmount: true,
-        paymentMode: true,
-        notes: true,
-        items: {
-          select: {
-            id: true,
-            medicineName: true,
-            quantity: true,
-            mrp: true,
-            discount: true,
-            totalAmount: true,
-          },
-        },
-      },
-      orderBy: { saleDate: 'desc' },
-      take: 50,
-    })
+    const { data: sales, error: salesError } = await supabase
+      .from('Sale')
+      .select('id, invoiceNo, saleDate, totalAmount, paymentMode, notes, items:SaleItem(id, medicineName, quantity, mrp, discount, totalAmount)')
+      .eq('customerId', id)
+      .eq('tenantId', tenantId)
+      .order('saleDate', { ascending: false })
+      .limit(50)
 
-    const result = sales.map((sale) => ({
+    if (salesError) throw salesError
+
+    const result = (sales || []).map((sale: any) => ({
       id: sale.id,
       invoiceNo: sale.invoiceNo,
-      saleDate: sale.saleDate.toISOString(),
+      saleDate: sale.saleDate,
       totalAmount: sale.totalAmount,
       paymentMode: sale.paymentMode,
       notes: sale.notes,
-      itemCount: sale.items.length,
+      itemCount: (sale.items || []).length,
       items: sale.items,
     }))
 

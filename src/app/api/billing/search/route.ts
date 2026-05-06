@@ -1,5 +1,6 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,51 +11,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    const medicines = await db.medicine.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { name: { contains: q } },
-          { genericName: { contains: q } },
-          { composition: { contains: q } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        genericName: true,
-        companyName: true,
-        composition: true,
-        strength: true,
-        unitType: true,
-        packSize: true,
-        gstPercent: true,
-      },
-      take: 20,
-    })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Fetch batches separately for medicines with available stock
-    const batches = await db.batch.findMany({
-      where: {
-        medicine: { id: { in: medicines.map(m => m.id) } },
-        isActive: true,
-        quantity: { gt: 0 },
-      },
-      orderBy: { expiryDate: 'asc' },
-      select: {
-        id: true,
-        medicineId: true,
-        batchNumber: true,
-        quantity: true,
-        purchasePrice: true,
-        mrp: true,
-        expiryDate: true,
-      },
-    })
+    // Fetch medicines matching the query
+    const { data: medicines, error: medError } = await supabase
+      .from('Medicine')
+      .select('id, name, genericName, companyName, composition, strength, unitType, packSize, gstPercent')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .or(`name.ilike.%${q}%,genericName.ilike.%${q}%,composition.ilike.%${q}%`)
+      .limit(20)
+
+    if (medError) throw medError
+
+    if (!medicines || medicines.length === 0) {
+      return NextResponse.json([])
+    }
+
+    const medicineIds = medicines.map(m => m.id)
+
+    // Fetch batches with stock for these medicines
+    const { data: batches, error: batchError } = await supabase
+      .from('Batch')
+      .select('id, medicineId, batchNumber, quantity, purchasePrice, mrp, expiryDate')
+      .eq('tenantId', tenantId)
+      .in('medicineId', medicineIds)
+      .eq('isActive', true)
+      .gt('quantity', 0)
+      .order('expiryDate', { ascending: true })
+
+    if (batchError) throw batchError
 
     // Group batches by medicine
-    const batchMap = new Map<string, typeof batches>()
-    for (const b of batches) {
+    const batchMap = new Map<string, any[]>()
+    for (const b of (batches || [])) {
       const list = batchMap.get(b.medicineId) ?? []
       list.push(b)
       batchMap.set(b.medicineId, list)
@@ -64,7 +57,7 @@ export async function GET(request: NextRequest) {
       .filter((m) => (batchMap.get(m.id) ?? []).length > 0)
       .map((m) => {
         const medBatches = batchMap.get(m.id)!
-        const totalStock = medBatches.reduce((sum, b) => sum + b.quantity, 0)
+        const totalStock = medBatches.reduce((sum, b) => sum + (b.quantity || 0), 0)
         return {
           id: m.id,
           name: m.name,

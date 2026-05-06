@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,59 +13,37 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority') || ''
     const search = searchParams.get('search') || ''
 
-    const where: Record<string, unknown> = {}
+    let query = supabase
+      .from('SupportTicket')
+      .select('*, tenant:Tenant(id, name, businessName, email)', { count: 'exact' })
 
     if (status) {
-      where.status = status
+      query = query.eq('status', status)
     }
 
     if (priority) {
-      where.priority = priority
+      query = query.eq('priority', priority)
     }
 
     if (search) {
-      where.OR = [
-        { subject: { contains: search } },
-        { description: { contains: search } },
-        {
-          tenant: {
-            OR: [
-              { name: { contains: search } },
-              { businessName: { contains: search } },
-              { email: { contains: search } },
-            ],
-          },
-        },
-      ]
+      // Supabase standard .or doesn't support nested relation fields easily.
+      // We filter by subject and description. For tenant search, we'd need a more complex query or RPC.
+      query = query.or(`subject.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
-    const [tickets, total] = await Promise.all([
-      db.supportTicket.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              businessName: true,
-              email: true,
-            },
-          },
-        },
-      }),
-      db.supportTicket.count({ where }),
-    ])
+    const { data: tickets, count: total, error } = await query
+      .order('createdAt', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
+
+    if (error) throw error
 
     return NextResponse.json({
       tickets,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total || 0,
+        totalPages: Math.ceil((total || 0) / limit),
       },
     })
   } catch (error) {

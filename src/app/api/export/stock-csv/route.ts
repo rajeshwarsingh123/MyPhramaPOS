@@ -1,41 +1,40 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { format, differenceInDays } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const expiryFilter = searchParams.get('expiryFilter') ?? 'all'
     const lowStockOnly = searchParams.get('lowStock') === 'true'
 
     const now = new Date()
 
-    // Build where clause for expiry filtering
-    let expiryWhere: Record<string, unknown> = { isActive: true }
+    let query = supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(name)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+
     if (expiryFilter === 'expired') {
-      expiryWhere.expiryDate = { lt: now }
+      query = query.lt('expiryDate', now.toISOString())
     } else if (expiryFilter === 'expiring_soon') {
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-      expiryWhere.expiryDate = { gte: now, lte: thirtyDaysFromNow }
+      query = query.gte('expiryDate', now.toISOString()).lte('expiryDate', thirtyDaysFromNow.toISOString())
     }
 
-    const batches = await db.batch.findMany({
-      where: {
-        isActive: true,
-        ...expiryWhere,
-      },
-      include: {
-        medicine: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: { expiryDate: 'asc' },
-    })
+    const { data: batches, error: fetchError } = await query.order('expiryDate', { ascending: true })
+
+    if (fetchError) throw fetchError
 
     // Process and filter
-    let results = batches.map((b) => {
+    let results = (batches || []).map((b: any) => {
       const daysLeft = differenceInDays(new Date(b.expiryDate), now)
       let status = 'Safe'
       if (daysLeft < 0) status = 'Expired'
@@ -44,11 +43,11 @@ export async function GET(request: NextRequest) {
       else if (daysLeft <= 90) status = 'Warning'
 
       return {
-        medicineName: b.medicine.name,
+        medicineName: b.medicine?.name || 'Unknown',
         batchNumber: b.batchNumber,
         quantity: b.quantity,
-        purchasePrice: b.purchasePrice.toFixed(2),
-        mrp: b.mrp.toFixed(2),
+        purchasePrice: (b.purchasePrice || 0).toFixed(2),
+        mrp: (b.mrp || 0).toFixed(2),
         expiryDate: format(new Date(b.expiryDate), 'yyyy-MM-dd'),
         daysLeft: daysLeft < 0 ? 0 : daysLeft,
         status,

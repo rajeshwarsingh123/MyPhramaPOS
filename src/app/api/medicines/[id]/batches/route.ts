@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function POST(
   request: NextRequest,
@@ -7,12 +8,20 @@ export async function POST(
 ) {
   try {
     const { id: medicineId } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const medicine = await db.medicine.findUnique({
-      where: { id: medicineId, isActive: true },
-    })
+    const { data: medicine, error: medError } = await supabase
+      .from('Medicine')
+      .select('*')
+      .eq('id', medicineId)
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .single()
 
-    if (!medicine) {
+    if (medError || !medicine) {
       return NextResponse.json({ error: 'Medicine not found' }, { status: 404 })
     }
 
@@ -35,27 +44,33 @@ export async function POST(
     let calculatedSellingPrice = medicine.sellingPrice
     if (medicine.marginPercent > 0 && parsedPurchasePrice > 0) {
       calculatedSellingPrice = parseFloat(
-        (parsedPurchasePrice * (1 + medicine.marginPercent / 100)).toFixed(2),
+        (parsedPurchasePrice * (1 + (medicine.marginPercent || 0) / 100)).toFixed(2),
       )
       // Update the medicine selling price
-      await db.medicine.update({
-        where: { id: medicineId },
-        data: { sellingPrice: calculatedSellingPrice },
-      })
+      await supabase
+        .from('Medicine')
+        .update({ sellingPrice: calculatedSellingPrice, updatedAt: new Date().toISOString() })
+        .eq('id', medicineId)
     }
 
-    const batch = await db.batch.create({
-      data: {
+    const { data: batch, error: batchError } = await supabase
+      .from('Batch')
+      .insert({
+        tenantId,
         medicineId,
         batchNumber: batchNumber?.trim() || `BATCH-${Date.now()}`,
-        expiryDate: new Date(expiryDate),
-        mfgDate: mfgDate ? new Date(mfgDate) : null,
+        expiryDate: new Date(expiryDate).toISOString(),
+        mfgDate: mfgDate ? new Date(mfgDate).toISOString() : null,
         purchasePrice: parsedPurchasePrice,
         mrp: parsedMrp,
         quantity: parsedQuantity,
         initialQuantity: parsedQuantity,
-      },
-    })
+        isActive: true,
+      })
+      .select()
+      .single()
+
+    if (batchError) throw batchError
 
     return NextResponse.json(batch, { status: 201 })
   } catch (error) {

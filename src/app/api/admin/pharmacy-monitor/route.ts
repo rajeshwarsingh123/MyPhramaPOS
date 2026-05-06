@@ -1,120 +1,90 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const expiringThreshold = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    // We'll perform multiple queries and aggregate in memory where needed
     const [
-      totalMedicines,
-      batchStats,
-      lowStockResult,
-      expiredResult,
-      expiringResult,
-      topMedicinesResult,
-      recentSalesResult,
-      medicineQualityResult,
+      { count: totalActiveMedicines },
+      { data: allBatches },
+      { data: medicineQuality },
+      { data: allSaleItems },
+      { data: recentSalesResult }
     ] = await Promise.all([
       // Total active medicines
-      db.medicine.count({ where: { isActive: true } }),
-
-      // Total stock and value
-      db.batch.aggregate({
-        where: { isActive: true },
-        _sum: { quantity: true, mrp: true },
-        _count: true,
-      }),
-
-      // Low stock: medicines with total stock < 10
-      db.$queryRaw<{ medicineId: string; name: string; totalStock: number }[]>`
-        SELECT m.id as "medicineId", m.name, COALESCE(SUM(b.quantity), 0) as "totalStock"
-        FROM Medicine m
-        LEFT JOIN Batch b ON b."medicineId" = m.id AND b."isActive" = 1
-        WHERE m."isActive" = 1
-        GROUP BY m.id, m.name
-        HAVING "totalStock" < 10
-        ORDER BY "totalStock" ASC
-      `,
-
-      // Expired: batches where expiryDate < now and quantity > 0
-      db.batch.count({
-        where: { isActive: true, expiryDate: { lt: new Date() }, quantity: { gt: 0 } },
-      }),
-
-      // Expiring soon: batches where expiryDate < now + 30 days and quantity > 0 and not expired
-      db.batch.count({
-        where: {
-          isActive: true,
-          expiryDate: { gt: new Date(), lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
-          quantity: { gt: 0 },
-        },
-      }),
-
-      // Top medicines by sales volume
-      db.$queryRaw<{ medicineName: string; totalSold: number; revenue: number }[]>`
-        SELECT si."medicineName", CAST(SUM(si.quantity) AS INTEGER) as "totalSold", CAST(SUM(si."totalAmount") AS REAL) as "revenue"
-        FROM "SaleItem" si
-        GROUP BY si."medicineName"
-        ORDER BY "revenue" DESC
-        LIMIT 10
-      `,
-
-      // Recent 10 sales
-      db.sale.findMany({
-        take: 10,
-        orderBy: { saleDate: 'desc' },
-        include: {
-          customer: { select: { name: true } },
-        },
-      }),
-
-      // Data quality: medicines with complete info
-      db.medicine.count({
-        where: {
-          isActive: true,
-          genericName: { not: null },
-          companyName: { not: null },
-          composition: { not: null },
-          strength: { not: null },
-          category: { not: null },
-        },
-      }),
+      supabase.from('medicines').select('*', { count: 'exact', head: true }).eq('isActive', true),
+      
+      // All active batches for stock/expiry calculations
+      supabase.from('batches').select('quantity, mrp, expiry_date').eq('isActive', true),
+      
+      // Medicine quality (complete info)
+      supabase.from('medicines').select('id')
+        .eq('isActive', true)
+        .not('generic_name', 'is', null)
+        .not('company_name', 'is', null)
+        .not('composition', 'is', null)
+        .not('strength', 'is', null)
+        .not('category', 'is', null),
+      
+      // SaleItems for top medicines (simplified top medicines calculation)
+      supabase.from('SaleItem').select('medicineName, quantity, totalAmount'),
+      
+      // Recent sales
+      supabase.from('Sale').select('*, Customer(name)').order('saleDate', { ascending: false }).limit(10)
     ])
 
-    const totalStock = Number(batchStats._sum.quantity ?? 0)
-    const totalStockValue = Number(batchStats._sum.mrp ?? 0)
-    // Use quantity * mrp per batch for actual value
-    const stockValueResult = await db.batch.aggregate({
-      where: { isActive: true },
-      _sum: { quantity: true },
+    // 1. Stock calculations
+    const totalStock = (allBatches || []).reduce((sum, b) => sum + (b.quantity || 0), 0)
+    const calculatedStockValue = (allBatches || []).reduce((sum, b) => sum + (b.quantity || 0) * (b.mrp || 0), 0)
+
+    // 2. Expiry calculations
+    const expiredCount = (allBatches || []).filter(b => (b.quantity || 0) > 0 && new Date(b.expiry_date) < now).length
+    const expiringCount = (allBatches || []).filter(b => (b.quantity || 0) > 0 && new Date(b.expiry_date) >= now && new Date(b.expiry_date) <= new Date(expiringThreshold)).length
+
+    // 3. Low stock calculation
+    // This is tricky without a join in JS, so we'll fetch medicines and sum their batches
+    const { data: medicinesWithBatches } = await supabase
+      .from('medicines')
+      .select('id, batches(quantity)')
+      .eq('isActive', true)
+    
+    const lowStockItems = (medicinesWithBatches || []).filter(m => {
+      const total = (m.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+      return total < 10
     })
+    const lowStockCount = lowStockItems.length
 
-    // Calculate total stock value: sum of quantity * mrp per batch
-    const allBatches = await db.batch.findMany({
-      where: { isActive: true },
-      select: { quantity: true, mrp: true },
-    })
-    const calculatedStockValue = allBatches.reduce((sum, b) => sum + Number(b.quantity) * Number(b.mrp), 0)
+    // 4. Top medicines
+    const medicineSalesMap = new Map<string, { totalSold: number; revenue: number }>()
+    for (const item of allSaleItems || []) {
+      const current = medicineSalesMap.get(item.medicineName) || { totalSold: 0, revenue: 0 }
+      medicineSalesMap.set(item.medicineName, {
+        totalSold: current.totalSold + (item.quantity || 0),
+        revenue: current.revenue + (item.totalAmount || 0)
+      })
+    }
+    const topMedicines = Array.from(medicineSalesMap.entries())
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
 
-    const lowStockCount = lowStockResult.length
-    const expiredCount = expiredResult
-    const expiringCount = expiringResult
-
-    const topMedicines = topMedicinesResult.map((m) => ({
-      name: m.medicineName,
-      totalSold: Number(m.totalSold),
-      revenue: Number(m.revenue),
-    }))
-
-    const recentSales = recentSalesResult.map((s) => ({
+    // 5. Recent sales
+    const recentSales = (recentSalesResult || []).map((s: any) => ({
       invoiceNo: s.invoiceNo,
-      customer: s.customer?.name || 'Walk-in',
+      customer: s.Customer?.name || 'Walk-in',
       amount: s.totalAmount,
       date: s.saleDate,
     }))
 
-    const totalActiveMedicines = await db.medicine.count({ where: { isActive: true } })
+    const medicineQualityCount = (medicineQuality || []).length
+    const totalActiveMeds = totalActiveMedicines || 0
 
     return NextResponse.json({
-      totalMedicines: totalActiveMedicines,
+      totalMedicines: totalActiveMeds,
       totalStock,
       totalStockValue: calculatedStockValue,
       lowStockCount,
@@ -123,18 +93,18 @@ export async function GET() {
       topMedicines,
       recentSales,
       dataQuality: {
-        totalMedicines: totalActiveMedicines,
-        completeInfo: medicineQualityResult,
-        percentage: totalActiveMedicines > 0
-          ? Math.round((medicineQualityResult / totalActiveMedicines) * 100)
+        totalMedicines: totalActiveMeds,
+        completeInfo: medicineQualityCount,
+        percentage: totalActiveMeds > 0
+          ? Math.round((medicineQualityCount / totalActiveMeds) * 100)
           : 0,
       },
       stockHealth: {
-        totalMedicines: totalActiveMedicines,
-        healthyStock: totalActiveMedicines - lowStockCount,
+        totalMedicines: totalActiveMeds,
+        healthyStock: totalActiveMeds - lowStockCount,
         lowOrExpired: lowStockCount + expiredCount,
-        percentage: totalActiveMedicines > 0
-          ? Math.round(((totalActiveMedicines - lowStockCount - expiredCount) / totalActiveMedicines) * 100)
+        percentage: totalActiveMeds > 0
+          ? Math.round(((totalActiveMeds - lowStockCount - expiredCount) / totalActiveMeds) * 100)
           : 0,
       },
     })

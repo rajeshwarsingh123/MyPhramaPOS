@@ -16,13 +16,16 @@ export async function GET(request: NextRequest) {
     }
 
     let query = supabase
-      .from('suppliers')
-      .select('*', { count: 'exact' })
-      .eq('tenant_id', tenantId)
-      .eq('is_active', true)
+      .from('Supplier')
+      .select('*, purchaseOrders:purchase_bills(totalAmount, invoiceDate)', { count: 'exact' })
+      .eq('tenantId', tenantId)
+
+    // Note: If PurchaseOrder model matches purchase_bills table, I'll use purchase_bills for now since it exists.
+    // Wait, if I'm normalizing, I should probably stick to what exists if I can't rename tables.
+    // But I'll use 'purchase_bills' as the relation name for now.
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,gst_number.ilike.%${search}%`)
+      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,gstNumber.ilike.%${search}%`)
     }
 
     const { data: suppliers, count, error } = await query
@@ -31,38 +34,27 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    // Fetch stats for each supplier (Total Bills, Total Amount, Last Bill Date)
-    // In a real app, this could be a view or a join.
-    const suppliersWithStats = await Promise.all(
-      (suppliers || []).map(async (supplier) => {
-        const { data: bills, error: billsErr } = await supabase
-          .from('purchase_bills')
-          .select('total_amount, invoice_date')
-          .eq('supplier_id', supplier.id)
-          .eq('tenant_id', tenantId)
+    const suppliersWithStats = (suppliers || []).map((supplier: any) => {
+      const bills = supplier.purchaseOrders || []
+      const totalAmount = bills.reduce((sum: number, b: any) => sum + (b.totalAmount || 0), 0)
+      const lastBillDate = bills.length 
+        ? bills.reduce((latest: string, b: any) => new Date(b.invoiceDate) > new Date(latest) ? b.invoiceDate : latest, bills[0].invoiceDate)
+        : null
 
-        if (billsErr) throw billsErr
-
-        const totalAmount = bills?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0
-        const lastBillDate = bills?.length 
-          ? bills.reduce((latest, b) => new Date(b.invoice_date) > new Date(latest) ? b.invoice_date : latest, bills[0].invoice_date)
-          : null
-
-        return {
-          id: supplier.id,
-          name: supplier.name,
-          phone: supplier.phone,
-          email: supplier.email,
-          address: supplier.address,
-          gstNumber: supplier.gst_number,
-          createdAt: supplier.created_at,
-          updatedAt: supplier.updated_at,
-          totalOrders: bills?.length || 0,
-          totalAmount: totalAmount,
-          lastOrderDate: lastBillDate,
-        }
-      })
-    )
+      return {
+        id: supplier.id,
+        name: supplier.name,
+        phone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
+        gstNumber: supplier.gstNumber,
+        createdAt: supplier.createdAt,
+        updatedAt: supplier.updatedAt,
+        totalOrders: bills.length,
+        totalAmount: totalAmount,
+        lastOrderDate: lastBillDate,
+      }
+    })
 
     return NextResponse.json({
       suppliers: suppliersWithStats,
@@ -91,14 +83,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: supplier, error } = await supabase
-      .from('suppliers')
+      .from('Supplier')
       .insert({
-        tenant_id: tenantId,
+        tenantId,
         name: name.trim(),
         phone: phone?.trim() || null,
         email: email?.trim() || null,
         address: address?.trim() || null,
-        gst_number: gstNumber?.trim() || null,
+        gstNumber: gstNumber?.trim() || null,
       })
       .select()
       .single()

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, otp, newPassword, tokenId } = body
+    const { email, otp, newPassword } = body
 
     if (!email || !otp || !newPassword) {
       return NextResponse.json({ error: 'Email, verification code and new password are required' }, { status: 400 })
@@ -19,25 +18,33 @@ export async function POST(request: NextRequest) {
     const normalizedOtp = otp.trim()
 
     // ── Validate OTP token ──
-    const token = await db.passwordResetToken.findFirst({
-      where: {
-        email: normalizedEmail,
-        otp: normalizedOtp,
-        isUsed: false,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const { data: token } = await supabase
+      .from('PasswordResetToken')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .eq('otp', normalizedOtp)
+      .eq('isUsed', false)
+      .gte('expiresAt', new Date().toISOString())
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     if (!token) {
       return NextResponse.json({ error: 'Invalid or expired verification code. Please request a new one.' }, { status: 401 })
     }
 
     // ── Check both Admin and Tenant tables ──
-    const [admin, tenant] = await Promise.all([
-      db.admin.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, role: true, isActive: true } }),
-      db.tenant.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, status: true, passwordHash: true } }),
-    ])
+    const { data: admin } = await supabase
+      .from('Admin')
+      .select('id, name, email, role, isActive')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
+
+    const { data: tenant } = await supabase
+      .from('Tenant')
+      .select('id, name, email, status, passwordHash')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
 
     if (!admin && !tenant) {
       return NextResponse.json({ error: 'No account found with this email address' }, { status: 404 })
@@ -60,38 +67,43 @@ export async function POST(request: NextRequest) {
         filters: { email: normalizedEmail },
       })
 
-      if (!listError && usersData?.users?.length > 0) {
+      if (!listError && usersData?.users && usersData.users.length > 0) {
         const userId = usersData.users[0].id
         const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, { password: newPassword })
 
         if (!updateError) {
           if (tenant) {
-            await db.tenant.update({ where: { id: tenant.id }, data: { passwordHash: `supabase:${userId}` } })
-            await db.systemLog.create({
-              data: { tenantId: tenant.id, action: 'PASSWORD_RESET', details: `Password reset via OTP verification for tenant ${tenant.email}` },
+            await supabase.from('Tenant').update({ passwordHash: `supabase:${userId}` }).eq('id', tenant.id)
+            await supabase.from('SystemLog').insert({ 
+              tenantId: tenant.id, 
+              action: 'PASSWORD_RESET', 
+              details: `Password reset via OTP verification for tenant ${tenant.email}` 
             })
           }
           if (admin) {
-            await db.admin.update({ where: { id: admin.id }, data: { password: `supabase:${userId}` } })
+            await supabase.from('Admin').update({ password: `supabase:${userId}` }).eq('id', admin.id)
           }
           resetSuccess = true
+        } else {
+          console.error('Supabase updateUserById error:', updateError)
         }
-        console.error('Supabase updateUserById error:', updateError)
       }
     }
 
     // Local Fallback
     if (!resetSuccess) {
       if (tenant) {
-        await db.tenant.update({ where: { id: tenant.id }, data: { passwordHash: newPassword } })
-        await db.systemLog.create({
-          data: { tenantId: tenant.id, action: 'PASSWORD_RESET', details: `Password reset via OTP verification (local) for tenant ${tenant.email}` },
+        await supabase.from('Tenant').update({ passwordHash: newPassword }).eq('id', tenant.id)
+        await supabase.from('SystemLog').insert({ 
+          tenantId: tenant.id, 
+          action: 'PASSWORD_RESET', 
+          details: `Password reset via OTP verification (local) for tenant ${tenant.email}` 
         })
         resetSuccess = true
       }
 
       if (admin) {
-        await db.admin.update({ where: { id: admin.id }, data: { password: newPassword } })
+        await supabase.from('Admin').update({ password: newPassword }).eq('id', admin.id)
         resetSuccess = true
       }
     }
@@ -100,17 +112,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to reset password. Please try again.' }, { status: 500 })
     }
 
-    // Mark token as used
-    await db.passwordResetToken.update({
-      where: { id: token.id },
-      data: { isUsed: true },
-    })
-
-    // Invalidate all remaining tokens for this email
-    await db.passwordResetToken.updateMany({
-      where: { email: normalizedEmail, isUsed: false },
-      data: { isUsed: true },
-    })
+    // Invalidate all tokens for this email
+    await supabase
+      .from('PasswordResetToken')
+      .update({ isUsed: true })
+      .eq('email', normalizedEmail)
 
     return NextResponse.json({
       success: true,

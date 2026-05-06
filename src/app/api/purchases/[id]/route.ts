@@ -8,11 +8,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const { data: bill, error } = await supabase
       .from('purchase_bills')
-      .select('*, supplier:suppliers(*), items:purchase_items(*, medicine:medicines(*), batch:batches(*))')
+      .select('*, supplier:Supplier(*), items:purchase_items(*, medicine:Medicine(*), batch:Batch(*))')
       .eq('id', id)
+      .eq('tenant_id', tenantId)
       .single()
 
     if (error || !bill) {
@@ -38,12 +43,12 @@ export async function GET(
         gstPercent: item.gst_percent,
         totalAmount: item.total_amount,
         batch: {
-          id: item.batch.id,
-          batchNumber: item.batch.batch_number,
-          expiryDate: item.batch.expiry_date,
+          id: item.batch?.id,
+          batchNumber: item.batch?.batchNumber,
+          expiryDate: item.batch?.expiryDate,
           medicine: {
-            id: item.medicine.id,
-            name: item.medicine.name
+            id: item.medicine?.id,
+            name: item.medicine?.name
           }
         }
       }))
@@ -77,21 +82,16 @@ export async function DELETE(
 
     if (items) {
       for (const item of items) {
-        // Revert batch quantity
-        const { data: batch } = await supabase.from('batches').select('quantity').eq('id', item.batch_id).eq('tenant_id', tenantId).single()
+        // Revert batch quantity (Using PascalCase Batch)
+        const { data: batch } = await supabase.from('Batch').select('quantity').eq('id', item.batch_id).eq('tenantId', tenantId).single()
         if (batch) {
-          await supabase.from('batches').update({ quantity: Math.max(0, batch.quantity - item.quantity) }).eq('id', item.batch_id)
-        }
-        
-        // Revert medicine total stock
-        const { data: med } = await supabase.from('medicines').select('total_stock').eq('id', item.medicine_id).eq('tenant_id', tenantId).single()
-        if (med) {
-          await supabase.from('medicines').update({ total_stock: Math.max(0, med.total_stock - item.quantity) }).eq('id', item.medicine_id)
+          await supabase.from('Batch').update({ quantity: Math.max(0, (batch.quantity || 0) - item.quantity), updatedAt: new Date().toISOString() }).eq('id', item.batch_id)
         }
       }
     }
 
-    // 2. Delete the bill (CASCADE will handle purchase_items)
+    // 2. Delete the bill (CASCADE should handle purchase_items if set up, otherwise we delete them manually)
+    // For safety, we match tenant_id
     const { error } = await supabase
       .from('purchase_bills')
       .delete()

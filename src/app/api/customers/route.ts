@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantId } from '@/lib/auth'
 
@@ -12,50 +12,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const whereClause: any = { tenantId, isActive: true }
+    let query = supabase
+      .from('Customer')
+      .select('*, sales:Sale(id, totalAmount, saleDate)')
+      .eq('tenantId', tenantId)
+
     if (search) {
-      whereClause.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-      ]
+      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
     }
 
-    const customers = await db.customer.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        email: true,
-        address: true,
-        doctorName: true,
-        createdAt: true,
-        sales: {
-          where: {},
-          select: {
-            id: true,
-            totalAmount: true,
-            saleDate: true,
-          },
-          orderBy: { saleDate: 'desc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
+    const { data: customers, error } = await query.order('name', { ascending: true })
+
+    if (error) throw error
 
     // Enrich with computed fields
-    const enriched = customers.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone,
-      email: c.email,
-      address: c.address,
-      doctorName: c.doctorName,
-      createdAt: c.createdAt,
-      totalPurchases: c.sales.reduce((sum, s) => sum + s.totalAmount, 0),
-      totalOrders: c.sales.length,
-      lastVisit: c.sales.length > 0 ? c.sales[0].saleDate : null,
-    }))
+    const enriched = (customers || []).map((c: any) => {
+      const sales = c.sales || []
+      // Sort sales by date desc for lastVisit
+      sales.sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+
+      return {
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
+        doctorName: c.doctorName,
+        createdAt: c.createdAt,
+        totalPurchases: sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0),
+        totalOrders: sales.length,
+        lastVisit: sales.length > 0 ? sales[0].saleDate : null,
+      }
+    })
 
     return NextResponse.json(enriched)
   } catch (error) {
@@ -74,16 +62,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const customer = await db.customer.create({
-      data: {
+    const { data: customer, error } = await supabase
+      .from('Customer')
+      .insert({
         tenantId,
         name: name.trim(),
         phone: phone?.trim() || null,
         email: email?.trim() || null,
         address: address?.trim() || null,
         doctorName: doctorName?.trim() || null,
-      },
-    })
+      })
+      .select()
+      .single()
+
+    if (error) throw error
 
     return NextResponse.json(customer, { status: 201 })
   } catch (error) {

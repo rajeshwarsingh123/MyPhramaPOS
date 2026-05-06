@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function POST(
   request: NextRequest,
@@ -17,8 +17,13 @@ export async function POST(
       )
     }
 
-    const existing = await db.supportTicket.findUnique({ where: { id } })
-    if (!existing) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('SupportTicket')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
       return NextResponse.json(
         { error: 'Ticket not found' },
         { status: 404 },
@@ -26,9 +31,9 @@ export async function POST(
     }
 
     // Parse existing replies and append new one
-    let replies: unknown[] = []
+    let replies: any[] = []
     try {
-      replies = JSON.parse(existing.replies)
+      replies = typeof existing.replies === 'string' ? JSON.parse(existing.replies) : (existing.replies || [])
     } catch {
       replies = []
     }
@@ -46,30 +51,23 @@ export async function POST(
       timestamp: new Date().toISOString(),
     })
 
-    const ticket = await db.supportTicket.update({
-      where: { id },
-      data: {
+    const { data: ticket, error: updateError } = await supabase
+      .from('SupportTicket')
+      .update({
         replies: JSON.stringify(replies),
-      },
-      include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            businessName: true,
-            email: true,
-          },
-        },
-      },
-    })
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select('*, tenant:Tenant(id, name, businessName, email)')
+      .single()
+
+    if (updateError) throw updateError
 
     // Log the reply
-    await db.systemLog.create({
-      data: {
-        tenantId: existing.tenantId,
-        action: 'ticket_reply',
-        details: `Admin replied to ticket "${existing.subject}"`,
-      },
+    await supabase.from('SystemLog').insert({
+      tenantId: existing.tenantId,
+      action: 'ticket_reply',
+      details: `Admin replied to ticket "${existing.subject}"`,
     })
 
     return NextResponse.json(ticket)

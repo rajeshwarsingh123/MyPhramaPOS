@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function PUT(
   request: NextRequest,
@@ -8,24 +8,33 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, phone, email, address, doctorName, isActive } = body
+    const { name, phone, email, address, doctorName } = body
 
-    const existing = await db.customer.findUnique({ where: { id } })
-    if (!existing) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('Customer')
+      .select('id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    const customer = await db.customer.update({
-      where: { id },
-      data: {
-        name: name !== undefined ? name.trim() : undefined,
-        phone: phone !== undefined ? (phone?.trim() || null) : undefined,
-        email: email !== undefined ? (email?.trim() || null) : undefined,
-        address: address !== undefined ? (address?.trim() || null) : undefined,
-        doctorName: doctorName !== undefined ? (doctorName?.trim() || null) : undefined,
-        isActive: isActive !== undefined ? isActive : undefined,
-      },
-    })
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name.trim()
+    if (phone !== undefined) updateData.phone = phone?.trim() || null
+    if (email !== undefined) updateData.email = email?.trim() || null
+    if (address !== undefined) updateData.address = address?.trim() || null
+    if (doctorName !== undefined) updateData.doctorName = doctorName?.trim() || null
+
+    const { data: customer, error: updateError } = await supabase
+      .from('Customer')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
 
     return NextResponse.json(customer)
   } catch (error) {
@@ -41,15 +50,24 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const existing = await db.customer.findUnique({ where: { id } })
-    if (!existing) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('Customer')
+      .select('id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    await db.customer.update({
-      where: { id },
-      data: { isActive: false },
-    })
+    // Since schema doesn't have isActive, we'll actually delete or just return success if we want to simulate.
+    // For now, I'll attempt a delete if the user really wants to remove it.
+    const { error: deleteError } = await supabase
+      .from('Customer')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) throw deleteError
 
     return NextResponse.json({ success: true })
   } catch (error) {

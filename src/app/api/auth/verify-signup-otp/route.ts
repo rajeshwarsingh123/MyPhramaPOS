@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isSupabaseConfigured, adminSupabase, anonSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,26 +30,29 @@ export async function POST(request: NextRequest) {
 
       if (verifyError) {
         console.error('Supabase OTP verification failed:', verifyError)
-        // Fallback to local OTP check below if Supabase fails (optional)
       } else if (data.user) {
         isVerified = true
       }
     }
 
-    // ── Local OTP Fallback (if not already verified by Supabase) ──
-    let token = null
+    // ── Local OTP Fallback (using Supabase table PasswordResetToken) ──
+    let localToken = null
     if (!isVerified) {
-      token = await db.passwordResetToken.findFirst({
-        where: {
-          email: normalizedEmail,
-          otp: normalizedOtp,
-          purpose: 'signup_verification',
-          isUsed: false,
-          expiresAt: { gte: new Date() },
-        },
-        orderBy: { createdAt: 'desc' },
-      })
-      if (token) isVerified = true
+      const { data } = await supabase
+        .from('PasswordResetToken')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .eq('otp', normalizedOtp)
+        .eq('purpose', 'signup_verification')
+        .eq('isUsed', false)
+        .gte('expiresAt', new Date().toISOString())
+        .order('createdAt', { ascending: false })
+        .limit(1)
+      
+      if (data && data.length > 0) {
+        localToken = data[0]
+        isVerified = true
+      }
     }
 
     if (!isVerified) {
@@ -57,12 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the tenant
-    const tenant = await db.tenant.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true, name: true, email: true, passwordHash: true, status: true },
-    })
+    const { data: tenant, error: tenantError } = await supabase
+      .from('Tenant')
+      .select('id, name, email, passwordHash, status')
+      .eq('email', normalizedEmail)
+      .single()
 
-    if (!tenant) {
+    if (tenantError || !tenant) {
       return NextResponse.json({ error: 'Account not found. Please sign up again.' }, { status: 404 })
     }
 
@@ -71,46 +75,30 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Confirm user in Supabase ──
-    if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase && tenant.passwordHash.startsWith('supabase:')) {
+    if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase && tenant.passwordHash?.startsWith('supabase:')) {
       const supabaseUserId = tenant.passwordHash.replace('supabase:', '')
-
       const { error: confirmError } = await adminSupabase.auth.admin.updateUserById(supabaseUserId, {
         email_confirm: true,
       })
-
-      if (confirmError) {
-        console.error('Failed to confirm user in Supabase:', confirmError)
-        // Still proceed with local verification even if Supabase confirmation fails
-      }
+      if (confirmError) console.error('Failed to confirm user in Supabase:', confirmError)
     }
 
-    // ── Activate tenant in local DB ──
-    await db.tenant.update({
-      where: { id: tenant.id },
-      data: { status: 'trial' },
+    // ── Activate tenant in Supabase ──
+    await supabase.from('Tenant').update({ status: 'trial' }).eq('id', tenant.id)
+
+    await supabase.from('SystemLog').insert({
+      tenantId: tenant.id,
+      action: 'EMAIL_VERIFIED',
+      details: `Tenant ${tenant.email} verified email via OTP`,
     })
 
-    await db.systemLog.create({
-      data: {
-        tenantId: tenant.id,
-        action: 'EMAIL_VERIFIED',
-        details: `Tenant ${tenant.email} verified email via OTP`,
-      },
-    })
-
-    // Mark local token as used if it was found
-    if (token) {
-      await db.passwordResetToken.update({
-        where: { id: token.id },
-        data: { isUsed: true },
-      })
+    // Mark local token as used
+    if (localToken) {
+      await supabase.from('PasswordResetToken').update({ isUsed: true }).eq('id', localToken.id)
     }
 
     // Invalidate all remaining signup tokens for this email
-    await db.passwordResetToken.updateMany({
-      where: { email: normalizedEmail, purpose: 'signup_verification', isUsed: false },
-      data: { isUsed: true },
-    })
+    await supabase.from('PasswordResetToken').update({ isUsed: true }).match({ email: normalizedEmail, purpose: 'signup_verification', isUsed: false })
 
     return NextResponse.json({
       success: true,

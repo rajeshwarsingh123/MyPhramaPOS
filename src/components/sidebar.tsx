@@ -304,8 +304,8 @@ export function Sidebar() {
                 </div>
               </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">Admin</span>
-                <span className="text-[10px] text-sidebar-foreground/50 truncate">admin@pharmacy.com</span>
+                <span className="text-sm font-medium text-sidebar-foreground truncate">{tenantInfo?.name || 'Administrator'}</span>
+                <span className="text-[10px] text-sidebar-foreground/50 truncate">rajeshwarsinghrana16@gmail.com</span>
               </div>
             </div>
           )}

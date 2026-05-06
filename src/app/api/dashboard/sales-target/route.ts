@@ -1,41 +1,55 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { startOfDay, endOfDay } from 'date-fns'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-// GET /api/dashboard/sales-target — returns target, actual, percentage, remaining
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Get or create store setting
-    let setting = await db.storeSetting.findFirst()
+    let { data: setting, error: fetchError } = await supabase
+      .from('StoreSetting')
+      .select('*')
+      .eq('tenantId', tenantId)
+      .maybeSingle()
+
+    if (fetchError) throw fetchError
 
     if (!setting) {
-      setting = await db.storeSetting.create({
-        data: {
+      const { data: newSetting, error: createError } = await supabase
+        .from('StoreSetting')
+        .insert({
+          tenantId,
           storeName: 'My Pharmacy',
           dailySalesTarget: 10000,
-        },
-      })
+        })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      setting = newSetting
     }
 
     const target = setting.dailySalesTarget ?? 10000
 
     // Calculate today's actual sales
-    const todayStart = startOfDay(new Date())
-    const todayEnd = endOfDay(new Date())
+    const todayStart = startOfDay(new Date()).toISOString()
+    const todayEnd = endOfDay(new Date()).toISOString()
 
-    const salesResult = await db.sale.aggregate({
-      _sum: {
-        totalAmount: true,
-      },
-      where: {
-        saleDate: {
-          gte: todayStart,
-          lte: todayEnd,
-        },
-      },
-    })
+    const { data: sales, error: salesError } = await supabase
+      .from('Sale')
+      .select('totalAmount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', todayStart)
+      .lte('saleDate', todayEnd)
 
-    const actual = salesResult._sum.totalAmount ?? 0
+    if (salesError) throw salesError
+
+    const actual = (sales || []).reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0)
     const percentage = target > 0 ? Math.min((actual / target) * 100, 999) : 0
     const remaining = Math.max(target - actual, 0)
 
@@ -54,9 +68,13 @@ export async function GET() {
   }
 }
 
-// PUT /api/dashboard/sales-target — update daily target
 export async function PUT(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { target } = body
 
@@ -67,22 +85,18 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Find or create setting, then update
-    let setting = await db.storeSetting.findFirst()
+    // Upsert store setting
+    const { data: setting, error: upsertError } = await supabase
+      .from('StoreSetting')
+      .upsert({
+        tenantId,
+        dailySalesTarget: target,
+        updatedAt: new Date().toISOString()
+      }, { onConflict: 'tenantId' })
+      .select()
+      .single()
 
-    if (!setting) {
-      setting = await db.storeSetting.create({
-        data: {
-          storeName: 'My Pharmacy',
-          dailySalesTarget: target,
-        },
-      })
-    } else {
-      setting = await db.storeSetting.update({
-        where: { id: setting.id },
-        data: { dailySalesTarget: target },
-      })
-    }
+    if (upsertError) throw upsertError
 
     return NextResponse.json({
       target: setting.dailySalesTarget,

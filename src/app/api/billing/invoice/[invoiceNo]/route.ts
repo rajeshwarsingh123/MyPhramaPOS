@@ -1,5 +1,6 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -7,22 +8,19 @@ export async function GET(
 ) {
   try {
     const { invoiceNo } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const sale = await db.sale.findUnique({
-      where: { invoiceNo },
-      include: {
-        customer: true,
-        items: {
-          include: {
-            batch: true,
-            medicine: true,
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    })
+    const { data: sale, error } = await supabase
+      .from('Sale')
+      .select('*, customer:Customer(*), items:SaleItem(*, batch:Batch(*), medicine:Medicine(*))')
+      .eq('invoiceNo', invoiceNo)
+      .eq('tenantId', tenantId)
+      .maybeSingle()
 
-    if (!sale) {
+    if (error || !sale) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
 
 // All supported settings with their default values
 const SETTINGS_DEFAULTS: Record<string, string> = {
   // Platform Settings
   platform_name: 'PharmPOS',
   platform_tagline: 'Smart Pharmacy Management',
-  support_email: 'support@pharmpos.com',
+  support_email: 'rajeshwarsinghrana16@gmail.com',
   maintenance_mode: 'false',
   max_free_medicines: '50',
   max_free_bills_per_day: '100',
@@ -40,13 +39,16 @@ const SETTINGS_DEFAULTS: Record<string, string> = {
 
 export async function GET(_request: NextRequest) {
   try {
-    const settings = await db.platformSetting.findMany({
-      orderBy: { key: 'asc' },
-    })
+    const { data: settings, error } = await supabase
+      .from('PlatformSetting')
+      .select('*')
+      .order('key', { ascending: true })
+
+    if (error) throw error
 
     // Convert to key-value map for easier frontend consumption
     const settingsMap: Record<string, string> = {}
-    for (const s of settings) {
+    for (const s of settings || []) {
       settingsMap[s.key] = s.value
     }
 
@@ -88,28 +90,23 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Upsert all settings in a transaction
-    const updatedSettings = await db.$transaction(
-      Object.entries(settings).map(([key, value]) =>
-        db.platformSetting.upsert({
-          where: { key },
-          update: { value: String(value) },
-          create: {
-            key,
-            value: String(value),
-            description: null,
-          },
-        }),
-      ),
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-        timeout: 10000,
-      },
-    )
+    // Upsert settings one by one (Supabase upsert handles this)
+    const upsertData = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: String(value),
+      updatedAt: new Date().toISOString()
+    }))
+
+    const { data: updatedSettings, error } = await supabase
+      .from('PlatformSetting')
+      .upsert(upsertData, { onConflict: 'key' })
+      .select()
+
+    if (error) throw error
 
     return NextResponse.json({
       success: true,
-      updatedCount: updatedSettings.length,
+      updatedCount: updatedSettings?.length || 0,
     })
   } catch (error) {
     console.error('PUT /api/admin/settings error:', error)

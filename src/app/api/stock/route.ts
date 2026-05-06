@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantId } from '@/lib/auth'
 
@@ -12,55 +12,26 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
     const now = new Date()
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
     const tenantId = await getTenantId(request)
     if (!tenantId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Build base where clause for medicines
-    const medicineWhere: any = { tenantId, isActive: true }
+    // Build query for medicines
+    let query = supabase
+      .from('medicines')
+      .select('*, batches(*)')
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
 
     if (search) {
-      medicineWhere.OR = [
-        { name: { contains: search } },
-        { composition: { contains: search } },
-        { genericName: { contains: search } },
-        { companyName: { contains: search } },
-      ]
+      query = query.or(`name.ilike.%${search}%,composition.ilike.%${search}%,generic_name.ilike.%${search}%,company_name.ilike.%${search}%`)
     }
 
-    // Fetch medicines with their active batches
-    const medicines = await db.medicine.findMany({
-      where: medicineWhere,
-      select: {
-        id: true,
-        name: true,
-        genericName: true,
-        companyName: true,
-        composition: true,
-        strength: true,
-        unitType: true,
-        batches: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            batchNumber: true,
-            expiryDate: true,
-            mfgDate: true,
-            purchasePrice: true,
-            mrp: true,
-            quantity: true,
-            initialQuantity: true,
-          },
-          orderBy: { expiryDate: 'asc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
+    const { data: medicines, error } = await query.order('name', { ascending: true })
+
+    if (error) throw error
 
     // Process medicines: compute totals and filter by expiry/stock
     type ProcessedBatch = {
@@ -97,9 +68,11 @@ export async function GET(request: NextRequest) {
 
     const processed: ProcessedMedicine[] = []
 
-    for (const med of medicines) {
-      // Skip medicines with no batches
-      if (med.batches.length === 0) continue
+    for (const med of medicines || []) {
+      const activeBatches = (med.batches || []).filter((b: any) => b.isActive)
+      
+      // Skip medicines with no active batches
+      if (activeBatches.length === 0) continue
 
       let totalStock = 0
       let minMrp = Infinity
@@ -118,9 +91,10 @@ export async function GET(request: NextRequest) {
 
       const processedBatches: ProcessedBatch[] = []
 
-      for (const batch of med.batches) {
+      for (const batch of activeBatches) {
+        const expiryDate = new Date(batch.expiry_date)
         const daysUntilExpiry = Math.ceil(
-          (batch.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         )
 
         let expiryStatus: ProcessedBatch['expiryStatus'] = 'safe'
@@ -129,13 +103,15 @@ export async function GET(request: NextRequest) {
         else if (daysUntilExpiry <= 30) expiryStatus = 'expiring_30d'
         else if (daysUntilExpiry <= 90) expiryStatus = 'expiring_90d'
 
-        totalStock += batch.quantity
-        if (batch.mrp < minMrp) minMrp = batch.mrp
-        if (batch.mrp > maxMrp) maxMrp = batch.mrp
-        totalValue += batch.quantity * batch.mrp
+        const qty = batch.quantity || 0
+        const mrp = batch.mrp || 0
+        totalStock += qty
+        if (mrp < minMrp) minMrp = mrp
+        if (mrp > maxMrp) maxMrp = mrp
+        totalValue += qty * mrp
 
-        if ((expiryStatus === 'expired' || expiryStatus === 'expiring_7d' || expiryStatus === 'expiring_30d') && batch.quantity > 0) {
-          valueAtRisk += batch.quantity * batch.mrp
+        if ((expiryStatus === 'expired' || expiryStatus === 'expiring_7d' || expiryStatus === 'expiring_30d') && qty > 0) {
+          valueAtRisk += qty * mrp
         }
 
         if (statusPriority[expiryStatus] < worstPriority) {
@@ -146,15 +122,15 @@ export async function GET(request: NextRequest) {
         processedBatches.push({
           id: batch.id,
           batchNumber: batch.batchNumber,
-          expiryDate: batch.expiryDate.toISOString(),
-          mfgDate: batch.mfgDate?.toISOString() || null,
-          purchasePrice: batch.purchasePrice,
-          mrp: batch.mrp,
-          quantity: batch.quantity,
-          initialQuantity: batch.initialQuantity,
+          expiryDate: batch.expiry_date,
+          mfgDate: batch.mfg_date || null,
+          purchasePrice: batch.purchase_price || 0,
+          mrp: mrp,
+          quantity: qty,
+          initialQuantity: batch.initialQuantity || qty,
           expiryStatus,
           daysUntilExpiry,
-          valueAtRisk: batch.quantity * batch.mrp,
+          valueAtRisk: qty * mrp,
         })
       }
 
@@ -171,24 +147,23 @@ export async function GET(request: NextRequest) {
       processed.push({
         id: med.id,
         name: med.name,
-        genericName: med.genericName,
-        companyName: med.companyName,
+        genericName: med.generic_name,
+        companyName: med.company_name,
         composition: med.composition,
         strength: med.strength,
-        unitType: med.unitType,
+        unitType: med.unit_type,
         totalStock,
         minMrp,
         maxMrp,
         totalValue,
         valueAtRisk,
         worstExpiryStatus: worstStatus,
-        batchCount: med.batches.length,
+        batchCount: activeBatches.length,
         batches: processedBatches,
       })
     }
 
-    // Sort by urgency: expired first, then expiring_7d, then expiring_30d, then expiring_90d, then safe
-    // Within same status, sort by value at risk (highest first)
+    // Sort by urgency: expired first, then expiring_7d, etc.
     const sortPriority: Record<string, number> = {
       expired: 0,
       expiring_7d: 1,
@@ -210,10 +185,10 @@ export async function GET(request: NextRequest) {
     const start = (safePage - 1) * limit
     const paginatedItems = processed.slice(start, start + limit)
 
-    // Compute overview stats from all medicines (before pagination)
+    // Compute overview stats from all medicines
     const totalMedicines = processed.length
-    const totalStock = processed.reduce((sum, m) => sum + m.totalStock, 0)
-    const totalValue = processed.reduce((sum, m) => sum + m.totalValue, 0)
+    const totalStockVal = processed.reduce((sum, m) => sum + m.totalStock, 0)
+    const totalValueVal = processed.reduce((sum, m) => sum + m.totalValue, 0)
     const expiredItems = processed.filter((m) => m.worstExpiryStatus === 'expired').length
     const expiredValue = processed
       .filter((m) => m.worstExpiryStatus === 'expired')
@@ -229,8 +204,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       overview: {
         totalMedicines,
-        totalStock,
-        totalValue,
+        totalStock: totalStockVal,
+        totalValue: totalValueVal,
         expiring30Items,
         expiring30Value,
         expiredItems,

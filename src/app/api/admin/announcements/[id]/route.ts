@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function PUT(
   _request: NextRequest,
@@ -8,26 +8,29 @@ export async function PUT(
   try {
     const { id } = await params
 
-    const existing = await db.announcement.findUnique({ where: { id } })
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Announcement not found' },
-        { status: 404 },
-      )
+    const { data: existing, error: fetchError } = await supabase
+      .from('Announcement')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Announcement not found' }, { status: 404 })
     }
 
-    const announcement = await db.announcement.update({
-      where: { id },
-      data: { isActive: !existing.isActive },
-    })
+    const { data: announcement, error: updateError } = await supabase
+      .from('Announcement')
+      .update({ isActive: !existing.isActive, updatedAt: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
 
     return NextResponse.json(announcement)
   } catch (error) {
     console.error('PUT /api/admin/announcements/[id] error:', error)
-    return NextResponse.json(
-      { error: 'Failed to toggle announcement' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Failed to toggle announcement' }, { status: 500 })
   }
 }
 
@@ -38,24 +41,26 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const existing = await db.announcement.findUnique({ where: { id } })
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Announcement not found' },
-        { status: 404 },
-      )
+    const { data: existing, error: fetchError } = await supabase
+      .from('Announcement')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Announcement not found' }, { status: 404 })
     }
 
-    await db.announcement.delete({ where: { id } })
+    const { error: deleteError } = await supabase
+      .from('Announcement')
+      .delete()
+      .eq('id', id)
 
-    return NextResponse.json({
-      message: 'Announcement deleted successfully',
-    })
+    if (deleteError) throw deleteError
+
+    return NextResponse.json({ message: 'Announcement deleted successfully' })
   } catch (error) {
     console.error('DELETE /api/admin/announcements/[id] error:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete announcement' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Failed to delete announcement' }, { status: 500 })
   }
 }

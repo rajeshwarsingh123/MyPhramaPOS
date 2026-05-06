@@ -1,8 +1,14 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const fromParam = searchParams.get('fromDate')
     const toParam = searchParams.get('toDate')
@@ -22,19 +28,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch all sale items in the date range with batch and medicine info
-    const saleItems = await db.saleItem.findMany({
-      where: {
-        sale: {
-          saleDate: { gte: fromDate, lt: toDate },
-        },
-      },
-      include: {
-        batch: {
-          select: { purchasePrice: true },
-        },
-      },
-    })
+    // Fetch all sale items in the date range with batch info
+    const { data: saleItems, error } = await supabase
+      .from('SaleItem')
+      .select('*, batch:Batch(purchasePrice), sale:Sale!inner(saleDate)')
+      .eq('tenantId', tenantId)
+      .gte('sale!inner.saleDate', fromDate.toISOString())
+      .lt('sale!inner.saleDate', toDate.toISOString())
+
+    if (error) throw error
 
     // Aggregate by medicine
     const medicineMap = new Map<
@@ -45,25 +47,26 @@ export async function GET(request: NextRequest) {
     let totalRevenue = 0
     let totalCost = 0
 
-    for (const item of saleItems) {
-      const revenue = item.totalAmount
-      const costPerUnit = item.batch.purchasePrice
-      const cost = costPerUnit * item.quantity
+    for (const item of (saleItems || [])) {
+      const revenue = item.totalAmount || 0
+      const costPerUnit = (item.batch as any)?.purchasePrice || 0
+      const cost = costPerUnit * (item.quantity || 0)
       const profit = revenue - cost
 
       totalRevenue += revenue
       totalCost += cost
 
-      const existing = medicineMap.get(item.medicineId)
+      const key = item.medicineId
+      const existing = medicineMap.get(key)
       if (existing) {
-        existing.qtySold += item.quantity
+        existing.qtySold += item.quantity || 0
         existing.revenue += revenue
         existing.cost += cost
         existing.profit += profit
       } else {
-        medicineMap.set(item.medicineId, {
-          medicineName: item.medicineName,
-          qtySold: item.quantity,
+        medicineMap.set(key, {
+          medicineName: item.medicineName || 'Unknown',
+          qtySold: item.quantity || 0,
           revenue,
           cost,
           profit,

@@ -180,7 +180,7 @@ export function AdminNavbar() {
                     {adminAuth.adminName || 'Super Admin'}
                   </span>
                   <span className="text-[10px] text-white/40 leading-none mt-0.5">
-                    {adminAuth.adminEmail || 'admin@pharmpos.com'}
+                    {adminAuth.adminEmail || 'rajeshwarsinghrana16@gmail.com'}
                   </span>
                 </div>
               </Button>
@@ -195,7 +195,7 @@ export function AdminNavbar() {
                     {adminAuth.adminName || 'Super Admin'}
                   </p>
                   <p className="text-xs text-white/40">
-                    {adminAuth.adminEmail || 'admin@pharmpos.com'}
+                    {adminAuth.adminEmail || 'rajeshwarsinghrana16@gmail.com'}
                   </p>
                 </div>
               </DropdownMenuLabel>

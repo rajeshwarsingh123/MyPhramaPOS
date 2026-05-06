@@ -1,48 +1,58 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString()
 
     // Today's sales total
-    const salesAgg = await db.sale.aggregate({
-      _sum: { totalAmount: true },
-      where: {
-        saleDate: { gte: todayStart, lt: todayEnd },
-      },
-    })
+    const { data: sales, error: salesError } = await supabase
+      .from('Sale')
+      .select('totalAmount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', todayStart)
+      .lt('saleDate', todayEnd)
+
+    if (salesError) throw salesError
+
+    const todaySales = (sales || []).reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0)
 
     // Low stock count (total stock < 10)
-    const medicines = await db.medicine.findMany({
-      where: { isActive: true },
-      include: {
-        batches: {
-          where: { isActive: true },
-          select: { quantity: true },
-        },
-      },
-    })
+    const { data: medicines, error: medError } = await supabase
+      .from('Medicine')
+      .select('id, batches:Batch(quantity)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
 
-    const lowStockCount = medicines.filter(
-      (m) => m.batches.reduce((sum, b) => sum + b.quantity, 0) < 10
+    if (medError) throw medError
+
+    const lowStockCount = (medicines || []).filter(
+      (m: any) => (m.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0) < 10
     ).length
 
-    // Expired count (batches with expiry before today and quantity > 0)
-    const expiredCount = await db.batch.count({
-      where: {
-        isActive: true,
-        expiryDate: { lt: now },
-        quantity: { gt: 0 },
-      },
-    })
+    // Expired count
+    const { count: expiredCount, error: expError } = await supabase
+      .from('Batch')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .lt('expiryDate', now.toISOString())
+      .gt('quantity', 0)
+
+    if (expError) throw expError
 
     return NextResponse.json({
-      todaySales: salesAgg._sum.totalAmount ?? 0,
+      todaySales,
       lowStockCount,
-      expiredCount,
+      expiredCount: expiredCount || 0,
     })
   } catch (error) {
     console.error('Quick stats error:', error)

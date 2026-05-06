@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function PUT(
   request: NextRequest,
@@ -17,28 +17,33 @@ export async function PUT(
       )
     }
 
-    const tenant = await db.tenant.findUnique({ where: { id } })
-    if (!tenant) {
+    const { data: tenant, error: fetchError } = await supabase
+      .from('Tenant')
+      .select('id, businessName')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
     const newStatus = banned ? 'suspended' : 'active'
 
-    await db.tenant.update({
-      where: { id },
-      data: { status: newStatus },
-    })
+    const { error: updateError } = await supabase
+      .from('Tenant')
+      .update({ status: newStatus })
+      .eq('id', id)
+
+    if (updateError) throw updateError
 
     const logDetails = banned
       ? `Admin banned tenant: ${tenant.businessName}. Reason: ${reason || 'No reason provided'}`
       : `Admin unbanned tenant: ${tenant.businessName}`
 
-    await db.systemLog.create({
-      data: {
-        tenantId: id,
-        action: banned ? 'Tenant banned' : 'Tenant unbanned',
-        details: logDetails,
-      },
+    await supabase.from('SystemLog').insert({
+      tenantId: id,
+      action: banned ? 'Tenant banned' : 'Tenant unbanned',
+      details: logDetails,
     })
 
     return NextResponse.json({

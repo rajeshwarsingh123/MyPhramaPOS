@@ -1,19 +1,20 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { format, startOfMonth, endOfMonth, isValid, parseISO } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const tenantId = searchParams.get('tenantId')
     const fromDateParam = searchParams.get('fromDate')
     const toDateParam = searchParams.get('toDate')
     const year = searchParams.get('year')
     const month = searchParams.get('month')
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 })
-    }
 
     let rangeStart: Date
     let rangeEnd: Date
@@ -37,38 +38,27 @@ export async function GET(request: NextRequest) {
       rangeEnd.setHours(23, 59, 59, 999)
     }
 
-    const sales = await db.sale.findMany({
-      where: {
-        tenantId,
-        saleDate: { gte: rangeStart, lte: rangeEnd },
-      },
-      include: {
-        customer: {
-          select: { name: true },
-        },
-        items: {
-          select: {
-            medicineName: true,
-            quantity: true,
-            mrp: true,
-            totalAmount: true,
-          },
-        },
-      },
-      orderBy: { saleDate: 'asc' },
-    })
+    const { data: sales, error: fetchError } = await supabase
+      .from('Sale')
+      .select('*, customer:Customer(name), items:SaleItem(medicineName, quantity, mrp, totalAmount)')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', rangeStart.toISOString())
+      .lte('saleDate', rangeEnd.toISOString())
+      .order('saleDate', { ascending: true })
+
+    if (fetchError) throw fetchError
 
     // Build CSV
     const header = 'Invoice#,Date,Customer,Items,Total,Payment Mode'
-    const rows = sales.map((s) => {
-      const itemList = s.items.map((i) => `${i.medicineName} (x${i.quantity})`).join('; ')
+    const rows = (sales || []).map((s: any) => {
+      const itemList = (s.items || []).map((i: any) => `${i.medicineName} (x${i.quantity})`).join('; ')
       return [
         s.invoiceNo,
-        format(s.saleDate, 'yyyy-MM-dd HH:mm'),
+        format(new Date(s.saleDate), 'yyyy-MM-dd HH:mm'),
         s.customer?.name ?? 'Walk-in',
         `"${itemList.replace(/"/g, '""')}"`,
-        s.totalAmount.toFixed(2),
-        s.paymentMode.toUpperCase(),
+        (s.totalAmount || 0).toFixed(2),
+        (s.paymentMode || 'cash').toUpperCase(),
       ].join(',')
     })
 

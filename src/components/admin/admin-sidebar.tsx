@@ -310,7 +310,7 @@ export function AdminSidebar() {
                 >
                   {adminAuth.adminName || 'Super Admin'}
                   <br />
-                  <span className="text-white/40">{adminAuth.adminEmail || 'admin@pharmpos.com'}</span>
+                  <span className="text-white/40">{adminAuth.adminEmail || 'rajeshwarsinghrana16@gmail.com'}</span>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -324,7 +324,7 @@ export function AdminSidebar() {
                   {adminAuth.adminName || 'Super Admin'}
                 </span>
                 <span className="text-[10px] text-white/40 truncate">
-                  {adminAuth.adminEmail || 'admin@pharmpos.com'}
+                  {adminAuth.adminEmail || 'rajeshwarsinghrana16@gmail.com'}
                 </span>
               </div>
             </div>

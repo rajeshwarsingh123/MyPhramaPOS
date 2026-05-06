@@ -1,27 +1,31 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { format } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const customers = await db.customer.findMany({
-      where: { isActive: true },
-      include: {
-        sales: {
-          select: {
-            totalAmount: true,
-            saleDate: true,
-          },
-          orderBy: { saleDate: 'desc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const rows = customers.map((c) => {
-      const totalOrders = c.sales.length
-      const totalPurchases = c.sales.reduce((sum, s) => sum + s.totalAmount, 0)
-      const lastVisit = c.sales.length > 0 ? c.sales[0].saleDate : null
+    const { data: customers, error } = await supabase
+      .from('Customer')
+      .select('*, sales:Sale(totalAmount, saleDate)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .order('name', { ascending: true })
+
+    if (error) throw error
+
+    const rows = (customers || []).map((c: any) => {
+      const sales = c.sales || []
+      const totalOrders = sales.length
+      const totalPurchases = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0)
+      const lastVisit = sales.length > 0 
+        ? sales.reduce((latest: string, s: any) => new Date(s.saleDate) > new Date(latest) ? s.saleDate : latest, sales[0].saleDate)
+        : null
 
       return [
         `"${c.name}"`,

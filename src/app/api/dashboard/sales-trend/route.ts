@@ -1,29 +1,39 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const now = new Date()
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Get last 7 days of sales data
+    const now = new Date()
     const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
     sevenDaysAgo.setHours(0, 0, 0, 0)
 
-    const salesByDay = await db.sale.groupBy({
-      by: ['saleDate'],
-      where: {
-        saleDate: { gte: sevenDaysAgo },
-      },
-      _sum: {
-        totalAmount: true,
-        subtotal: true,
-        totalDiscount: true,
-      },
-      _count: {
-        id: true,
-      },
-      orderBy: { saleDate: 'asc' },
-    })
+    const { data: sales, error } = await supabase
+      .from('Sale')
+      .select('saleDate, totalAmount, subtotal, totalDiscount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', sevenDaysAgo.toISOString())
+
+    if (error) throw error
+
+    // Aggregate by day in JS
+    const salesByDayMap: Record<string, any> = {}
+    
+    for (const sale of (sales || [])) {
+      const dateStr = new Date(sale.saleDate).toISOString().split('T')[0]
+      if (!salesByDayMap[dateStr]) {
+        salesByDayMap[dateStr] = { totalAmount: 0, subtotal: 0, totalDiscount: 0, count: 0 }
+      }
+      salesByDayMap[dateStr].totalAmount += sale.totalAmount
+      salesByDayMap[dateStr].subtotal += sale.subtotal
+      salesByDayMap[dateStr].totalDiscount += sale.totalDiscount
+      salesByDayMap[dateStr].count += 1
+    }
 
     // Build a map of all 7 days, filling in zeros for days with no sales
     const dailyData = []
@@ -31,19 +41,16 @@ export async function GET() {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
 
-      const dayData = salesByDay.find((s) => {
-        const saleDateStr = new Date(s.saleDate).toISOString().split('T')[0]
-        return saleDateStr === dateStr
-      })
+      const dayData = salesByDayMap[dateStr]
 
       dailyData.push({
         date: dateStr,
         dayName: date.toLocaleDateString('en-IN', { weekday: 'short' }),
         shortDate: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-        totalSales: dayData?._sum.totalAmount ?? 0,
-        subtotal: dayData?._sum.subtotal ?? 0,
-        totalDiscount: dayData?._sum.totalDiscount ?? 0,
-        orderCount: dayData?._count.id ?? 0,
+        totalSales: dayData?.totalAmount ?? 0,
+        subtotal: dayData?.subtotal ?? 0,
+        totalDiscount: dayData?.totalDiscount ?? 0,
+        orderCount: dayData?.count ?? 0,
       })
     }
 

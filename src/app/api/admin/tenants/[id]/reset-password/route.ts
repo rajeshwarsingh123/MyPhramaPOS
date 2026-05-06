@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function PUT(
   request: NextRequest,
@@ -24,22 +24,27 @@ export async function PUT(
       )
     }
 
-    const tenant = await db.tenant.findUnique({ where: { id } })
-    if (!tenant) {
+    const { data: tenant, error: fetchError } = await supabase
+      .from('Tenant')
+      .select('businessName, email')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
-    await db.tenant.update({
-      where: { id },
-      data: { passwordHash: newPassword },
-    })
+    const { error: updateError } = await supabase
+      .from('Tenant')
+      .update({ passwordHash: newPassword })
+      .eq('id', id)
 
-    await db.systemLog.create({
-      data: {
-        tenantId: id,
-        action: 'Password reset by admin',
-        details: `Admin reset password for tenant: ${tenant.businessName} (${tenant.email})`,
-      },
+    if (updateError) throw updateError
+
+    await supabase.from('SystemLog').insert({
+      tenantId: id,
+      action: 'Password reset by admin',
+      details: `Admin reset password for tenant: ${tenant.businessName} (${tenant.email})`,
     })
 
     return NextResponse.json({

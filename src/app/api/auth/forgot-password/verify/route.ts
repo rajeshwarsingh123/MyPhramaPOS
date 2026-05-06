@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { supabase, isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
 
 function generateOTP(): string {
@@ -19,10 +18,18 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    const [tenant, admin] = await Promise.all([
-      db.tenant.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, status: true } }),
-      db.admin.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, role: true, isActive: true } }),
-    ])
+    // ── Get User (Tenant or Admin) ──
+    const { data: tenant } = await supabase
+      .from('Tenant')
+      .select('id, name, email, status')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
+
+    const { data: admin } = await supabase
+      .from('Admin')
+      .select('id, name, email, role, isActive')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
 
     // Account not found — return found: false so frontend can guide user
     if (!tenant && !admin) {
@@ -71,16 +78,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Check for recent OTP (prevent spam) ──
-    const recentToken = await db.passwordResetToken.findFirst({
-      where: {
-        email: normalizedEmail,
-        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const { data: recentToken } = await supabase
+      .from('PasswordResetToken')
+      .select('createdAt')
+      .eq('email', normalizedEmail)
+      .gte('createdAt', new Date(Date.now() - 60 * 1000).toISOString())
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     if (recentToken) {
-      const waitSeconds = Math.max(0, 60 - Math.floor((Date.now() - recentToken.createdAt.getTime()) / 1000))
+      const waitSeconds = Math.max(0, 60 - Math.floor((Date.now() - new Date(recentToken.createdAt).getTime()) / 1000))
       return NextResponse.json({
         error: `Please wait ${waitSeconds} seconds before requesting a new code.`,
         retryAfter: waitSeconds,
@@ -93,22 +101,24 @@ export async function POST(request: NextRequest) {
     const userId = admin?.id || tenant?.id
 
     // Invalidate all previous tokens for this email
-    await db.passwordResetToken.updateMany({
-      where: { email: normalizedEmail, isUsed: false },
-      data: { isUsed: true },
-    })
+    await supabase
+      .from('PasswordResetToken')
+      .update({ isUsed: true })
+      .eq('email', normalizedEmail)
+      .eq('isUsed', false)
 
     // Create new token (expires in 10 minutes)
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
-    await db.passwordResetToken.create({
-      data: {
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    await supabase
+      .from('PasswordResetToken')
+      .insert({
         email: normalizedEmail,
         otp,
         userType,
         userId: userId || null,
         expiresAt,
-      },
-    })
+        isUsed: false,
+      })
 
     const emailParts = normalizedEmail.split('@')
     const maskedEmail = emailParts[0].slice(0, 2) + '***@' + emailParts[1]

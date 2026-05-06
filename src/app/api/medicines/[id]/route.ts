@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -7,28 +8,31 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const medicine = await db.medicine.findUnique({
-      where: { id },
-      include: {
-        batches: {
-          where: { isActive: true },
-          orderBy: { expiryDate: 'asc' },
-        },
-      },
-    })
+    const { data: medicine, error } = await supabase
+      .from('Medicine')
+      .select('*, batches:Batch(*)')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .single()
 
-    if (!medicine) {
+    if (error || !medicine) {
       return NextResponse.json({ error: 'Medicine not found' }, { status: 404 })
     }
 
-    const totalStock = medicine.batches.reduce((sum, b) => sum + b.quantity, 0)
-    const activeBatches = medicine.batches.filter((b) => b.quantity > 0)
+    const activeBatches = (medicine.batches || []).filter((b: any) => b.isActive)
+    const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+    const batchesWithStock = activeBatches.filter((b: any) => b.quantity > 0)
+    
     const earliestExpiry =
-      activeBatches.length > 0
-        ? activeBatches.reduce((earliest, b) =>
-            b.expiryDate < earliest ? b.expiryDate : earliest,
-            activeBatches[0].expiryDate,
+      batchesWithStock.length > 0
+        ? batchesWithStock.reduce((earliest: string, b: any) =>
+            new Date(b.expiryDate) < new Date(earliest) ? b.expiryDate : earliest,
+            batchesWithStock[0].expiryDate,
           )
         : null
 
@@ -36,7 +40,7 @@ export async function GET(
       ...medicine,
       totalStock,
       earliestExpiry,
-      batchCount: medicine.batches.length,
+      batchCount: activeBatches.length,
     })
   } catch (error) {
     console.error('GET /api/medicines/[id] error:', error)
@@ -51,8 +55,18 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const existing = await db.medicine.findUnique({ where: { id } })
+    const { data: existing } = await supabase
+      .from('Medicine')
+      .select('id')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .single()
+
     if (!existing) {
       return NextResponse.json({ error: 'Medicine not found' }, { status: 404 })
     }
@@ -74,35 +88,36 @@ export async function PUT(
       return NextResponse.json({ error: 'Medicine name is required' }, { status: 400 })
     }
 
-    const medicine = await db.medicine.update({
-      where: { id },
-      data: {
-        ...(name !== undefined ? { name: name.trim() } : {}),
-        ...(genericName !== undefined ? { genericName: genericName?.trim() || null } : {}),
-        ...(companyName !== undefined ? { companyName: companyName?.trim() || null } : {}),
-        ...(composition !== undefined ? { composition: composition?.trim() || null } : {}),
-        ...(strength !== undefined ? { strength: strength?.trim() || null } : {}),
-        ...(unitType !== undefined ? { unitType } : {}),
-        ...(packSize !== undefined ? { packSize: packSize?.trim() || null } : {}),
-        ...(gstPercent !== undefined ? { gstPercent: parseFloat(gstPercent) } : {}),
-        ...(sellingPrice !== undefined ? { sellingPrice: parseFloat(sellingPrice) } : {}),
-        ...(marginPercent !== undefined ? { marginPercent: parseFloat(marginPercent) } : {}),
-      },
-      include: {
-        batches: {
-          where: { isActive: true },
-          orderBy: { expiryDate: 'asc' },
-        },
-      },
-    })
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name.trim()
+    if (genericName !== undefined) updateData.genericName = genericName?.trim() || null
+    if (companyName !== undefined) updateData.companyName = companyName?.trim() || null
+    if (composition !== undefined) updateData.composition = composition?.trim() || null
+    if (strength !== undefined) updateData.strength = strength?.trim() || null
+    if (unitType !== undefined) updateData.unitType = unitType
+    if (packSize !== undefined) updateData.packSize = packSize?.trim() || null
+    if (gstPercent !== undefined) updateData.gstPercent = parseFloat(gstPercent)
+    if (sellingPrice !== undefined) updateData.sellingPrice = parseFloat(sellingPrice)
+    if (marginPercent !== undefined) updateData.marginPercent = parseFloat(marginPercent)
+    updateData.updatedAt = new Date().toISOString()
 
-    const totalStock = medicine.batches.reduce((sum, b) => sum + b.quantity, 0)
-    const activeBatches = medicine.batches.filter((b) => b.quantity > 0)
+    const { data: medicine, error: updateError } = await supabase
+      .from('Medicine')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, batches:Batch(*)')
+      .single()
+
+    if (updateError) throw updateError
+
+    const activeBatches = (medicine.batches || []).filter((b: any) => b.isActive)
+    const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+    const batchesWithStock = activeBatches.filter((b: any) => b.quantity > 0)
     const earliestExpiry =
-      activeBatches.length > 0
-        ? activeBatches.reduce((earliest, b) =>
-            b.expiryDate < earliest ? b.expiryDate : earliest,
-            activeBatches[0].expiryDate,
+      batchesWithStock.length > 0
+        ? batchesWithStock.reduce((earliest: string, b: any) =>
+            new Date(b.expiryDate) < new Date(earliest) ? b.expiryDate : earliest,
+            batchesWithStock[0].expiryDate,
           )
         : null
 
@@ -110,7 +125,7 @@ export async function PUT(
       ...medicine,
       totalStock,
       earliestExpiry,
-      batchCount: medicine.batches.length,
+      batchCount: activeBatches.length,
     })
   } catch (error) {
     console.error('PUT /api/medicines/[id] error:', error)
@@ -124,22 +139,33 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const existing = await db.medicine.findUnique({ where: { id } })
+    const { data: existing } = await supabase
+      .from('Medicine')
+      .select('id')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .single()
+
     if (!existing) {
       return NextResponse.json({ error: 'Medicine not found' }, { status: 404 })
     }
 
-    await db.medicine.update({
-      where: { id },
-      data: { isActive: false },
-    })
+    // Soft delete medicine
+    await supabase
+      .from('Medicine')
+      .update({ isActive: false, updatedAt: new Date().toISOString() })
+      .eq('id', id)
 
     // Also soft-delete all batches
-    await db.batch.updateMany({
-      where: { medicineId: id },
-      data: { isActive: false },
-    })
+    await supabase
+      .from('Batch')
+      .update({ isActive: false, updatedAt: new Date().toISOString() })
+      .eq('medicineId', id)
 
     return NextResponse.json({ message: 'Medicine deleted successfully' })
   } catch (error) {

@@ -1,6 +1,7 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { format, differenceInDays } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
 type ExportType = 'medicines' | 'stock' | 'customers' | 'sales' | 'purchases'
 
@@ -15,6 +16,11 @@ function escapeCsv(value: string | number | null | undefined): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') as ExportType | null
     const formatParam = searchParams.get('format')
@@ -34,27 +40,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Only CSV supported for now
     if (formatParam && formatParam !== 'csv') {
-      return NextResponse.json(
-        { error: 'Unsupported format. Only CSV is supported currently.' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Unsupported format' }, { status: 400 })
     }
 
     const timestamp = format(new Date(), 'yyyy-MM-dd_HHmmss')
 
     switch (type) {
-      case 'medicines':
-        return exportMedicines(timestamp)
-      case 'stock':
-        return exportStock(timestamp)
-      case 'customers':
-        return exportCustomers(timestamp)
-      case 'sales':
-        return exportSales(timestamp)
-      case 'purchases':
-        return exportPurchases(timestamp)
+      case 'medicines': return exportMedicines(tenantId, timestamp)
+      case 'stock': return exportStock(tenantId, timestamp)
+      case 'customers': return exportCustomers(tenantId, timestamp)
+      case 'sales': return exportSales(tenantId, timestamp)
+      case 'purchases': return exportPurchases(tenantId, timestamp)
     }
   } catch (error) {
     console.error(`Export error:`, error)
@@ -62,25 +59,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function exportMedicines(timestamp: string) {
-  const medicines = await db.medicine.findMany({
-    where: { isActive: true },
-    include: {
-      batches: {
-        where: { isActive: true },
-        select: { quantity: true },
-      },
-    },
-    orderBy: { name: 'asc' },
-  })
+async function exportMedicines(tenantId: string, timestamp: string) {
+  const { data: medicines } = await supabase
+    .from('Medicine')
+    .select('*, batches:Batch(quantity, isActive)')
+    .eq('tenantId', tenantId)
+    .eq('isActive', true)
+    .order('name', { ascending: true })
 
   const header = 'Name,Generic Name,Company Name,Composition,Strength,Category,Unit Type,Selling Price,GST %,Total Stock,Status'
-
-  const rows = medicines.map((m) => {
-    const totalStock = m.batches.reduce((sum, b) => sum + b.quantity, 0)
-    let status = 'In Stock'
-    if (totalStock === 0) status = 'Out of Stock'
-    else if (totalStock < 10) status = 'Low Stock'
+  const rows = (medicines || []).map((m: any) => {
+    const totalStock = (m.batches || []).filter((b: any) => b.isActive).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+    let status = totalStock === 0 ? 'Out of Stock' : totalStock < 10 ? 'Low Stock' : 'In Stock'
 
     return [
       escapeCsv(m.name),
@@ -90,80 +80,60 @@ async function exportMedicines(timestamp: string) {
       escapeCsv(m.strength),
       escapeCsv(m.category),
       escapeCsv(m.unitType),
-      escapeCsv(m.sellingPrice.toFixed(2)),
-      escapeCsv(m.gstPercent.toFixed(1)),
+      escapeCsv((m.sellingPrice || 0).toFixed(2)),
+      escapeCsv((m.gstPercent || 0).toFixed(1)),
       escapeCsv(totalStock),
       escapeCsv(status),
     ].join(',')
   })
 
-  const csv = [header, ...rows].join('\n')
-  return csvResponse(csv, `medicines-export-${timestamp}.csv`)
+  return csvResponse([header, ...rows].join('\n'), `medicines-export-${timestamp}.csv`)
 }
 
-async function exportStock(timestamp: string) {
+async function exportStock(tenantId: string, timestamp: string) {
   const now = new Date()
-
-  const batches = await db.batch.findMany({
-    where: { isActive: true },
-    include: {
-      medicine: {
-        select: { name: true, isActive: true },
-      },
-    },
-    orderBy: { expiryDate: 'asc' },
-  })
+  const { data: batches } = await supabase
+    .from('Batch')
+    .select('*, medicine:Medicine(name)')
+    .eq('tenantId', tenantId)
+    .eq('isActive', true)
+    .order('expiryDate', { ascending: true })
 
   const header = 'Medicine Name,Batch Number,Quantity,Purchase Price,MRP,Expiry Date,Days Left,Status'
-
-  const rows = batches.map((b) => {
+  const rows = (batches || []).map((b: any) => {
     const daysLeft = differenceInDays(new Date(b.expiryDate), now)
-    let status = 'Safe'
-    if (daysLeft < 0) status = 'Expired'
-    else if (daysLeft <= 7) status = 'Critical'
-    else if (daysLeft <= 30) status = 'Expiring Soon'
-    else if (daysLeft <= 90) status = 'Warning'
+    let status = daysLeft < 0 ? 'Expired' : daysLeft <= 7 ? 'Critical' : daysLeft <= 30 ? 'Expiring Soon' : daysLeft <= 90 ? 'Warning' : 'Safe'
 
     return [
-      escapeCsv(b.medicine.name),
+      escapeCsv((b.medicine as any)?.name),
       escapeCsv(b.batchNumber),
       escapeCsv(b.quantity),
-      escapeCsv(b.purchasePrice.toFixed(2)),
-      escapeCsv(b.mrp.toFixed(2)),
+      escapeCsv((b.purchasePrice || 0).toFixed(2)),
+      escapeCsv((b.mrp || 0).toFixed(2)),
       escapeCsv(format(new Date(b.expiryDate), 'yyyy-MM-dd')),
       escapeCsv(daysLeft < 0 ? 0 : daysLeft),
       escapeCsv(status),
     ].join(',')
   })
 
-  const csv = [header, ...rows].join('\n')
-  return csvResponse(csv, `stock-export-${timestamp}.csv`)
+  return csvResponse([header, ...rows].join('\n'), `stock-export-${timestamp}.csv`)
 }
 
-async function exportCustomers(timestamp: string) {
-  const customers = await db.customer.findMany({
-    where: { isActive: true },
-    include: {
-      sales: {
-        select: {
-          totalAmount: true,
-          saleDate: true,
-        },
-        orderBy: { saleDate: 'desc' },
-      },
-    },
-    orderBy: { name: 'asc' },
-  })
+async function exportCustomers(tenantId: string, timestamp: string) {
+  const { data: customers } = await supabase
+    .from('Customer')
+    .select('*, sales:Sale(totalAmount, saleDate)')
+    .eq('tenantId', tenantId)
+    .eq('isActive', true)
+    .order('name', { ascending: true })
 
   const header = 'Name,Phone,Email,Address,Doctor Name,Total Purchases,Total Orders,Last Visit,Status'
-
-  const rows = customers.map((c) => {
-    const totalOrders = c.sales.length
-    const totalPurchases = c.sales.reduce((sum, s) => sum + s.totalAmount, 0)
-    const lastVisit = c.sales.length > 0 ? format(new Date(c.sales[0].saleDate), 'yyyy-MM-dd') : 'Never'
-    let status = 'Active'
-    if (totalOrders === 0) status = 'New'
-    else if (totalOrders > 10) status = 'Regular'
+  const rows = (customers || []).map((c: any) => {
+    const sales = c.sales || []
+    const totalOrders = sales.length
+    const totalPurchases = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0)
+    const lastVisit = sales.length > 0 ? format(new Date(sales.sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())[0].saleDate), 'yyyy-MM-dd') : 'Never'
+    let status = totalOrders === 0 ? 'New' : totalOrders > 10 ? 'Regular' : 'Active'
 
     return [
       escapeCsv(c.name),
@@ -178,71 +148,54 @@ async function exportCustomers(timestamp: string) {
     ].join(',')
   })
 
-  const csv = [header, ...rows].join('\n')
-  return csvResponse(csv, `customers-export-${timestamp}.csv`)
+  return csvResponse([header, ...rows].join('\n'), `customers-export-${timestamp}.csv`)
 }
 
-async function exportSales(timestamp: string) {
-  const sales = await db.sale.findMany({
-    include: {
-      customer: {
-        select: { name: true },
-      },
-      items: {
-        select: { id: true },
-      },
-    },
-    orderBy: { saleDate: 'desc' },
-  })
+async function exportSales(tenantId: string, timestamp: string) {
+  const { data: sales } = await supabase
+    .from('Sale')
+    .select('*, customer:Customer(name), items:SaleItem(id)')
+    .eq('tenantId', tenantId)
+    .order('saleDate', { ascending: false })
 
   const header = 'Invoice No,Customer Name,Sale Date,Subtotal,Total Discount,Total GST,Total Amount,Payment Mode,Item Count'
-
-  const rows = sales.map((s) => {
+  const rows = (sales || []).map((s: any) => {
     return [
       escapeCsv(s.invoiceNo),
-      escapeCsv(s.customer?.name ?? 'Walk-in'),
+      escapeCsv((s.customer as any)?.name ?? 'Walk-in'),
       escapeCsv(format(new Date(s.saleDate), 'yyyy-MM-dd HH:mm')),
-      escapeCsv(s.subtotal.toFixed(2)),
-      escapeCsv(s.totalDiscount.toFixed(2)),
-      escapeCsv(s.totalGst.toFixed(2)),
-      escapeCsv(s.totalAmount.toFixed(2)),
+      escapeCsv((s.subtotal || 0).toFixed(2)),
+      escapeCsv((s.totalDiscount || 0).toFixed(2)),
+      escapeCsv((s.totalGst || 0).toFixed(2)),
+      escapeCsv((s.totalAmount || 0).toFixed(2)),
       escapeCsv(s.paymentMode),
-      escapeCsv(s.items.length),
+      escapeCsv((s.items || []).length),
     ].join(',')
   })
 
-  const csv = [header, ...rows].join('\n')
-  return csvResponse(csv, `sales-export-${timestamp}.csv`)
+  return csvResponse([header, ...rows].join('\n'), `sales-export-${timestamp}.csv`)
 }
 
-async function exportPurchases(timestamp: string) {
-  const purchases = await db.purchaseOrder.findMany({
-    include: {
-      supplier: {
-        select: { name: true },
-      },
-      items: {
-        select: { id: true },
-      },
-    },
-    orderBy: { invoiceDate: 'desc' },
-  })
+async function exportPurchases(tenantId: string, timestamp: string) {
+  const { data: purchases } = await supabase
+    .from('purchase_bills')
+    .select('*, supplier:Supplier(name), items:purchase_items(id)')
+    .eq('tenant_id', tenantId)
+    .order('invoice_date', { ascending: false })
 
   const header = 'Invoice No,Supplier Name,Invoice Date,Total Amount,Total GST,Items Count'
-
-  const rows = purchases.map((p) => {
+  const rows = (purchases || []).map((p: any) => {
     return [
-      escapeCsv(p.invoiceNo ?? 'N/A'),
-      escapeCsv(p.supplier.name),
-      escapeCsv(format(new Date(p.invoiceDate), 'yyyy-MM-dd')),
-      escapeCsv(p.totalAmount.toFixed(2)),
-      escapeCsv(p.totalGst.toFixed(2)),
-      escapeCsv(p.items.length),
+      escapeCsv(p.invoice_no ?? 'N/A'),
+      escapeCsv((p.supplier as any)?.name || 'N/A'),
+      escapeCsv(format(new Date(p.invoice_date), 'yyyy-MM-dd')),
+      escapeCsv((p.total_amount || 0).toFixed(2)),
+      escapeCsv((p.total_gst || 0).toFixed(2)),
+      escapeCsv((p.items || []).length),
     ].join(',')
   })
 
-  const csv = [header, ...rows].join('\n')
-  return csvResponse(csv, `purchases-export-${timestamp}.csv`)
+  return csvResponse([header, ...rows].join('\n'), `purchases-export-${timestamp}.csv`)
 }
 
 function csvResponse(csv: string, filename: string) {

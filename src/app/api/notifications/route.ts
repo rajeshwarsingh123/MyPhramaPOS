@@ -1,84 +1,78 @@
-import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
 import { differenceInDays } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const now = new Date()
-    const notifications: Array<{
-      id: string
-      type: 'expired' | 'expiring_soon' | 'low_stock'
-      title: string
-      description: string
-      severity: 'critical' | 'warning' | 'info'
-      timestamp: string
-    }> = []
+    const notifications: any[] = []
 
-    // 1. Expired batches (with stock > 0)
-    const expiredBatches = await db.batch.findMany({
-      where: {
-        expiryDate: { lt: now },
-        quantity: { gt: 0 },
-        isActive: true,
-      },
-      include: { medicine: { select: { name: true } } },
-      orderBy: { expiryDate: 'asc' },
-      take: 10,
-    })
+    // 1. Expired batches
+    const { data: expiredBatches } = await supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(name)')
+      .eq('tenantId', tenantId)
+      .lt('expiryDate', now.toISOString())
+      .gt('quantity', 0)
+      .eq('isActive', true)
+      .order('expiryDate', { ascending: true })
+      .limit(10)
 
-    for (const batch of expiredBatches) {
-      const daysExpired = Math.abs(differenceInDays(now, batch.expiryDate))
+    for (const batch of (expiredBatches || [])) {
+      const daysExpired = Math.abs(differenceInDays(now, new Date(batch.expiryDate)))
       notifications.push({
         id: `expired-${batch.id}`,
         type: 'expired',
-        title: `${batch.medicine.name} — Expired`,
-        description: `Batch ${batch.batchNumber} expired ${daysExpired} day${daysExpired !== 1 ? 's' : ''} ago. ${batch.quantity} units remaining (₹${(batch.quantity * batch.mrp).toLocaleString('en-IN', { maximumFractionDigits: 0 })}).`,
+        title: `${(batch.medicine as any).name} — Expired`,
+        description: `Batch ${batch.batchNumber} expired ${daysExpired} day${daysExpired !== 1 ? 's' : ''} ago. ${batch.quantity} units remaining (₹${((batch.quantity || 0) * (batch.mrp || 0)).toLocaleString('en-IN', { maximumFractionDigits: 0 })}).`,
         severity: 'critical',
-        timestamp: batch.expiryDate.toISOString(),
+        timestamp: batch.expiryDate,
       })
     }
 
-    // 2. Expiring within 30 days (with stock > 0)
+    // 2. Expiring within 30 days
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    const expiringBatches = await db.batch.findMany({
-      where: {
-        expiryDate: { gte: now, lte: thirtyDaysFromNow },
-        quantity: { gt: 0 },
-        isActive: true,
-      },
-      include: { medicine: { select: { name: true } } },
-      orderBy: { expiryDate: 'asc' },
-      take: 10,
-    })
+    const { data: expiringBatches } = await supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(name)')
+      .eq('tenantId', tenantId)
+      .gte('expiryDate', now.toISOString())
+      .lte('expiryDate', thirtyDaysFromNow.toISOString())
+      .gt('quantity', 0)
+      .eq('isActive', true)
+      .order('expiryDate', { ascending: true })
+      .limit(10)
 
-    for (const batch of expiringBatches) {
-      const daysLeft = differenceInDays(batch.expiryDate, now)
+    for (const batch of (expiringBatches || [])) {
+      const daysLeft = differenceInDays(new Date(batch.expiryDate), now)
       const severityLevel = daysLeft <= 7 ? 'critical' : 'warning'
       notifications.push({
         id: `expiring-${batch.id}`,
         type: 'expiring_soon',
-        title: `${batch.medicine.name} — Expiring Soon`,
+        title: `${(batch.medicine as any).name} — Expiring Soon`,
         description: `Batch ${batch.batchNumber} expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. ${batch.quantity} units at risk.`,
         severity: severityLevel,
-        timestamp: batch.expiryDate.toISOString(),
+        timestamp: batch.expiryDate,
       })
     }
 
-    // 3. Low stock medicines (total stock across batches < 10)
-    const lowStockMedicines = await db.medicine.findMany({
-      where: { isActive: true },
-      include: {
-        batches: {
-          where: { isActive: true },
-          select: { quantity: true },
-        },
-      },
-    })
+    // 3. Low stock medicines
+    const { data: lowStockMedicines } = await supabase
+      .from('Medicine')
+      .select('name, batches:Batch(quantity)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
 
-    const lowStockItems = lowStockMedicines
-      .map((med) => ({
+    const lowStockItems = (lowStockMedicines || [])
+      .map((med: any) => ({
         name: med.name,
-        totalStock: med.batches.reduce((sum, b) => sum + b.quantity, 0),
+        totalStock: (med.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0),
       }))
       .filter((item) => item.totalStock < 10)
       .sort((a, b) => a.totalStock - b.totalStock)
@@ -98,11 +92,10 @@ export async function GET() {
       })
     }
 
-    // Sort by severity: critical first, then warning, then info
-    const severityOrder = { critical: 0, warning: 1, info: 2 }
+    // Sort by severity
+    const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 }
     notifications.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
 
-    // Return max 20
     return NextResponse.json({
       notifications: notifications.slice(0, 20),
       total: notifications.length,

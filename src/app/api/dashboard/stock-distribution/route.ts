@@ -1,24 +1,27 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Get stock distribution by unit type
-    const medicines = await db.medicine.findMany({
-      where: { isActive: true },
-      select: {
-        unitType: true,
-        batches: {
-          where: { isActive: true },
-          select: { quantity: true },
-        },
-      },
-    })
+    const { data: medicines, error } = await supabase
+      .from('Medicine')
+      .select('unitType, batches:Batch(quantity)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+
+    if (error) throw error
 
     // Aggregate stock by unit type
     const stockByType: Record<string, { count: number; stock: number }> = {}
-    for (const med of medicines) {
-      const totalStock = med.batches.reduce((sum, b) => sum + b.quantity, 0)
+    for (const med of (medicines || [])) {
+      const totalStock = (med.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
       if (!stockByType[med.unitType]) {
         stockByType[med.unitType] = { count: 0, stock: 0 }
       }

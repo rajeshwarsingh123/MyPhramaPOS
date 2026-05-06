@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,40 +11,27 @@ export async function GET(request: NextRequest) {
     )
     const status = searchParams.get('status') || ''
 
-    const where: Record<string, unknown> = {}
+    let query = supabase
+      .from('Subscription')
+      .select('*, tenant:Tenant(id, name, businessName, email, plan, status)', { count: 'exact' })
+
     if (status) {
-      where.status = status
+      query = query.eq('status', status)
     }
 
-    const [subscriptions, total] = await Promise.all([
-      db.subscription.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              businessName: true,
-              email: true,
-              plan: true,
-              status: true,
-            },
-          },
-        },
-      }),
-      db.subscription.count({ where }),
-    ])
+    const { data: subscriptions, count: total, error } = await query
+      .order('createdAt', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
+
+    if (error) throw error
 
     return NextResponse.json({
       subscriptions,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total || 0,
+        totalPages: Math.ceil((total || 0) / limit),
       },
     })
   } catch (error) {

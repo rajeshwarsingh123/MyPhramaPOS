@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isSupabaseConfigured, adminSupabase, anonSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
+import { isSupabaseConfigured, anonSupabase, supabase } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,8 +44,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Local Fallback (Only if Supabase is not configured or specific local-only users) ──
-    const admin = await db.admin.findUnique({ where: { email: normalizedEmail } }).catch(() => null)
+    // ── Local Fallback (Using Supabase 'Admin' and 'Tenant' tables instead of Prisma) ──
+    // Check Admin table
+    const { data: admin } = await supabase
+      .from('Admin')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .single()
+
     if (admin && admin.password === password) {
        return NextResponse.json({
         id: admin.id, name: admin.name, email: admin.email,
@@ -55,7 +60,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const tenant = await db.tenant.findUnique({ where: { email: normalizedEmail } }).catch(() => null)
+    // Check Tenant table
+    const { data: tenant } = await supabase
+      .from('Tenant')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .single()
+
     if (tenant && tenant.passwordHash === password) {
       return NextResponse.json({
         id: tenant.id, name: tenant.name, email: tenant.email,

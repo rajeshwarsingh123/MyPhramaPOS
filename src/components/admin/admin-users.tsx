@@ -147,7 +147,9 @@ function StatusBadge({ status }: { status: string }) {
 
 export function AdminUsers() {
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'tenants' | 'admins'>('tenants')
   const [search, setSearch] = useState('')
+  const [adminSearch, setAdminSearch] = useState('')
   const [planFilter, setPlanFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const limit = 20
@@ -163,6 +165,13 @@ export function AdminUsers() {
       if (planFilter !== 'all') params.set('plan', planFilter)
       return fetch(`/api/admin/tenants?${params}`).then((r) => r.json())
     },
+    enabled: activeTab === 'tenants'
+  })
+
+  const { data: adminsData, isLoading: adminsLoading, refetch: refetchAdmins } = useQuery({
+    queryKey: ['admin-list', adminSearch],
+    queryFn: () => fetch(`/api/admin/administrators?search=${adminSearch}`).then((r) => r.json()),
+    enabled: activeTab === 'admins'
   })
 
   const [selectedUser, setSelectedUser] = useState<Tenant | null>(null)
@@ -447,883 +456,345 @@ export function AdminUsers() {
             <Users className="h-7 w-7 text-purple-400" />
             User Management
           </h1>
-          <p className="text-white/50 mt-1">{total} total tenants</p>
+          <p className="text-white/50 mt-1">{total} total users</p>
         </div>
-        <Button onClick={() => refetch()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-          <Input
-            placeholder="Search by name, email, or business..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="pl-10 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
-          />
-          {search && (
+        <div className="flex items-center gap-2">
+          <div className="flex bg-[oklch(0.14_0.02_250)] p-1 rounded-lg border border-[oklch(0.28_0.03_250)]">
             <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+              onClick={() => setActiveTab('tenants')}
+              className={cn(
+                'px-4 py-1.5 text-sm font-medium rounded-md transition-all',
+                activeTab === 'tenants'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'text-white/40 hover:text-white/60'
+              )}
             >
-              <X className="h-4 w-4" />
+              Tenants
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('admins')}
+              className={cn(
+                'px-4 py-1.5 text-sm font-medium rounded-md transition-all',
+                activeTab === 'admins'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'text-white/40 hover:text-white/60'
+              )}
+            >
+              Administrators
+            </button>
+          </div>
+          <Button onClick={() => activeTab === 'tenants' ? refetch() : refetchAdmins()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Select value={planFilter} onValueChange={(v) => { setPlanFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-full sm:w-40 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-            <Filter className="h-4 w-4 mr-2 text-white/40" />
-            <SelectValue placeholder="Plan Filter" />
-          </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Plans</SelectItem>
-            <SelectItem value="free">Free</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Table */}
-      <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl overflow-hidden">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <UsersSkeleton />
-          ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-white/30">
-              <Users className="h-10 w-10 mb-3" />
-              <p className="text-sm font-medium">No users found</p>
-              <p className="text-xs mt-1">Try adjusting your search or filter</p>
+      {activeTab === 'tenants' ? (
+        <>
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+              <Input
+                placeholder="Search by name, email, or business..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                className="pl-10 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/5 hover:bg-transparent">
-                    <TableHead className="text-white/40 text-xs font-medium">Name</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Email</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium hidden md:table-cell">Business</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Plan</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium">Status</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium hidden lg:table-cell">Joined</TableHead>
-                    <TableHead className="text-white/40 text-xs font-medium text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                      <TableCell className="text-white font-medium">{user.name}</TableCell>
-                      <TableCell className="text-white/60 text-sm">{user.email}</TableCell>
-                      <TableCell className="text-white/60 text-sm hidden md:table-cell">{user.businessName}</TableCell>
-                      <TableCell>
-                        <PlanBadge plan={user.plan} />
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={user.status} />
-                      </TableCell>
-                      <TableCell className="text-white/40 text-xs hidden lg:table-cell">
-                        {new Date(user.createdAt).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <TooltipProvider delayDuration={300}>
-                            {/* View */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleView(user)}
-                                  className="h-8 w-8 p-0 text-white/40 hover:text-white hover:bg-white/5"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="bg-white/10 text-white border-white/20 text-xs">
-                                View Details
-                              </TooltipContent>
-                            </Tooltip>
-
-                            {/* Edit */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(user)}
-                                  className="h-8 w-8 p-0 text-white/40 hover:text-white hover:bg-white/5"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="bg-white/10 text-white border-white/20 text-xs">
-                                Edit User
-                              </TooltipContent>
-                            </Tooltip>
-
-                            {/* Reset Password */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleResetPassword(user)}
-                                  className="h-8 w-8 p-0 text-white/40 hover:text-amber-400 hover:bg-amber-500/10"
-                                >
-                                  <KeyRound className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="bg-white/10 text-white border-white/20 text-xs">
-                                Reset Password
-                              </TooltipContent>
-                            </Tooltip>
-
-                            {/* Ban/Unban */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleBan(user)}
-                                  className={cn(
-                                    'h-8 w-8 p-0',
-                                    user.status === 'suspended'
-                                      ? 'text-red-400/60 hover:text-emerald-400 hover:bg-emerald-500/10'
-                                      : 'text-white/40 hover:text-red-400 hover:bg-red-500/10',
-                                  )}
-                                >
-                                  {user.status === 'suspended' ? (
-                                    <UserCheck className="h-4 w-4" />
-                                  ) : (
-                                    <ShieldAlert className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="bg-white/10 text-white border-white/20 text-xs">
-                                {user.status === 'suspended' ? 'Unban User' : 'Ban User'}
-                              </TooltipContent>
-                            </Tooltip>
-
-                            {/* More dropdown - hidden on desktop when we have enough space */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-white/40 hover:text-white hover:bg-white/5"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white min-w-[180px]"
-                              >
-                                <DropdownMenuLabel className="text-white/50 text-xs">Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator className="bg-white/10" />
-                                <DropdownMenuItem onClick={() => handleView(user)} className="text-white/70 hover:text-white hover:bg-white/5 focus:text-white focus:bg-white/5 cursor-pointer">
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(user)} className="text-white/70 hover:text-white hover:bg-white/5 focus:text-white focus:bg-white/5 cursor-pointer">
-                                  <Pencil className="h-4 w-4 mr-2" />
-                                  Edit User
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleResetPassword(user)} className="text-amber-400/80 hover:text-amber-400 hover:bg-amber-500/10 focus:text-amber-400 focus:bg-amber-500/10 cursor-pointer">
-                                  <KeyRound className="h-4 w-4 mr-2" />
-                                  Reset Password
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleBan(user)} className={cn(
-                                  user.status === 'suspended'
-                                    ? 'text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 focus:text-emerald-400 focus:bg-emerald-500/10'
-                                    : 'text-red-400/80 hover:text-red-400 hover:bg-red-500/10 focus:text-red-400 focus:bg-red-500/10',
-                                  'cursor-pointer',
-                                )}>
-                                  {user.status === 'suspended' ? (
-                                    <>
-                                      <UserCheck className="h-4 w-4 mr-2" />
-                                      Activate User
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ShieldAlert className="h-4 w-4 mr-2" />
-                                      Ban User
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleLimits(user)} className="text-blue-400/80 hover:text-blue-400 hover:bg-blue-500/10 focus:text-blue-400 focus:bg-blue-500/10 cursor-pointer">
-                                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                                  Set Limits
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-white/10" />
-                                <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(user)} className="text-white/70 hover:text-white hover:bg-white/5 focus:text-white focus:bg-white/5 cursor-pointer">
-                                  {user.status === 'active' ? (
-                                    <>
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      Suspend
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                                      Activate
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(user)} className="text-red-400 hover:text-red-400 hover:bg-red-500/10 focus:text-red-400 focus:bg-red-500/10 cursor-pointer">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete User
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-
-        {/* Pagination */}
-        {!isLoading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-            <p className="text-xs text-white/40">
-              Page {page} of {totalPages} ({total} users)
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="h-8 border-white/10 text-white/60 hover:bg-white/5"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="h-8 border-white/10 text-white/60 hover:bg-white/5"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <Select value={planFilter} onValueChange={(v) => { setPlanFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-40 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+                <Filter className="h-4 w-4 mr-2 text-white/40" />
+                <SelectValue placeholder="Plan Filter" />
+              </SelectTrigger>
+              <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
+                <SelectItem value="all">All Plans</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
-      </Card>
 
-      {/* ============ VIEW DIALOG ============ */}
-      <Dialog open={viewDialog} onOpenChange={setViewDialog}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-lg max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-white">User Details</DialogTitle>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4 overflow-y-auto max-h-[70vh] pr-1">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Full Name</p>
-                  <p className="text-sm text-white font-medium">{selectedUser.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Email</p>
-                  <p className="text-sm text-white/70">{selectedUser.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Phone</p>
-                  <p className="text-sm text-white/70">{selectedUser.phone ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Business</p>
-                  <p className="text-sm text-white/70">{selectedUser.businessName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Business Phone</p>
-                  <p className="text-sm text-white/70">{selectedUser.businessPhone ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">GST Number</p>
-                  <p className="text-sm text-white/70">{selectedUser.gstNumber ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Plan</p>
-                  <PlanBadge plan={selectedUser.plan} />
-                </div>
-                <div>
-                  <p className="text-xs text-white/40 mb-1">Status</p>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      'inline-block h-2 w-2 rounded-full',
-                      selectedUser.status === 'active' ? 'bg-emerald-400' : selectedUser.status === 'suspended' ? 'bg-red-400' : 'bg-amber-400',
-                    )} />
-                    <StatusBadge status={selectedUser.status} />
-                  </div>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-white/10">
-                <p className="text-xs text-white/40 mb-1">Business Address</p>
-                <p className="text-sm text-white/70">{selectedUser.businessAddress ?? '—'}</p>
-              </div>
-
-              {/* Last Activity */}
-              {lastLog && (
-                <div className="pt-3 border-t border-white/10">
-                  <p className="text-xs text-white/40 mb-1">Last Activity</p>
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-3.5 w-3.5 text-white/30" />
-                    <p className="text-sm text-white/70">{lastLog.action}</p>
-                    <span className="text-xs text-white/30">
-                      {new Date(lastLog.createdAt).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 text-xs text-white/30">
-                <span>Created: {new Date(selectedUser.createdAt).toLocaleString('en-IN')}</span>
-                <span>•</span>
-                <span>Updated: {new Date(selectedUser.updatedAt).toLocaleString('en-IN')}</span>
-              </div>
-
-              {/* Account Controls Card */}
-              <Card className="bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-lg">
-                <CardHeader className="pb-3 pt-4 px-4">
-                  <CardTitle className="text-sm text-white/70 flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-white/40" />
-                    Account Controls
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setViewDialog(false)
-                        setTimeout(() => handleResetPassword(selectedUser), 200)
-                      }}
-                      className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 text-xs h-8"
-                    >
-                      <KeyRound className="h-3.5 w-3.5 mr-1.5" />
-                      Reset Password
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setViewDialog(false)
-                        setTimeout(() => handleLimits(selectedUser), 200)
-                      }}
-                      className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 text-xs h-8"
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
-                      Set Limits
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setViewDialog(false)
-                        setTimeout(() => handleBan(selectedUser), 200)
-                      }}
-                      className={cn(
-                        'text-xs h-8',
-                        selectedUser.status === 'suspended'
-                          ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
-                          : 'border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300',
-                      )}
-                    >
-                      {selectedUser.status === 'suspended' ? (
-                        <>
-                          <UserCheck className="h-3.5 w-3.5 mr-1.5" />
-                          Activate User
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
-                          Ban User
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ============ EDIT DIALOG ============ */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">Edit User</DialogTitle>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Name</Label>
-                <Input
-                  value={editForm.name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                  className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Business Name</Label>
-                <Input
-                  value={editForm.businessName}
-                  onChange={(e) => setEditForm((f) => ({ ...f, businessName: e.target.value }))}
-                  className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Plan</Label>
-                <Select value={editForm.plan} onValueChange={(v) => setEditForm((f) => ({ ...f, plan: v }))}>
-                  <SelectTrigger className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Status</Label>
-                <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v }))}>
-                  <SelectTrigger className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="trial">Trial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter className="gap-2 pt-2">
-                <Button variant="outline" onClick={() => setEditDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleEditSave}
-                  disabled={updateMutation.isPending}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ============ DELETE DIALOG ============ */}
-      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
-              Delete User
-            </DialogTitle>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4">
-              <p className="text-sm text-white/70">
-                Are you sure you want to delete <span className="text-white font-medium">{selectedUser.name}</span>? This action
-                cannot be undone. All associated data including subscriptions, tickets, and logs will be permanently removed.
-              </p>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setDeleteDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => deleteMutation.mutate()}
-                  disabled={deleteMutation.isPending}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {deleteMutation.isPending ? 'Deleting...' : 'Delete User'}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ============ RESET PASSWORD DIALOG ============ */}
-      <Dialog open={resetPwdDialog} onOpenChange={setResetPwdDialog}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-amber-400" />
-              Reset Password
-            </DialogTitle>
-            <DialogDescription className="text-white/40 text-sm">
-              Set a new password for this user.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4">
-              {/* User info */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)]">
-                <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 text-sm font-bold">
-                  {selectedUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-sm text-white font-medium">{selectedUser.name}</p>
-                  <p className="text-xs text-white/40">{selectedUser.email}</p>
-                </div>
-              </div>
-
-              {/* New Password */}
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">New Password</Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter new password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {/* Password strength */}
-                {newPassword.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
-                      <div className={cn('h-full rounded-full transition-all duration-300', getPasswordStrength(newPassword).color, getPasswordStrength(newPassword).width)} />
-                    </div>
-                    <p className="text-xs text-white/30">{getPasswordStrength(newPassword).label}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Confirm Password */}
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Confirm Password</Label>
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
-                />
-                {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                  <p className="text-xs text-red-400">Passwords do not match</p>
-                )}
-              </div>
-
-              <DialogFooter className="gap-2 pt-2">
-                <Button variant="outline" onClick={() => setResetPwdDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleResetPasswordSave}
-                  disabled={resetPasswordMutation.isPending || !newPassword || newPassword !== confirmPassword}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  {resetPasswordMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Resetting...
-                    </>
-                  ) : (
-                    'Reset Password'
-                  )}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ============ BAN / UNBAN DIALOG ============ */}
-      <Dialog open={banDialog} onOpenChange={setBanDialog}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
-          {banAction === 'ban' ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 text-red-400" />
-                  Ban User
-                </DialogTitle>
-                <DialogDescription className="text-white/40 text-sm">
-                  This will immediately suspend the user&apos;s account.
-                </DialogDescription>
-              </DialogHeader>
-              {selectedUser && (
-                <div className="space-y-4">
-                  {/* Warning banner */}
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm text-red-300 font-medium">
-                        This will suspend {selectedUser.name}&apos;s account
-                      </p>
-                      <p className="text-xs text-red-300/60 mt-1">
-                        The user will lose access to all features immediately. They will need to be unbanned to regain access.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* User info */}
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)]">
-                    <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 text-sm font-bold">
-                      {selectedUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm text-white font-medium">{selectedUser.name}</p>
-                      <p className="text-xs text-white/40">{selectedUser.email}</p>
-                    </div>
-                  </div>
-
-                  {/* Reason */}
-                  <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">
-                      Reason <span className="text-red-400">*</span>
-                    </Label>
-                    <Textarea
-                      placeholder="Provide a reason for banning this user..."
-                      value={banReason}
-                      onChange={(e) => setBanReason(e.target.value)}
-                      rows={3}
-                      className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30 resize-none"
-                    />
-                  </div>
-
-                  <DialogFooter className="gap-2 pt-2">
-                    <Button variant="outline" onClick={() => setBanDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleBanSave}
-                      disabled={banMutation.isPending || !banReason.trim()}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      {banMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Banning...
-                        </>
-                      ) : (
-                        'Ban User'
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-emerald-400" />
-                  Activate User
-                </DialogTitle>
-              </DialogHeader>
-              {selectedUser && (
-                <div className="space-y-4">
-                  <p className="text-sm text-white/70">
-                    Are you sure you want to activate <span className="text-white font-medium">{selectedUser.name}</span>&apos;s account? They will regain full access to all features.
-                  </p>
-
-                  {/* User info */}
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)]">
-                    <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 text-sm font-bold">
-                      {selectedUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm text-white font-medium">{selectedUser.name}</p>
-                      <p className="text-xs text-white/40">{selectedUser.email}</p>
-                    </div>
-                  </div>
-
-                  <DialogFooter className="gap-2 pt-2">
-                    <Button variant="outline" onClick={() => setBanDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleBanSave}
-                      disabled={banMutation.isPending}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      {banMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Activating...
-                        </>
-                      ) : (
-                        'Activate User'
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ============ USER LIMITS DIALOG ============ */}
-      <Dialog open={limitsDialog} onOpenChange={(open) => {
-        setLimitsDialog(open)
-        if (!open) {
-          setSelectedUser(null)
-        }
-      }}>
-        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <SlidersHorizontal className="h-5 w-5 text-blue-400" />
-              Set Usage Limits
-            </DialogTitle>
-            <DialogDescription className="text-white/40 text-sm">
-              Configure usage limits for this tenant.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4 overflow-y-auto max-h-[70vh] pr-1">
-              {/* User info */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)]">
-                <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 text-sm font-bold">
-                  {selectedUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-sm text-white font-medium">{selectedUser.name}</p>
-                  <p className="text-xs text-white/40">{selectedUser.email} · <PlanBadge plan={selectedUser.plan} /></p>
-                </div>
-              </div>
-
-              {limitsLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full bg-white/5 rounded" />
-                  <Skeleton className="h-10 w-full bg-white/5 rounded" />
-                  <Skeleton className="h-10 w-full bg-white/5 rounded" />
+          {/* Table */}
+          <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl overflow-hidden">
+            <CardContent className="p-0">
+              {isLoading ? (
+                <UsersSkeleton />
+              ) : users.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-white/30">
+                  <Users className="h-10 w-10 mb-3" />
+                  <p className="text-sm font-medium">No users found</p>
                 </div>
               ) : (
-                <>
-                  {/* Max Medicines */}
-                  <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Max Medicines</Label>
-                    <Input
-                      type="number"
-                      value={limitsForm.maxMedicines ?? ''}
-                      onChange={(e) => setLimitsForm((f) => ({
-                        ...f,
-                        maxMedicines: e.target.value === '' ? null : Number(e.target.value),
-                      }))}
-                      placeholder="Unlimited"
-                      className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
-                    />
-                    <p className="text-xs text-white/30">
-                      {selectedUser.plan === 'pro' ? 'Pro plan: unlimited by default' : 'Free plan: default 50'}
-                      · Leave empty for unlimited
-                    </p>
-                  </div>
-
-                  {/* Max Bills Per Day */}
-                  <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Max Bills Per Day</Label>
-                    <Input
-                      type="number"
-                      value={limitsForm.maxBillsPerDay ?? ''}
-                      onChange={(e) => setLimitsForm((f) => ({
-                        ...f,
-                        maxBillsPerDay: e.target.value === '' ? null : Number(e.target.value),
-                      }))}
-                      placeholder="Unlimited"
-                      className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
-                    />
-                    <p className="text-xs text-white/30">Default: 100 · Leave empty for unlimited</p>
-                  </div>
-
-                  {/* Max Staff Users */}
-                  <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Max Staff Users</Label>
-                    <Input
-                      type="number"
-                      value={limitsForm.maxStaffUsers ?? ''}
-                      onChange={(e) => setLimitsForm((f) => ({
-                        ...f,
-                        maxStaffUsers: e.target.value === '' ? null : Number(e.target.value),
-                      }))}
-                      placeholder="Unlimited"
-                      className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white placeholder:text-white/30"
-                    />
-                    <p className="text-xs text-white/30">Default: 1 · Leave empty for unlimited</p>
-                  </div>
-
-                  {/* Disabled Features */}
-                  <div className="space-y-3">
-                    <Label className="text-white/70 text-sm">Disabled Features</Label>
-                    <div className="space-y-2.5">
-                      {FEATURES_LIST.map((feature) => (
-                        <div
-                          key={feature.id}
-                          className="flex items-center gap-3 p-2.5 rounded-lg bg-[oklch(0.14_0.02_250)] border border-[oklch(0.28_0.03_250)] cursor-pointer hover:bg-[oklch(0.16_0.02_250)] transition-colors"
-                          onClick={() => toggleFeature(feature.id)}
-                        >
-                          <Checkbox
-                            checked={limitsForm.featuresDisabled?.includes(feature.id) ?? false}
-                            onCheckedChange={() => toggleFeature(feature.id)}
-                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 border-white/20"
-                          />
-                          <span className={cn(
-                            'text-sm transition-colors',
-                            limitsForm.featuresDisabled?.includes(feature.id) ? 'text-white/30 line-through' : 'text-white/70',
-                          )}>
-                            {feature.label}
-                          </span>
-                        </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/5">
+                        <TableHead className="text-white/40">Name</TableHead>
+                        <TableHead className="text-white/40">Email</TableHead>
+                        <TableHead className="text-white/40 hidden md:table-cell">Business</TableHead>
+                        <TableHead className="text-white/40">Plan</TableHead>
+                        <TableHead className="text-white/40">Status</TableHead>
+                        <TableHead className="text-white/40 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id} className="border-white/5 hover:bg-white/5">
+                          <TableCell className="text-white font-medium">{user.name}</TableCell>
+                          <TableCell className="text-white/60">{user.email}</TableCell>
+                          <TableCell className="text-white/60 hidden md:table-cell">{user.businessName}</TableCell>
+                          <TableCell><PlanBadge plan={user.plan} /></TableCell>
+                          <TableCell><StatusBadge status={user.status} /></TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleView(user)} className="h-8 w-8 p-0 text-white/40 hover:text-white"><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} className="h-8 w-8 p-0 text-white/40 hover:text-white"><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleResetPassword(user)} className="h-8 w-8 p-0 text-white/40 hover:text-amber-400"><KeyRound className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleBan(user)} className="h-8 w-8 p-0 text-white/40 hover:text-red-400"><ShieldAlert className="h-4 w-4" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </div>
-                  </div>
-                </>
+                    </TableBody>
+                  </Table>
+                </div>
               )}
+            </CardContent>
+            {!isLoading && totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                <p className="text-xs text-white/40">Page {page} of {totalPages}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><ChevronRight className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </>
+      ) : (
+        <AdminList 
+          admins={adminsData?.admins || []} 
+          isLoading={adminsLoading} 
+          onRefetch={refetchAdmins} 
+          search={adminSearch}
+          onSearchChange={setAdminSearch}
+        />
+      )}
 
-              <DialogFooter className="gap-2 pt-2">
-                <Button variant="outline" onClick={() => setLimitsDialog(false)} className="border-white/10 text-white/60 hover:bg-white/5">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleLimitsSave}
-                  disabled={limitsMutation.isPending || limitsLoading}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {limitsMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Limits'
-                  )}
-                </Button>
-              </DialogFooter>
+      {/* ============ DIALOGS ============ */}
+      {/* View Dialog */}
+      <Dialog open={viewDialog} onOpenChange={setViewDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-lg">
+          <DialogHeader><DialogTitle>User Details</DialogTitle></DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><p className="text-xs text-white/40">Name</p><p className="text-sm">{selectedUser.name}</p></div>
+                <div><p className="text-xs text-white/40">Email</p><p className="text-sm">{selectedUser.email}</p></div>
+                <div><p className="text-xs text-white/40">Business</p><p className="text-sm">{selectedUser.businessName}</p></div>
+                <div><p className="text-xs text-white/40">Status</p><StatusBadge status={selectedUser.status} /></div>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" size="sm" onClick={() => handleResetPassword(selectedUser)} className="text-amber-400">Reset Password</Button>
+                <Button variant="outline" size="sm" onClick={() => handleLimits(selectedUser)} className="text-blue-400">Set Limits</Button>
+                <Button variant="outline" size="sm" onClick={() => handleDelete(selectedUser)} className="text-red-400">Delete</Button>
+              </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2"><Label>Name</Label><Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="bg-transparent" /></div>
+            <div className="space-y-2"><Label>Business Name</Label><Input value={editForm.businessName} onChange={e => setEditForm({...editForm, businessName: e.target.value})} className="bg-transparent" /></div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editForm.status} onValueChange={v => setEditForm({...editForm, status: v})}>
+                <SelectTrigger className="bg-transparent"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-white/10 text-white">
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={handleEditSave}>Save Changes</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPwdDialog} onOpenChange={setResetPwdDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
+          <DialogHeader><DialogTitle>Reset Password</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="bg-transparent" />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm Password</Label>
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="bg-transparent" />
+            </div>
+          </div>
+          <DialogFooter><Button onClick={handleResetPasswordSave} disabled={!newPassword || newPassword !== confirmPassword}>Reset Password</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Delete Dialog */}
+       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-sm">
+          <DialogHeader><DialogTitle>Delete User</DialogTitle></DialogHeader>
+          <p className="text-sm text-white/70">Are you sure? This cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog(false)}>Cancel</Button>
+            <Button onClick={() => deleteMutation.mutate()} className="bg-red-600">Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Limits Dialog */}
+      <Dialog open={limitsDialog} onOpenChange={setLimitsDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
+          <DialogHeader><DialogTitle>Set Usage Limits</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2"><Label>Max Medicines</Label><Input type="number" value={limitsForm.maxMedicines ?? ''} onChange={e => setLimitsForm({...limitsForm, maxMedicines: Number(e.target.value)})} className="bg-transparent" /></div>
+            <div className="space-y-2"><Label>Max Bills Per Day</Label><Input type="number" value={limitsForm.maxBillsPerDay ?? ''} onChange={e => setLimitsForm({...limitsForm, maxBillsPerDay: Number(e.target.value)})} className="bg-transparent" /></div>
+          </div>
+          <DialogFooter><Button onClick={handleLimitsSave}>Save Limits</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Dialog */}
+      <Dialog open={banDialog} onOpenChange={setBanDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
+          <DialogHeader><DialogTitle>{banAction === 'ban' ? 'Ban User' : 'Unban User'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            {banAction === 'ban' && (
+              <div className="space-y-2"><Label>Reason</Label><Textarea value={banReason} onChange={e => setBanReason(e.target.value)} className="bg-transparent" /></div>
+            )}
+            <p className="text-sm text-white/70">Are you sure you want to {banAction} this user?</p>
+          </div>
+          <DialogFooter><Button onClick={handleBanSave} className={banAction === 'ban' ? 'bg-red-600' : 'bg-emerald-600'}>{banAction === 'ban' ? 'Ban' : 'Unban'}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function AdminList({ 
+  admins, 
+  isLoading, 
+  onRefetch,
+  search,
+  onSearchChange
+}: { 
+  admins: any[], 
+  isLoading: boolean, 
+  onRefetch: () => void,
+  search: string,
+  onSearchChange: (v: string) => void
+}) {
+  const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null)
+  const [editDialog, setEditDialog] = useState(false)
+  const [addDialog, setAddDialog] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', role: 'admin', password: '', isActive: true })
+
+  const updateMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/admin/administrators/${selectedAdmin?.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Update failed')
+      return res.json()
+    },
+    onSuccess: () => { toast.success('Admin updated'); onRefetch(); setEditDialog(false); },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/admin/administrators`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Creation failed')
+      return res.json()
+    },
+    onSuccess: () => { toast.success('Admin created'); onRefetch(); setAddDialog(false); },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/administrators/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      return res.json()
+    },
+    onSuccess: () => { toast.success('Admin deleted'); onRefetch(); setDeleteDialog(false); },
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-3">
+        <Input placeholder="Search admins..." value={search} onChange={e => onSearchChange(e.target.value)} className="bg-[oklch(0.14_0.02_250)] border-white/10" />
+        <Button onClick={() => setAddDialog(true)} className="bg-purple-600 text-white">Add Admin</Button>
+      </div>
+      <Card className="bg-[oklch(0.18_0.02_250)] border-white/10">
+        <Table>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {admins.map(admin => (
+              <TableRow key={admin.id}>
+                <TableCell>{admin.name}</TableCell>
+                <TableCell>{admin.email}</TableCell>
+                <TableCell><Badge variant="outline">{admin.role}</Badge></TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedAdmin(admin); setForm({...admin, password: ''}); setEditDialog(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedAdmin(admin); setDeleteDialog(true); }}><Trash2 className="h-4 w-4" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Add/Edit Dialogs */}
+      <Dialog open={addDialog || editDialog} onOpenChange={v => { if(!v) { setAddDialog(false); setEditDialog(false); } }}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-white/10 text-white">
+          <DialogHeader><DialogTitle>{addDialog ? 'Add' : 'Edit'} Admin</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="bg-transparent" />
+            <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="bg-transparent" />
+            <Input type="password" placeholder="Password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="bg-transparent" />
+          </div>
+          <DialogFooter><Button onClick={() => addDialog ? createMutation.mutate(form) : updateMutation.mutate(form)}>Save</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent className="bg-[oklch(0.18_0.02_250)] border-white/10 text-white">
+          <DialogHeader><DialogTitle>Delete Admin</DialogTitle></DialogHeader>
+          <p>Are you sure?</p>
+          <DialogFooter><Button onClick={() => deleteMutation.mutate(selectedAdmin.id)} className="bg-red-600">Delete</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -1332,23 +803,9 @@ export function AdminUsers() {
 
 function UsersSkeleton() {
   return (
-    <div className="p-4 space-y-3">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 py-2">
-          <Skeleton className="h-4 w-28 bg-white/5" />
-          <Skeleton className="h-4 w-40 bg-white/5" />
-          <Skeleton className="h-4 w-32 bg-white/5 hidden md:block" />
-          <Skeleton className="h-5 w-12 rounded-full bg-white/5" />
-          <Skeleton className="h-5 w-16 rounded-full bg-white/5" />
-          <div className="flex-1" />
-          <div className="flex gap-1">
-            <Skeleton className="h-8 w-8 rounded bg-white/5" />
-            <Skeleton className="h-8 w-8 rounded bg-white/5" />
-            <Skeleton className="h-8 w-8 rounded bg-white/5" />
-            <Skeleton className="h-8 w-8 rounded bg-white/5" />
-            <Skeleton className="h-8 w-8 rounded bg-white/5" />
-          </div>
-        </div>
+    <div className="p-6 space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full bg-white/5" />
       ))}
     </div>
   )

@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'daily'
     const dateParam = searchParams.get('date')
     const monthParam = searchParams.get('month')
 
     // Fetch store settings
-    const store = await db.storeSetting.findFirst()
+    const { data: store } = await supabase
+      .from('StoreSetting')
+      .select('*')
+      .eq('tenantId', tenantId)
+      .maybeSingle()
+
     const storeName = store?.storeName || 'PharmPOS Pharmacy'
     const storeAddress = store?.address || ''
     const storePhone = store?.phone || ''
     const storeGst = store?.gstNumber || ''
 
-    let sales: Array<{
-      invoiceNo: string
-      customerName: string | null
-      saleDate: Date
-      totalAmount: number
-      paymentMode: string
-      itemCount: number
-      items: Array<{ medicineName: string; quantity: number; totalAmount: number }>
-    }> = []
+    let sales: any[] = []
     let title = ''
     let totalSales = 0
     let totalItems = 0
@@ -34,31 +37,36 @@ export async function GET(request: NextRequest) {
       const dayEnd = new Date(dateParam)
       dayEnd.setDate(dayEnd.getDate() + 1)
 
-      sales = await db.sale.findMany({
-        where: { saleDate: { gte: dayStart, lt: dayEnd } },
-        include: { items: true },
-        orderBy: { saleDate: 'desc' },
-      }) as typeof sales
-
-      totalSales = sales.reduce((s, sale) => s + sale.totalAmount, 0)
-      totalItems = sales.reduce((s, sale) => s + sale.items.reduce((a, i) => a + i.quantity, 0), 0)
+      const { data } = await supabase
+        .from('Sale')
+        .select('*, items:SaleItem(*)')
+        .eq('tenantId', tenantId)
+        .gte('saleDate', dayStart.toISOString())
+        .lt('saleDate', dayEnd.toISOString())
+        .order('saleDate', { ascending: false })
+      
+      sales = data || []
     } else if (type === 'monthly' && monthParam) {
       title = `Monthly Sales Report - ${monthParam}`
       const [year, month] = monthParam.split('-').map(Number)
       const monthStart = new Date(year, month - 1, 1)
       const monthEnd = new Date(year, month, 1)
 
-      sales = await db.sale.findMany({
-        where: { saleDate: { gte: monthStart, lt: monthEnd } },
-        include: { items: true },
-        orderBy: { saleDate: 'desc' },
-      }) as typeof sales
+      const { data } = await supabase
+        .from('Sale')
+        .select('*, items:SaleItem(*)')
+        .eq('tenantId', tenantId)
+        .gte('saleDate', monthStart.toISOString())
+        .lt('saleDate', monthEnd.toISOString())
+        .order('saleDate', { ascending: false })
 
-      totalSales = sales.reduce((s, sale) => s + sale.totalAmount, 0)
-      totalItems = sales.reduce((s, sale) => s + sale.items.reduce((a, i) => a + i.quantity, 0), 0)
+      sales = data || []
     } else {
       return NextResponse.json({ error: 'Missing date or month parameter' }, { status: 400 })
     }
+
+    totalSales = sales.reduce((s, sale) => s + (sale.totalAmount || 0), 0)
+    totalItems = sales.reduce((s, sale) => s + (sale.items || []).reduce((a: number, i: any) => a + (i.quantity || 0), 0), 0)
 
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -125,7 +133,7 @@ export async function GET(request: NextRequest) {
         <td>${i + 1}</td>
         <td>${s.invoiceNo}</td>
         <td>${s.customerName || 'Walk-in'}</td>
-        <td>${s.itemCount}</td>
+        <td>${(s.items || []).length}</td>
         <td style="font-weight:600">₹${fmt(s.totalAmount)}</td>
         <td><span style="text-transform:uppercase;font-size:10px;padding:2px 6px;border-radius:4px;background:#f0fdfa;color:#0d9488">${s.paymentMode}</span></td>
       </tr>`).join('')}

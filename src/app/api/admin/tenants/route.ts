@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { getAdminId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -18,55 +18,56 @@ export async function GET(request: NextRequest) {
     const plan = searchParams.get('plan') || ''
     const status = searchParams.get('status') || ''
 
-    const where: Record<string, unknown> = {}
+    let query = supabase
+      .from('Tenant')
+      .select(`
+        *,
+        subscriptions:Subscription(id, plan, amount, status, startDate, endDate)
+      `, { count: 'exact' })
 
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { email: { contains: search } },
-        { businessName: { contains: search } },
-        { phone: { contains: search } },
-      ]
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,businessName.ilike.%${search}%,phone.ilike.%${search}%`)
     }
 
     if (plan) {
-      where.plan = plan
+      query = query.eq('plan', plan)
     }
 
     if (status) {
-      where.status = status
+      query = query.eq('status', status)
     }
 
-    const [tenants, total] = await Promise.all([
-      db.tenant.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          subscriptions: {
-            where: { status: 'active' },
-            take: 1,
-            orderBy: { createdAt: 'desc' },
-          },
-          _count: {
-            select: {
-              supportTickets: true,
-              systemLogs: true,
-            },
-          },
-        },
-      }),
-      db.tenant.count({ where }),
-    ])
+    const { data: tenants, count: total, error } = await query
+      .order('createdAt', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
+
+    if (error) throw error
+
+    // Fetch counts separately as Supabase doesn't support complex _count in select easily
+    const tenantsWithCounts = await Promise.all((tenants || []).map(async (tenant) => {
+      const [{ count: ticketsCount }, { count: logsCount }] = await Promise.all([
+        supabase.from('SupportTicket').select('*', { count: 'exact', head: true }).eq('tenantId', tenant.id),
+        supabase.from('SystemLog').select('*', { count: 'exact', head: true }).eq('tenantId', tenant.id),
+      ])
+
+      return {
+        ...tenant,
+        // Match the Prisma 'include' structure
+        subscriptions: tenant.subscriptions || [],
+        _count: {
+          supportTickets: ticketsCount || 0,
+          systemLogs: logsCount || 0,
+        }
+      }
+    }))
 
     return NextResponse.json({
-      tenants,
+      tenants: tenantsWithCounts,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total || 0,
+        totalPages: Math.ceil((total || 0) / limit),
       },
     })
   } catch (error) {
@@ -122,10 +123,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedEmail = email.trim().toLowerCase()
+
     // Check for duplicate email
-    const existing = await db.tenant.findUnique({
-      where: { email: email.trim().toLowerCase() },
-    })
+    const { data: existing } = await supabase
+      .from('Tenant')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
+
     if (existing) {
       return NextResponse.json(
         { error: 'A tenant with this email already exists' },
@@ -133,10 +139,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const tenant = await db.tenant.create({
-      data: {
+    const { data: tenant, error: createError } = await supabase
+      .from('Tenant')
+      .insert({
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         phone: phone?.trim() || null,
         businessName: businessName.trim(),
         businessPhone: businessPhone?.trim() || null,
@@ -144,9 +151,12 @@ export async function POST(request: NextRequest) {
         gstNumber: gstNumber?.trim() || null,
         plan: plan || 'free',
         status: 'active',
-        passwordHash: password,
-      },
-    })
+        passwordHash: password, // Note: In a real app, this should be hashed if not using Supabase Auth
+      })
+      .select()
+      .single()
+
+    if (createError) throw createError
 
     return NextResponse.json(tenant, { status: 201 })
   } catch (error) {

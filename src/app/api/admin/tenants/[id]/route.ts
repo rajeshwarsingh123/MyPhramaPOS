@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET(
   _request: NextRequest,
@@ -8,35 +8,38 @@ export async function GET(
   try {
     const { id } = await params
 
-    const tenant = await db.tenant.findUnique({
-      where: { id },
-      include: {
-        subscriptions: {
-          orderBy: { createdAt: 'desc' },
-        },
-        supportTickets: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        systemLogs: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        _count: {
-          select: {
-            supportTickets: true,
-            systemLogs: true,
-            subscriptions: true,
-          },
-        },
-      },
-    })
+    const { data: tenant, error } = await supabase
+      .from('Tenant')
+      .select('*, Subscription(*), SupportTicket(*), SystemLog(*)')
+      .eq('id', id)
+      .single()
 
-    if (!tenant) {
+    if (error || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
-    return NextResponse.json(tenant)
+    // Process counts and limits
+    const subscriptions = (tenant.Subscription || []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const supportTickets = (tenant.SupportTicket || [])
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 10)
+    const systemLogs = (tenant.SystemLog || [])
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 10)
+
+    const formattedTenant = {
+      ...tenant,
+      subscriptions,
+      supportTickets,
+      systemLogs,
+      _count: {
+        supportTickets: (tenant.SupportTicket || []).length,
+        systemLogs: (tenant.SystemLog || []).length,
+        subscriptions: (tenant.Subscription || []).length,
+      }
+    }
+
+    return NextResponse.json(formattedTenant)
   } catch (error) {
     console.error('GET /api/admin/tenants/[id] error:', error)
     return NextResponse.json(
@@ -54,7 +57,12 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const existing = await db.tenant.findUnique({ where: { id } })
+    const { data: existing } = await supabase
+      .from('Tenant')
+      .select('id')
+      .eq('id', id)
+      .single()
+      
     if (!existing) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
@@ -71,9 +79,13 @@ export async function PUT(
     } = body
 
     if (email) {
-      const duplicate = await db.tenant.findFirst({
-        where: { email: email.trim().toLowerCase(), id: { not: id } },
-      })
+      const { data: duplicate } = await supabase
+        .from('Tenant')
+        .select('id')
+        .eq('email', email.trim().toLowerCase())
+        .neq('id', id)
+        .maybeSingle()
+        
       if (duplicate) {
         return NextResponse.json(
           { error: 'A tenant with this email already exists' },
@@ -82,29 +94,25 @@ export async function PUT(
       }
     }
 
-    const tenant = await db.tenant.update({
-      where: { id },
-      data: {
-        ...(name !== undefined ? { name: name.trim() } : {}),
-        ...(email !== undefined
-          ? { email: email.trim().toLowerCase() }
-          : {}),
-        ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
-        ...(businessName !== undefined
-          ? { businessName: businessName.trim() }
-          : {}),
-        ...(businessPhone !== undefined
-          ? { businessPhone: businessPhone?.trim() || null }
-          : {}),
-        ...(businessAddress !== undefined
-          ? { businessAddress: businessAddress?.trim() || null }
-          : {}),
-        ...(gstNumber !== undefined
-          ? { gstNumber: gstNumber?.trim() || null }
-          : {}),
-        ...(plan !== undefined ? { plan } : {}),
-      },
-    })
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name.trim()
+    if (email !== undefined) updateData.email = email.trim().toLowerCase()
+    if (phone !== undefined) updateData.phone = phone?.trim() || null
+    if (businessName !== undefined) updateData.businessName = businessName.trim()
+    if (businessPhone !== undefined) updateData.businessPhone = businessPhone?.trim() || null
+    if (businessAddress !== undefined) updateData.businessAddress = businessAddress?.trim() || null
+    if (gstNumber !== undefined) updateData.gstNumber = gstNumber?.trim() || null
+    if (plan !== undefined) updateData.plan = plan
+    updateData.updatedAt = new Date().toISOString()
+
+    const { data: tenant, error: updateError } = await supabase
+      .from('Tenant')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
 
     return NextResponse.json(tenant)
   } catch (error) {
@@ -123,12 +131,22 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const existing = await db.tenant.findUnique({ where: { id } })
+    const { data: existing } = await supabase
+      .from('Tenant')
+      .select('id')
+      .eq('id', id)
+      .single()
+      
     if (!existing) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
-    await db.tenant.delete({ where: { id } })
+    const { error: deleteError } = await supabase
+      .from('Tenant')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) throw deleteError
 
     return NextResponse.json({ message: 'Tenant deleted successfully' })
   } catch (error) {

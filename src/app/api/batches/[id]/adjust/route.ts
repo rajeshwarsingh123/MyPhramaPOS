@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function POST(
   request: NextRequest,
@@ -7,13 +8,19 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const existing = await db.batch.findUnique({
-      where: { id },
-      include: { medicine: { select: { name: true } } },
-    })
+    const { data: existing, error: fetchError } = await supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(name)')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .single()
 
-    if (!existing) {
+    if (fetchError || !existing) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
     }
 
@@ -43,13 +50,14 @@ export async function POST(
       )
     }
 
-    const updated = await db.batch.update({
-      where: { id },
-      data: { quantity: newQuantity },
-      include: {
-        medicine: { select: { name: true, unitType: true } },
-      },
-    })
+    const { data: updated, error: updateError } = await supabase
+      .from('Batch')
+      .update({ quantity: newQuantity, updatedAt: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, medicine:Medicine(name, unitType)')
+      .single()
+
+    if (updateError) throw updateError
 
     return NextResponse.json({
       batch: updated,
@@ -57,7 +65,7 @@ export async function POST(
       newQuantity,
       quantityChange,
       reason: reason || 'Manual',
-      medicineName: existing.medicine.name,
+      medicineName: (existing.medicine as any).name,
     })
   } catch (error) {
     console.error('POST /api/batches/[id]/adjust error:', error)
@@ -69,15 +77,22 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Logic is same as POST but uses 'adjustment' in body
   try {
     const { id } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const existing = await db.batch.findUnique({
-      where: { id },
-      include: { medicine: { select: { name: true } } },
-    })
+    const { data: existing, error: fetchError } = await supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(name)')
+      .eq('id', id)
+      .eq('tenantId', tenantId)
+      .single()
 
-    if (!existing) {
+    if (fetchError || !existing) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
     }
 
@@ -102,20 +117,21 @@ export async function PUT(
       )
     }
 
-    const updated = await db.batch.update({
-      where: { id },
-      data: { quantity: newQuantity },
-      include: {
-        medicine: { select: { name: true, unitType: true } },
-      },
-    })
+    const { data: updated, error: updateError } = await supabase
+      .from('Batch')
+      .update({ quantity: newQuantity, updatedAt: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, medicine:Medicine(name, unitType)')
+      .single()
+
+    if (updateError) throw updateError
 
     return NextResponse.json({
       batch: updated,
       oldQuantity,
       newQuantity,
       adjustment,
-      medicineName: existing.medicine.name,
+      medicineName: (existing.medicine as any).name,
     })
   } catch (error) {
     console.error('PUT /api/batches/[id]/adjust error:', error)

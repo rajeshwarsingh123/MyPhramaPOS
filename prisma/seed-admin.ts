@@ -7,11 +7,11 @@ async function seed() {
 
   // Create admin
   const admin = await db.admin.upsert({
-    where: { email: 'admin@pharmpos.com' },
+    where: { email: 'rajeshwarsinghrana16@gmail.com' },
     update: {},
     create: {
       name: 'Super Admin',
-      email: 'admin@pharmpos.com',
+      email: 'rajeshwarsinghrana16@gmail.com',
       password: 'admin123', // In production, this would be hashed
       role: 'super_admin',
     },
@@ -119,7 +119,7 @@ async function seed() {
     { key: 'free_plan_medicine_limit', value: '500', description: 'Max medicines allowed in Free plan' },
     { key: 'pro_plan_medicine_limit', value: 'unlimited', description: 'Max medicines allowed in Pro plan' },
     { key: 'ai_scan_enabled', value: 'true', description: 'Enable AI bill scanning feature' },
-    { key: 'support_email', value: 'support@pharmpos.com', description: 'Customer support email' },
+    { key: 'support_email', value: 'rajeshwarsinghrana16@gmail.com', description: 'Customer support email' },
     { key: 'maintenance_mode', value: 'false', description: 'Enable maintenance mode' },
   ]
 

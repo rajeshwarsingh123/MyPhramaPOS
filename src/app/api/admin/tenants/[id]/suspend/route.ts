@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function POST(
   _request: NextRequest,
@@ -8,25 +8,32 @@ export async function POST(
   try {
     const { id } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { id } })
-    if (!tenant) {
+    const { data: tenant, error: fetchError } = await supabase
+      .from('Tenant')
+      .select('status, businessName')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
     const newStatus = tenant.status === 'suspended' ? 'active' : 'suspended'
 
-    const updated = await db.tenant.update({
-      where: { id },
-      data: { status: newStatus },
-    })
+    const { data: updated, error: updateError } = await supabase
+      .from('Tenant')
+      .update({ status: newStatus })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
 
     // Log the action
-    await db.systemLog.create({
-      data: {
-        tenantId: id,
-        action: `Tenant ${newStatus === 'suspended' ? 'suspended' : 'activated'}`,
-        details: `Admin ${newStatus === 'suspended' ? 'suspended' : 'activated'} tenant: ${tenant.businessName}`,
-      },
+    await supabase.from('SystemLog').insert({
+      tenantId: id,
+      action: `Tenant ${newStatus === 'suspended' ? 'suspended' : 'activated'}`,
+      details: `Admin ${newStatus === 'suspended' ? 'suspended' : 'activated'} tenant: ${tenant.businessName}`,
     })
 
     return NextResponse.json({

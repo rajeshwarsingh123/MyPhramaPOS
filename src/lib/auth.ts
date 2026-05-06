@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { db } from './db'
 import { supabase } from './supabase/server'
 
 /**
@@ -13,25 +12,29 @@ export async function getTenantId(req: NextRequest): Promise<string | null> {
     const token = authHeader.split(' ')[1]
     const { data: { user } } = await supabase.auth.getUser(token)
     if (user?.email) {
-      const tenant = await db.tenant.findUnique({
-        where: { email: user.email },
-        select: { id: true }
-      })
+      const { data: tenant } = await supabase
+        .from('Tenant')
+        .select('id')
+        .eq('email', user.email)
+        .single()
+        
       if (tenant) return tenant.id
     }
   }
 
-  // 2. Fallback: Check if there's a tenantId in the headers (useful for internal calls or development)
+  // 2. Fallback: Check if there's a tenantId in the headers
   const tenantIdHeader = req.headers.get('x-tenant-id')
   if (tenantIdHeader) return tenantIdHeader
 
-  // 3. Fallback: Check for tenant email in headers (to support simple testing)
+  // 3. Fallback: Check for tenant email in headers
   const tenantEmailHeader = req.headers.get('x-tenant-email')
   if (tenantEmailHeader) {
-    const tenant = await db.tenant.findUnique({
-      where: { email: tenantEmailHeader },
-      select: { id: true }
-    })
+    const { data: tenant } = await supabase
+      .from('Tenant')
+      .select('id')
+      .eq('email', tenantEmailHeader)
+      .single()
+      
     if (tenant) return tenant.id
   }
 
@@ -47,10 +50,12 @@ export async function getAdminId(req: NextRequest): Promise<string | null> {
     const token = authHeader.split(' ')[1]
     const { data: { user } } = await supabase.auth.getUser(token)
     if (user?.email) {
-      const admin = await db.admin.findUnique({
-        where: { email: user.email },
-        select: { id: true }
-      })
+      const { data: admin } = await supabase
+        .from('Admin')
+        .select('id')
+        .eq('email', user.email)
+        .single()
+        
       if (admin) return admin.id
     }
   }

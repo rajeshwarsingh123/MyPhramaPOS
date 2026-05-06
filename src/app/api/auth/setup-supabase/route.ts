@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
 
 // One-time setup: Create super admin user in Supabase Auth
 export async function POST(request: NextRequest) {
@@ -24,14 +23,16 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    // Check if admin exists in local DB
-    const admin = await db.admin.findUnique({
-      where: { email: normalizedEmail },
-    })
+    // Check if admin exists in Supabase 'Admin' table
+    const { data: admin, error: adminDbError } = await supabase
+      .from('Admin')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .single()
 
-    if (!admin) {
+    if (adminDbError || !admin) {
       return NextResponse.json(
-        { error: 'Admin not found in local database' },
+        { error: 'Admin not found in database' },
         { status: 404 },
       )
     }
@@ -55,10 +56,10 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: `Failed to update: ${updateError.message}` }, { status: 500 })
         }
 
-        await db.admin.update({
-          where: { id: admin.id },
-          data: { password: `supabase:${userId}` },
-        })
+        await supabase
+          .from('Admin')
+          .update({ password: `supabase:${userId}` })
+          .eq('id', admin.id)
 
         return NextResponse.json({ success: true, message: 'Admin updated in Supabase', userId, method: 'admin_update' })
       }
@@ -72,10 +73,10 @@ export async function POST(request: NextRequest) {
       })
 
       if (!createError && newUserData.user) {
-        await db.admin.update({
-          where: { id: admin.id },
-          data: { password: `supabase:${newUserData.user.id}` },
-        })
+        await supabase
+          .from('Admin')
+          .update({ password: `supabase:${newUserData.user.id}` })
+          .eq('id', admin.id)
 
         return NextResponse.json({ success: true, message: 'Admin created in Supabase (auto-confirmed)', userId: newUserData.user.id, method: 'admin_create' })
       }
@@ -101,16 +102,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 
-    await db.admin.update({
-      where: { id: admin.id },
-      data: { password: `supabase:${signUpData.user.id}` },
-    })
+    await supabase
+      .from('Admin')
+      .update({ password: `supabase:${signUpData.user.id}` })
+      .eq('id', admin.id)
 
     return NextResponse.json({
       success: true,
-      message: signUpData.session ? 'Admin created and auto-confirmed' : 'Admin created — check email to confirm',
+      message: signUpData.user.aud === 'authenticated' ? 'Admin created' : 'Admin created — check email to confirm',
       userId: signUpData.user.id,
-      emailConfirmed: !!signUpData.session,
       method: 'signup',
     })
   } catch (error) {
@@ -126,7 +126,7 @@ export async function GET() {
       return NextResponse.json({
         configured: false,
         hasServiceRoleKey: false,
-        message: 'Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local',
+        message: 'Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env',
       })
     }
 

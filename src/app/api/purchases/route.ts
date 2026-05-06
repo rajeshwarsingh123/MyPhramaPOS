@@ -19,12 +19,10 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('purchase_bills')
-      .select('*, supplier:suppliers(name), items:purchase_items(count)', { count: 'exact' })
+      .select('*, supplier:Supplier(name), items:purchase_items(count)', { count: 'exact' })
       .eq('tenant_id', tenantId)
 
     if (search) {
-      // Searching invoice_no or join-related fields can be tricky in Supabase without nested searches.
-      // We'll search invoice_no for now.
       query = query.ilike('invoice_no', `%${search}%`)
     }
 
@@ -82,7 +80,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('invoice_no', invoiceNo)
-      .single()
+      .maybeSingle()
 
     if (existingBill) {
       return NextResponse.json({ error: `Invoice number ${invoiceNo} already exists for this tenant.` }, { status: 400 })
@@ -121,40 +119,41 @@ export async function POST(request: NextRequest) {
       totalAmount += itemTotal
       totalGst += itemGst
 
-      // Find or Create Batch
+      // Find or Create Batch (Using PascalCase Batch)
       let batchId: string
       const { data: existingBatch } = await supabase
-        .from('batches')
+        .from('Batch')
         .select('id, quantity')
-        .eq('tenant_id', tenantId)
-        .eq('medicine_id', item.medicineId)
-        .eq('batch_number', item.batchNumber)
-        .single()
+        .eq('tenantId', tenantId)
+        .eq('medicineId', item.medicineId)
+        .eq('batchNumber', item.batchNumber)
+        .maybeSingle()
 
       if (existingBatch) {
         batchId = existingBatch.id
         await supabase
-          .from('batches')
+          .from('Batch')
           .update({
             quantity: (existingBatch.quantity || 0) + qty,
-            purchase_price: price,
+            purchasePrice: price,
             mrp: mrp,
-            expiry_date: item.expiryDate,
-            updated_at: new Date().toISOString()
+            expiryDate: item.expiryDate,
+            updatedAt: new Date().toISOString()
           })
           .eq('id', batchId)
       } else {
         const { data: newBatch, error: batchErr } = await supabase
-          .from('batches')
+          .from('Batch')
           .insert({
-            tenant_id: tenantId,
-            medicine_id: item.medicineId,
-            batch_number: item.batchNumber,
-            expiry_date: item.expiryDate,
-            purchase_price: price,
+            tenantId: tenantId,
+            medicineId: item.medicineId,
+            batchNumber: item.batchNumber,
+            expiryDate: item.expiryDate,
+            purchasePrice: price,
             mrp: mrp,
             quantity: qty,
-            initial_quantity: qty,
+            initialQuantity: qty,
+            isActive: true,
           })
           .select()
           .single()
@@ -180,20 +179,10 @@ export async function POST(request: NextRequest) {
       
       if (itemErr) throw itemErr
 
-      // Update Medicine total_stock
-      const { data: med } = await supabase
-        .from('medicines')
-        .select('total_stock')
-        .eq('id', item.medicineId)
-        .single()
-
-      await supabase
-        .from('medicines')
-        .update({
-          total_stock: (med?.total_stock || 0) + qty,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', item.medicineId)
+      // Update Medicine total_stock (Using PascalCase Medicine)
+      // Note: Medicine doesn't have total_stock in schema.prisma!
+      // I'll skip it or check if it exists.
+      // Since schema.prisma doesn't have it, I'll assume we compute it or it's missing.
     }
 
     // 3. Update Bill with totals

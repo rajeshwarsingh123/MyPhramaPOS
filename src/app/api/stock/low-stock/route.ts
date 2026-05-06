@@ -1,39 +1,22 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch all active medicines with their active batches
-    const medicines = await db.medicine.findMany({
-      where: {
-        isActive: true,
-        batches: {
-          some: { isActive: true },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        genericName: true,
-        composition: true,
-        companyName: true,
-        strength: true,
-        unitType: true,
-        sellingPrice: true,
-        batches: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            batchNumber: true,
-            quantity: true,
-            mrp: true,
-            expiryDate: true,
-          },
-          orderBy: { expiryDate: 'asc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Fetch all active medicines with their active batches for this tenant
+    const { data: medicines, error } = await supabase
+      .from('medicines')
+      .select('*, batches(*)')
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
+
+    if (error) throw error
 
     type LowStockMedicine = {
       id: string
@@ -58,20 +41,24 @@ export async function GET() {
     }
 
     const lowStockItems: LowStockMedicine[] = []
+    const now = new Date()
 
-    for (const med of medicines) {
-      const totalStock = med.batches.reduce((sum, b) => sum + b.quantity, 0)
+    for (const med of medicines || []) {
+      const activeBatches = (med.batches || []).filter((b: any) => b.isActive)
+      if (activeBatches.length === 0) continue
+
+      const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
 
       if (totalStock >= 10) continue
 
-      const now = new Date()
       let worstExpiryDays: number | null = null
-      const totalValue = med.batches.reduce((sum, b) => sum + b.quantity * b.mrp, 0)
+      const totalValue = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0) * (b.mrp || 0), 0)
 
-      for (const batch of med.batches) {
+      for (const batch of activeBatches) {
         if (batch.quantity <= 0) continue
+        const expiryDate = new Date(batch.expiry_date)
         const days = Math.ceil(
-          (batch.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         )
         if (worstExpiryDays === null || days < worstExpiryDays) {
           worstExpiryDays = days
@@ -81,22 +68,22 @@ export async function GET() {
       lowStockItems.push({
         id: med.id,
         name: med.name,
-        genericName: med.genericName,
+        genericName: med.generic_name,
         composition: med.composition,
-        companyName: med.companyName,
+        companyName: med.company_name,
         strength: med.strength,
-        unitType: med.unitType,
-        sellingPrice: med.sellingPrice,
+        unitType: med.unit_type,
+        sellingPrice: med.selling_price,
         totalStock,
-        batchCount: med.batches.length,
+        batchCount: activeBatches.length,
         worstExpiryDays,
         totalValue,
-        batches: med.batches.map((b) => ({
+        batches: activeBatches.map((b: any) => ({
           id: b.id,
           batchNumber: b.batchNumber,
           quantity: b.quantity,
           mrp: b.mrp,
-          expiryDate: b.expiryDate.toISOString(),
+          expiryDate: b.expiry_date,
         })),
       })
     }

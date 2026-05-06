@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantId } from '@/lib/auth'
 
@@ -9,21 +9,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Find settings for this tenant
-    let settings = await db.storeSetting.findUnique({
-      where: { tenantId }
-    })
+    // Find settings for this tenant in Supabase 'StoreSetting' table
+    let { data: settings, error } = await supabase
+      .from('StoreSetting')
+      .select('*')
+      .eq('tenantId', tenantId)
+      .single()
 
-    if (!settings) {
+    if (error && error.code === 'PGRST116') { // No record found
       // Create default settings if none exist
-      settings = await db.storeSetting.create({
-        data: {
+      const { data: newSettings, error: createError } = await supabase
+        .from('StoreSetting')
+        .insert({
           tenantId,
           storeName: 'My Pharmacy',
           invoicePrefix: 'INV',
           nextInvoiceNo: 1,
-        },
-      })
+        })
+        .select()
+        .single()
+        
+      if (createError) throw createError
+      settings = newSettings
+    } else if (error) {
+      throw error
     }
 
     return NextResponse.json(settings)
@@ -53,23 +62,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Upsert settings for this tenant
-    const settings = await db.storeSetting.upsert({
-      where: { tenantId },
-      update: {
-        storeName: storeName !== undefined ? storeName.trim() : undefined,
-        phone: phone !== undefined ? (phone?.trim() || null) : undefined,
-        email: email !== undefined ? (email?.trim() || null) : undefined,
-        address: address !== undefined ? (address?.trim() || null) : undefined,
-        gstNumber: gstNumber !== undefined ? (gstNumber?.trim() || null) : undefined,
-        licenseNo: licenseNo !== undefined ? (licenseNo?.trim() || null) : undefined,
-        logoUrl: logoUrl !== undefined ? (logoUrl?.trim() || null) : undefined,
-        invoicePrefix: invoicePrefix !== undefined ? invoicePrefix.trim() : undefined,
-        nextInvoiceNo: nextInvoiceNo !== undefined ? nextInvoiceNo : undefined,
-      },
-      create: {
+    // Upsert settings for this tenant (Supabase upsert on tenantId)
+    const { data: settings, error } = await supabase
+      .from('StoreSetting')
+      .upsert({
         tenantId,
-        storeName: storeName?.trim() || 'My Pharmacy',
+        storeName: storeName !== undefined ? storeName.trim() : 'My Pharmacy',
         phone: phone?.trim() || null,
         email: email?.trim() || null,
         address: address?.trim() || null,
@@ -78,8 +76,12 @@ export async function PUT(request: NextRequest) {
         logoUrl: logoUrl?.trim() || null,
         invoicePrefix: invoicePrefix?.trim() || 'INV',
         nextInvoiceNo: nextInvoiceNo ?? 1,
-      },
-    })
+        updatedAt: new Date().toISOString()
+      }, { onConflict: 'tenantId' })
+      .select()
+      .single()
+
+    if (error) throw error
 
     return NextResponse.json(settings)
   } catch (error) {

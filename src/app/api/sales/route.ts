@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const tenantId = searchParams.get('tenantId')
     const search = searchParams.get('search') || ''
     const year = searchParams.get('year')
     const month = searchParams.get('month')
@@ -15,20 +20,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '15')
     const skip = (page - 1) * limit
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 })
-    }
-
-    // ── Build Query ──
     let query = supabase
       .from('Sale')
       .select('*, customer:Customer(name, phone), items:SaleItem(*, medicine:Medicine(unitType))', { count: 'exact' })
       .eq('tenantId', tenantId)
 
     if (search) {
-      // Supabase doesn't support complex OR with joins easily in one query, 
-      // but we can use or() for top-level fields. 
-      // For joined customer name, we might need a separate approach or just search invoiceNo/doctorName.
       query = query.or(`invoiceNo.ilike.%${search}%,doctorName.ilike.%${search}%`)
     }
 
@@ -58,26 +55,20 @@ export async function GET(request: NextRequest) {
 
     if (fetchError) throw fetchError
 
-    // ── Fetch Summary Stats (Today, Month, Total) ──
-    // Note: Standard Supabase client doesn't support aggregate functions directly.
-    // For production, an RPC or a view would be better. 
-    // Here we'll fetch the relevant totals using separate queries.
-    
+    // Summary Stats
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
 
     const [
-      { data: allSales, error: allErr },
-      { data: todaySales, error: todayErr },
-      { data: monthSales, error: monthErr }
+      { data: allSales },
+      { data: todaySales },
+      { data: monthSales }
     ] = await Promise.all([
       supabase.from('Sale').select('totalAmount').eq('tenantId', tenantId),
       supabase.from('Sale').select('totalAmount').eq('tenantId', tenantId).gte('saleDate', today.toISOString()),
       supabase.from('Sale').select('totalAmount').eq('tenantId', tenantId).gte('saleDate', monthStart.toISOString())
     ])
-
-    if (allErr || todayErr || monthErr) throw (allErr || todayErr || monthErr)
 
     const totalAmount = allSales?.reduce((sum, s) => sum + (s.totalAmount || 0), 0) || 0
     const todayAmount = todaySales?.reduce((sum, s) => sum + (s.totalAmount || 0), 0) || 0
@@ -103,12 +94,16 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    const tenantId = searchParams.get('tenantId')
 
-    if (!id || !tenantId) {
-      return NextResponse.json({ error: 'ID and Tenant ID are required' }, { status: 400 })
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
     }
 
     const { error } = await supabase

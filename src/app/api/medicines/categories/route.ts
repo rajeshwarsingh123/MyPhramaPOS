@@ -1,22 +1,26 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch all active medicines with categories (avoid groupBy on nullable fields in SQLite)
-    const medicines = await db.medicine.findMany({
-      where: {
-        isActive: true,
-        category: { not: null },
-      },
-      select: {
-        category: true,
-      },
-    })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: medicines, error } = await supabase
+      .from('Medicine')
+      .select('category')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .not('category', 'is', null)
+
+    if (error) throw error
 
     // Group by category in JavaScript
     const categoryMap = new Map<string, number>()
-    for (const med of medicines) {
+    for (const med of (medicines || [])) {
       const cat = med.category!
       categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1)
     }

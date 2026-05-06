@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET(
   _request: NextRequest,
@@ -8,23 +8,13 @@ export async function GET(
   try {
     const { id } = await params
 
-    const ticket = await db.supportTicket.findUnique({
-      where: { id },
-      include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            businessName: true,
-            email: true,
-            phone: true,
-            plan: true,
-          },
-        },
-      },
-    })
+    const { data: ticket, error } = await supabase
+      .from('SupportTicket')
+      .select('*, tenant:Tenant(id, name, businessName, email, phone, plan)')
+      .eq('id', id)
+      .single()
 
-    if (!ticket) {
+    if (error || !ticket) {
       return NextResponse.json(
         { error: 'Ticket not found' },
         { status: 404 },
@@ -32,9 +22,9 @@ export async function GET(
     }
 
     // Parse replies from JSON string
-    let parsedReplies: unknown[] = []
+    let parsedReplies: any[] = []
     try {
-      parsedReplies = JSON.parse(ticket.replies)
+      parsedReplies = typeof ticket.replies === 'string' ? JSON.parse(ticket.replies) : (ticket.replies || [])
     } catch {
       parsedReplies = []
     }
@@ -60,8 +50,13 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const existing = await db.supportTicket.findUnique({ where: { id } })
-    if (!existing) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('SupportTicket')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
       return NextResponse.json(
         { error: 'Ticket not found' },
         { status: 404 },
@@ -70,20 +65,20 @@ export async function PUT(
 
     const { status, priority, reply } = body
 
-    let updatedReplies = existing.replies
+    let updatedRepliesString = existing.replies
 
     // If adding a reply, append it
     if (reply) {
       try {
-        const replies = JSON.parse(existing.replies) as unknown[]
+        const replies = typeof existing.replies === 'string' ? JSON.parse(existing.replies) : (existing.replies || [])
         replies.push({
           message: reply,
           from: 'admin',
           timestamp: new Date().toISOString(),
         })
-        updatedReplies = JSON.stringify(replies)
+        updatedRepliesString = JSON.stringify(replies)
       } catch {
-        updatedReplies = JSON.stringify([
+        updatedRepliesString = JSON.stringify([
           {
             message: reply,
             from: 'admin',
@@ -93,32 +88,26 @@ export async function PUT(
       }
     }
 
-    const ticket = await db.supportTicket.update({
-      where: { id },
-      data: {
-        ...(status !== undefined ? { status } : {}),
-        ...(priority !== undefined ? { priority } : {}),
-        ...(reply !== undefined ? { replies: updatedReplies } : {}),
-      },
-      include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            businessName: true,
-            email: true,
-          },
-        },
-      },
-    })
+    const updateData: any = {}
+    if (status !== undefined) updateData.status = status
+    if (priority !== undefined) updateData.priority = priority
+    if (reply !== undefined) updateData.replies = updatedRepliesString
+    updateData.updatedAt = new Date().toISOString()
+
+    const { data: ticket, error: updateError } = await supabase
+      .from('SupportTicket')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, tenant:Tenant(id, name, businessName, email)')
+      .single()
+
+    if (updateError) throw updateError
 
     // Log ticket update
-    await db.systemLog.create({
-      data: {
-        tenantId: existing.tenantId,
-        action: `Ticket updated`,
-        details: `Ticket "${existing.subject}" updated: ${status ? `status→${status} ` : ''}${reply ? 'reply added' : ''}`,
-      },
+    await supabase.from('SystemLog').insert({
+      tenantId: existing.tenantId,
+      action: `Ticket updated`,
+      details: `Ticket "${existing.subject}" updated: ${status ? `status→${status} ` : ''}${reply ? 'reply added' : ''}`,
     })
 
     return NextResponse.json(ticket)

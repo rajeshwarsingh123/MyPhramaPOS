@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isSupabaseConfigured, anonSupabase } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 function generateOTP(): string {
   const array = new Uint32Array(1)
@@ -24,18 +24,20 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    // Check for rate limiting (prevent spam)
-    const recentToken = await db.passwordResetToken.findFirst({
-      where: {
-        email: normalizedEmail,
-        purpose: 'signup_verification',
-        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    // Check for rate limiting
+    const { data: tokens } = await supabase
+      .from('PasswordResetToken')
+      .select('createdAt')
+      .eq('email', normalizedEmail)
+      .eq('purpose', 'signup_verification')
+      .gte('createdAt', new Date(Date.now() - 60 * 1000).toISOString())
+      .order('createdAt', { ascending: false })
+      .limit(1)
+
+    const recentToken = tokens && tokens.length > 0 ? tokens[0] : null
 
     if (recentToken) {
-      const waitSeconds = Math.max(0, 60 - Math.floor((Date.now() - recentToken.createdAt.getTime()) / 1000))
+      const waitSeconds = Math.max(0, 60 - Math.floor((Date.now() - new Date(recentToken.createdAt).getTime()) / 1000))
       return NextResponse.json({
         error: `Please wait ${waitSeconds} seconds before requesting a new code.`,
         retryAfter: waitSeconds,
@@ -43,12 +45,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the pending tenant
-    const tenant = await db.tenant.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true, name: true, email: true, status: true },
-    })
+    const { data: tenant, error: tenantError } = await supabase
+      .from('Tenant')
+      .select('id, name, email, status')
+      .eq('email', normalizedEmail)
+      .single()
 
-    if (!tenant) {
+    if (tenantError || !tenant) {
       return NextResponse.json({ error: 'No pending account found with this email' }, { status: 404 })
     }
 
@@ -58,29 +61,22 @@ export async function POST(request: NextRequest) {
 
     // Generate new OTP
     const otp = generateOTP()
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
     // Invalidate previous tokens
-    await db.passwordResetToken.updateMany({
-      where: {
-        email: normalizedEmail,
-        purpose: 'signup_verification',
-        isUsed: false,
-      },
-      data: { isUsed: true },
-    })
+    await supabase.from('PasswordResetToken').update({ isUsed: true }).match({ email: normalizedEmail, purpose: 'signup_verification', isUsed: false })
 
     // Create new token
-    await db.passwordResetToken.create({
-      data: {
-        email: normalizedEmail,
-        otp,
-        userType: 'tenant',
-        userId: tenant.id,
-        purpose: 'signup_verification',
-        expiresAt,
-      },
+    const { error: tokenError } = await supabase.from('PasswordResetToken').insert({
+      email: normalizedEmail,
+      otp,
+      userType: 'tenant',
+      userId: tenant.id,
+      purpose: 'signup_verification',
+      expiresAt,
     })
+
+    if (tokenError) throw tokenError
 
     // ── Supabase Auth Resend ──
     if (isSupabaseConfigured && anonSupabase) {
@@ -88,7 +84,6 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         type: 'signup',
       })
-
       if (resendError) {
         console.error('Supabase OTP resend failed:', resendError)
         return NextResponse.json({ error: resendError.message }, { status: 400 })

@@ -31,7 +31,7 @@ async function main() {
     db.admin.create({
       data: {
         name: 'Super Admin',
-        email: 'admin@pharmpos.com',
+        email: 'rajeshwarsinghrana16@gmail.com',
         password: 'admin123',
         role: 'super_admin',
         isActive: true,
@@ -415,7 +415,7 @@ async function main() {
     { key: 'proPlanPrice', value: '999', description: 'Monthly price for Pro plan' },
     { key: 'freeMedicineLimit', value: '50', description: 'Max medicines allowed in Free plan' },
     { key: 'aiScanEnabled', value: 'true', description: 'Enable AI bill scanning feature' },
-    { key: 'supportEmail', value: 'support@pharmpos.com', description: 'Customer support email' },
+    { key: 'supportEmail', value: 'rajeshwarsinghrana16@gmail.com', description: 'Customer support email' },
     { key: 'maintenanceMode', value: 'false', description: 'Enable maintenance mode' },
   ]
 

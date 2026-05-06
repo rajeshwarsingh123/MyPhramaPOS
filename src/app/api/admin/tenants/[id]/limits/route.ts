@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 interface TenantLimits {
   maxMedicines?: number | null
@@ -15,14 +15,21 @@ export async function GET(
   try {
     const { id } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { id } })
-    if (!tenant) {
+    const { data: tenant, error: fetchError } = await supabase
+      .from('Tenant')
+      .select('id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
-    const setting = await db.platformSetting.findUnique({
-      where: { key: `tenant_limits_${id}` },
-    })
+    const { data: setting } = await supabase
+      .from('PlatformSetting')
+      .select('value')
+      .eq('key', `tenant_limits_${id}`)
+      .maybeSingle()
 
     let limits: TenantLimits = {}
     if (setting) {
@@ -55,8 +62,13 @@ export async function PUT(
     const body = await request.json()
     const { maxMedicines, maxBillsPerDay, maxStaffUsers, featuresDisabled } = body
 
-    const tenant = await db.tenant.findUnique({ where: { id } })
-    if (!tenant) {
+    const { data: tenant, error: fetchError } = await supabase
+      .from('Tenant')
+      .select('businessName')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
@@ -67,25 +79,26 @@ export async function PUT(
       ...(featuresDisabled !== undefined ? { featuresDisabled } : {}),
     }
 
-    await db.platformSetting.upsert({
-      where: { key: `tenant_limits_${id}` },
-      update: {
-        value: JSON.stringify(limits),
-        description: `Usage limits for tenant ${tenant.businessName}`,
-      },
-      create: {
-        key: `tenant_limits_${id}`,
-        value: JSON.stringify(limits),
-        description: `Usage limits for tenant ${tenant.businessName}`,
-      },
-    })
+    const key = `tenant_limits_${id}`
+    const value = JSON.stringify(limits)
+    const description = `Usage limits for tenant ${tenant.businessName}`
 
-    await db.systemLog.create({
-      data: {
-        tenantId: id,
-        action: 'Usage limits updated',
-        details: `Admin updated usage limits for tenant: ${tenant.businessName}. Limits: ${JSON.stringify(limits)}`,
-      },
+    // Supabase upsert requires 'on_conflict' or relies on unique constraints
+    const { error: upsertError } = await supabase
+      .from('PlatformSetting')
+      .upsert({
+        key,
+        value,
+        description,
+        updatedAt: new Date().toISOString()
+      }, { onConflict: 'key' })
+
+    if (upsertError) throw upsertError
+
+    await supabase.from('SystemLog').insert({
+      tenantId: id,
+      action: 'Usage limits updated',
+      details: `Admin updated usage limits for tenant: ${tenant.businessName}. Limits: ${JSON.stringify(limits)}`,
     })
 
     return NextResponse.json({

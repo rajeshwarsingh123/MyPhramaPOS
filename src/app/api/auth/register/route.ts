@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isSupabaseConfigured, adminSupabase, anonSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
 
 function generateOTP(): string {
   const array = new Uint32Array(1)

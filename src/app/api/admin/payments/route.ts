@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { supabase } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,46 +11,34 @@ export async function GET(request: NextRequest) {
     const fromDate = searchParams.get('fromDate') || ''
     const toDate = searchParams.get('toDate') || ''
 
-    const where: Prisma.SubscriptionWhereInput = {}
+    let query = supabase
+      .from('Subscription')
+      .select('*, tenant:Tenant(id, name, email, businessName)', { count: 'exact' })
 
     if (status && status !== 'all') {
-      where.status = status
+      query = query.eq('status', status)
     }
 
     if (plan && plan !== 'all') {
-      where.plan = plan
+      query = query.eq('plan', plan)
     }
 
     if (fromDate) {
-      where.startDate = { ...((where.startDate as Prisma.DateTimeNullableFilter) || {}), gte: new Date(fromDate) }
+      query = query.gte('startDate', new Date(fromDate).toISOString())
     }
 
     if (toDate) {
-      where.startDate = { ...((where.startDate as Prisma.DateTimeNullableFilter) || {}), lte: new Date(toDate) }
+      query = query.lte('startDate', new Date(toDate).toISOString())
     }
 
-    const [payments, total] = await Promise.all([
-      db.subscription.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              businessName: true,
-            },
-          },
-        },
-      }),
-      db.subscription.count({ where }),
-    ])
+    const { data: payments, count: total, error } = await query
+      .order('createdAt', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
+
+    if (error) throw error
 
     return NextResponse.json({
-      payments: payments.map((p) => ({
+      payments: (payments || []).map((p: any) => ({
         id: p.id,
         tenantId: p.tenantId,
         tenantName: p.tenant?.businessName || p.tenant?.name || 'Unknown',
@@ -64,12 +51,12 @@ export async function GET(request: NextRequest) {
         paymentMode: p.paymentMode,
         createdAt: p.createdAt,
       })),
-      total,
+      total: total || 0,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total || 0,
+        totalPages: Math.ceil((total || 0) / limit),
       },
     })
   } catch (error) {

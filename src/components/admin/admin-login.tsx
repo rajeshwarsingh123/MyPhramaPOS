@@ -143,7 +143,7 @@ export function AdminLogin() {
                   <Input
                     id="admin-email"
                     type="email"
-                    placeholder="admin@pharmpos.com"
+                    placeholder="rajeshwarsinghrana16@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 h-11 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 rounded-lg focus:border-purple-500/50 focus:ring-purple-500/20 transition-colors"
@@ -231,7 +231,7 @@ export function AdminLogin() {
               transition={{ delay: 0.6, duration: 0.4 }}
               className="mt-6 text-center text-xs text-white/25"
             >
-              Demo credentials: admin@pharmpos.com
+              Demo credentials: rajeshwarsinghrana16@gmail.com
             </motion.p>
           </div>
         </div>

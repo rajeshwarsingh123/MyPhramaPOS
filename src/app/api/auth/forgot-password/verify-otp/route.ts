@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,22 +18,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Find valid token
-    const token = await db.passwordResetToken.findFirst({
-      where: {
-        email: normalizedEmail,
-        otp: normalizedOtp,
-        isUsed: false,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const { data: token } = await supabase
+      .from('PasswordResetToken')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .eq('otp', normalizedOtp)
+      .eq('isUsed', false)
+      .gte('expiresAt', new Date().toISOString())
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     if (!token) {
       // Check if expired
-      const expiredToken = await db.passwordResetToken.findFirst({
-        where: { email: normalizedEmail, otp: normalizedOtp, isUsed: false },
-        orderBy: { createdAt: 'desc' },
-      })
+      const { data: expiredToken } = await supabase
+        .from('PasswordResetToken')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .eq('otp', normalizedOtp)
+        .eq('isUsed', false)
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (expiredToken) {
         return NextResponse.json({ error: 'This verification code has expired. Please request a new one.' }, { status: 410 })

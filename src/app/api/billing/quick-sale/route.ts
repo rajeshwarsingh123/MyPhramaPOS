@@ -1,64 +1,73 @@
-import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Aggregate total quantity sold per medicine
-    const topSelling = await db.saleItem.groupBy({
-      by: ['medicineId', 'medicineName'],
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: 'desc' } },
-      take: 10,
-    })
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 1. Fetch sales items to aggregate top selling medicines
+    // Since Supabase doesn't support groupBy directly, we fetch all sale items and aggregate in JS
+    const { data: saleItems, error: itemsError } = await supabase
+      .from('SaleItem')
+      .select('medicineId, medicineName, quantity')
+      .eq('tenantId', tenantId)
+    
+    if (itemsError) throw itemsError
+
+    const itemMap = new Map<string, { name: string, quantity: number }>()
+    for (const item of (saleItems || [])) {
+      const existing = itemMap.get(item.medicineId) || { name: item.medicineName, quantity: 0 }
+      existing.quantity += (item.quantity || 0)
+      itemMap.set(item.medicineId, existing)
+    }
+
+    const topSelling = Array.from(itemMap.entries())
+      .sort((a, b) => b[1].quantity - a[1].quantity)
+      .slice(0, 10)
 
     if (topSelling.length === 0) {
       return NextResponse.json({ medicines: [] })
     }
 
-    // Get medicine details + latest MRP + total stock for each
-    const medicines = await Promise.all(
-      topSelling.map(async (item) => {
-        const medicine = await db.medicine.findUnique({
-          where: { id: item.medicineId },
-          select: {
-            id: true,
-            name: true,
-            composition: true,
-            strength: true,
-            unitType: true,
-          },
-        })
+    const medIds = topSelling.map(([id]) => id)
 
-        if (!medicine) return null
+    // 2. Fetch medicine details and batch info for these IDs
+    const { data: medicinesData, error: medError } = await supabase
+      .from('Medicine')
+      .select('id, name, composition, strength, unitType, batches:Batch(quantity, mrp, isActive)')
+      .in('id', medIds)
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
 
-        // Get the latest batch with highest MRP for this medicine (active batches)
-        const latestBatch = await db.batch.findFirst({
-          where: { medicineId: item.medicineId, isActive: true, quantity: { gt: 0 } },
-          orderBy: { mrp: 'desc' },
-          select: { mrp: true },
-        })
+    if (medError) throw medError
 
-        // Get total stock
-        const stockAgg = await db.batch.aggregate({
-          where: { medicineId: item.medicineId, isActive: true },
-          _sum: { quantity: true },
-        })
+    const result = medicinesData.map((med: any) => {
+      const activeBatches = (med.batches || []).filter((b: any) => b.isActive)
+      const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+      const latestBatchWithStock = activeBatches
+        .filter((b: any) => b.quantity > 0)
+        .sort((a: any, b: any) => (b.mrp || 0) - (a.mrp || 0))[0]
 
-        return {
-          id: medicine.id,
-          name: medicine.name,
-          composition: medicine.composition || null,
-          strength: medicine.strength || null,
-          unitType: medicine.unitType,
-          mrp: latestBatch?.mrp || 0,
-          totalStock: stockAgg._sum.quantity || 0,
-          quantitySold: item._sum.quantity || 0,
-        }
-      })
-    )
+      const salesInfo = itemMap.get(med.id)
+
+      return {
+        id: med.id,
+        name: med.name,
+        composition: med.composition || null,
+        strength: med.strength || null,
+        unitType: med.unitType,
+        mrp: latestBatchWithStock?.mrp || 0,
+        totalStock: totalStock,
+        quantitySold: salesInfo?.quantity || 0,
+      }
+    })
 
     return NextResponse.json({
-      medicines: medicines.filter(Boolean),
+      medicines: result,
     })
   } catch (error) {
     console.error('GET /api/billing/quick-sale error:', error)

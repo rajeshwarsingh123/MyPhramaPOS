@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 
 export async function PUT(
   request: NextRequest,
@@ -9,8 +9,13 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const existing = await db.subscription.findUnique({ where: { id } })
-    if (!existing) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('Subscription')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
       return NextResponse.json(
         { error: 'Subscription not found' },
         { status: 404 },
@@ -19,43 +24,35 @@ export async function PUT(
 
     const { plan, status, amount, startDate, endDate, paymentMode } = body
 
-    const subscription = await db.subscription.update({
-      where: { id },
-      data: {
-        ...(plan !== undefined ? { plan } : {}),
-        ...(status !== undefined ? { status } : {}),
-        ...(amount !== undefined ? { amount: parseFloat(amount) } : {}),
-        ...(startDate !== undefined
-          ? { startDate: new Date(startDate) }
-          : {}),
-        ...(endDate !== undefined ? { endDate: new Date(endDate) } : {}),
-        ...(paymentMode !== undefined ? { paymentMode } : {}),
-      },
-      include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            businessName: true,
-            email: true,
-          },
-        },
-      },
-    })
+    const updateData: any = {}
+    if (plan !== undefined) updateData.plan = plan
+    if (status !== undefined) updateData.status = status
+    if (amount !== undefined) updateData.amount = parseFloat(amount)
+    if (startDate !== undefined) updateData.startDate = new Date(startDate).toISOString()
+    if (endDate !== undefined) updateData.endDate = new Date(endDate).toISOString()
+    if (paymentMode !== undefined) updateData.paymentMode = paymentMode
+    updateData.updatedAt = new Date().toISOString()
+
+    const { data: subscription, error: updateError } = await supabase
+      .from('Subscription')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, tenant:Tenant(id, name, businessName, email)')
+      .single()
+
+    if (updateError) throw updateError
 
     // If plan changed, update tenant plan too
     if (plan !== undefined && plan !== existing.plan) {
-      await db.tenant.update({
-        where: { id: existing.tenantId },
-        data: { plan },
-      })
+      await supabase
+        .from('Tenant')
+        .update({ plan })
+        .eq('id', existing.tenantId)
 
-      await db.systemLog.create({
-        data: {
-          tenantId: existing.tenantId,
-          action: 'Plan changed',
-          details: `Subscription plan changed from ${existing.plan} to ${plan}`,
-        },
+      await supabase.from('SystemLog').insert({
+        tenantId: existing.tenantId,
+        action: 'Plan changed',
+        details: `Subscription plan changed from ${existing.plan} to ${plan}`,
       })
     }
 

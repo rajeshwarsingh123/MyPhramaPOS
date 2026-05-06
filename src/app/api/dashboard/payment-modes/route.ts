@@ -1,26 +1,27 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { startOfMonth, endOfMonth } from 'date-fns'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const now = new Date()
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Aggregate total sales by payment mode for current month
-    const salesByMode = await db.sale.groupBy({
-      by: ['paymentMode'],
-      where: {
-        saleDate: { gte: monthStart, lte: monthEnd },
-      },
-      _sum: {
-        totalAmount: true,
-      },
-      _count: {
-        id: true,
-      },
-    })
+    const now = new Date()
+    const monthStart = startOfMonth(now).toISOString()
+    const monthEnd = endOfMonth(now).toISOString()
+
+    const { data: sales, error } = await supabase
+      .from('Sale')
+      .select('paymentMode, totalAmount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', monthStart)
+      .lte('saleDate', monthEnd)
+
+    if (error) throw error
 
     const modes: Record<string, number> = {
       cash: 0,
@@ -29,8 +30,11 @@ export async function GET() {
       credit: 0,
     }
 
-    for (const item of salesByMode) {
-      modes[item.paymentMode] = (modes[item.paymentMode] ?? 0) + (item._sum.totalAmount ?? 0)
+    for (const sale of (sales || [])) {
+      const mode = sale.paymentMode?.toLowerCase() || 'cash'
+      if (modes.hasOwnProperty(mode)) {
+        modes[mode] += (sale.totalAmount || 0)
+      }
     }
 
     const totals = Object.values(modes).reduce((sum, v) => sum + v, 0)

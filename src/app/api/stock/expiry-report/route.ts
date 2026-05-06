@@ -1,34 +1,29 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const now = new Date()
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
     const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
     // Fetch all active batches with stock > 0 and their medicine info
-    const batches = await db.batch.findMany({
-      where: {
-        isActive: true,
-        quantity: { gt: 0 },
-      },
-      include: {
-        medicine: {
-          select: {
-            id: true,
-            name: true,
-            genericName: true,
-            composition: true,
-            companyName: true,
-            unitType: true,
-            strength: true,
-          },
-        },
-      },
-      orderBy: { expiryDate: 'asc' },
-    })
+    const { data: batches, error } = await supabase
+      .from('Batch')
+      .select('*, medicine:Medicine(id, name, genericName, composition, companyName, unitType, strength)')
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .gt('quantity', 0)
+      .order('expiryDate', { ascending: true })
+
+    if (error) throw error
 
     type ExpiryBatch = {
       id: string
@@ -69,75 +64,51 @@ export async function GET() {
     // Group batches by expiry status
     const groups: Record<string, ExpiryGroup> = {
       expired: {
-        status: 'expired',
-        label: 'Expired',
-        severity: 'critical',
+        status: 'expired', label: 'Expired', severity: 'critical',
         colorClass: 'text-red-600 dark:text-red-400',
         bgClass: 'bg-red-50 dark:bg-red-950/30',
         borderClass: 'border-red-200 dark:border-red-900/50',
         badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
-        totalBatches: 0,
-        totalQuantity: 0,
-        totalValue: 0,
-        batches: [],
+        totalBatches: 0, totalQuantity: 0, totalValue: 0, batches: [],
       },
       expiring_in_7_days: {
-        status: 'expiring_in_7_days',
-        label: 'Expiring in 7 Days',
-        severity: 'critical',
+        status: 'expiring_in_7_days', label: 'Expiring in 7 Days', severity: 'critical',
         colorClass: 'text-red-500 dark:text-red-400',
         bgClass: 'bg-red-50 dark:bg-red-950/30',
         borderClass: 'border-red-200 dark:border-red-900/50',
         badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
-        totalBatches: 0,
-        totalQuantity: 0,
-        totalValue: 0,
-        batches: [],
+        totalBatches: 0, totalQuantity: 0, totalValue: 0, batches: [],
       },
       expiring_in_30_days: {
-        status: 'expiring_in_30_days',
-        label: 'Expiring in 30 Days',
-        severity: 'warning',
+        status: 'expiring_in_30_days', label: 'Expiring in 30 Days', severity: 'warning',
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgClass: 'bg-amber-50 dark:bg-amber-950/30',
         borderClass: 'border-amber-200 dark:border-amber-900/50',
         badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400',
-        totalBatches: 0,
-        totalQuantity: 0,
-        totalValue: 0,
-        batches: [],
+        totalBatches: 0, totalQuantity: 0, totalValue: 0, batches: [],
       },
       expiring_in_90_days: {
-        status: 'expiring_in_90_days',
-        label: 'Expiring in 90 Days',
-        severity: 'info',
+        status: 'expiring_in_90_days', label: 'Expiring in 90 Days', severity: 'info',
         colorClass: 'text-orange-600 dark:text-orange-400',
         bgClass: 'bg-orange-50 dark:bg-orange-950/30',
         borderClass: 'border-orange-200 dark:border-orange-900/50',
         badgeClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400',
-        totalBatches: 0,
-        totalQuantity: 0,
-        totalValue: 0,
-        batches: [],
+        totalBatches: 0, totalQuantity: 0, totalValue: 0, batches: [],
       },
       safe: {
-        status: 'safe',
-        label: 'Safe (>90 Days)',
-        severity: 'safe',
+        status: 'safe', label: 'Safe (>90 Days)', severity: 'safe',
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgClass: 'bg-emerald-50 dark:bg-emerald-950/30',
         borderClass: 'border-emerald-200 dark:border-emerald-900/50',
         badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400',
-        totalBatches: 0,
-        totalQuantity: 0,
-        totalValue: 0,
-        batches: [],
+        totalBatches: 0, totalQuantity: 0, totalValue: 0, batches: [],
       },
     }
 
-    for (const batch of batches) {
+    for (const batch of (batches || [])) {
+      const expiryDate = new Date(batch.expiryDate)
       const daysUntilExpiry = Math.ceil(
-        (batch.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
       )
 
       let groupKey: string
@@ -148,38 +119,29 @@ export async function GET() {
       else groupKey = 'safe'
 
       const group = groups[groupKey]
-      const valueAtRisk = batch.quantity * batch.mrp
+      const valueAtRisk = (batch.quantity || 0) * (batch.mrp || 0)
       group.totalBatches++
-      group.totalQuantity += batch.quantity
+      group.totalQuantity += (batch.quantity || 0)
       group.totalValue += valueAtRisk
 
       group.batches.push({
         id: batch.id,
         batchNumber: batch.batchNumber,
-        expiryDate: batch.expiryDate.toISOString(),
-        mfgDate: batch.mfgDate?.toISOString() || null,
+        expiryDate: batch.expiryDate,
+        mfgDate: batch.mfgDate,
         purchasePrice: batch.purchasePrice,
         mrp: batch.mrp,
         quantity: batch.quantity,
         initialQuantity: batch.initialQuantity,
         daysUntilExpiry,
         valueAtRisk,
-        medicine: {
-          id: batch.medicine.id,
-          name: batch.medicine.name,
-          genericName: batch.medicine.genericName,
-          composition: batch.medicine.composition,
-          companyName: batch.medicine.companyName,
-          unitType: batch.medicine.unitType,
-          strength: batch.medicine.strength,
-        },
+        medicine: batch.medicine as any,
       })
     }
 
-    // Summary counts
-    const totalBatches = batches.length
-    const totalQuantity = batches.reduce((sum, b) => sum + b.quantity, 0)
-    const totalValueAtRisk = batches.reduce((sum, b) => sum + b.quantity * b.mrp, 0)
+    const totalBatches = (batches || []).length
+    const totalQuantity = (batches || []).reduce((sum, b) => sum + (b.quantity || 0), 0)
+    const totalValueAtRisk = (batches || []).reduce((sum, b) => sum + (b.quantity || 0) * (b.mrp || 0), 0)
 
     return NextResponse.json({
       summary: {
@@ -201,9 +163,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Expiry report error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch expiry report' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch expiry report' }, { status: 500 })
   }
 }

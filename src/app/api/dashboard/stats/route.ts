@@ -1,103 +1,104 @@
-import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const nowIso = now.toISOString()
 
-    // Total active medicines
-    const totalMedicines = await db.medicine.count({
-      where: { isActive: true },
-    })
+    // 1. Total active medicines
+    const { count: totalMedicines } = await supabase
+      .from('medicines')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
 
-    // Total stock across all active batches
-    const stockResult = await db.batch.aggregate({
-      _sum: { quantity: true },
-      where: { isActive: true },
-    })
-    const totalStock = stockResult._sum.quantity ?? 0
+    // 2. Total stock across all active batches
+    const { data: batches } = await supabase
+      .from('batches')
+      .select('quantity')
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
+    const totalStock = (batches || []).reduce((sum, b) => sum + (b.quantity || 0), 0)
 
-    // Today's sales
-    const todaySalesResult = await db.sale.aggregate({
-      _sum: { totalAmount: true },
-      where: { saleDate: { gte: todayStart } },
-    })
-    const todaySales = todaySalesResult._sum.totalAmount ?? 0
+    // 3. Today's sales
+    const { data: todaySalesData } = await supabase
+      .from('Sale')
+      .select('totalAmount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', todayStart)
+    const todaySales = (todaySalesData || []).reduce((sum, s) => sum + (s.totalAmount || 0), 0)
 
-    // Month sales
-    const monthSalesResult = await db.sale.aggregate({
-      _sum: { totalAmount: true },
-      where: { saleDate: { gte: monthStart } },
-    })
-    const monthSales = monthSalesResult._sum.totalAmount ?? 0
+    // 4. Month sales
+    const { data: monthSalesData } = await supabase
+      .from('Sale')
+      .select('totalAmount')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', monthStart)
+    const monthSales = (monthSalesData || []).reduce((sum, s) => sum + (s.totalAmount || 0), 0)
 
-    // Low stock: medicines where total stock across all active batches < 10
-    const lowStockMedicines = await db.medicine.findMany({
-      where: {
-        isActive: true,
-        batches: {
-          some: { isActive: true },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        unitType: true,
-        batches: {
-          where: { isActive: true },
-          select: { quantity: true },
-        },
-      },
-    })
-    const lowStockCount = lowStockMedicines.filter(
-      (m) => m.batches.reduce((sum, b) => sum + b.quantity, 0) < 10
-    ).length
+    // 5. Low stock Count
+    // Fetch medicines and their batches to calculate total stock per medicine
+    const { data: medStockData } = await supabase
+      .from('medicines')
+      .select('id, batches(quantity)')
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
+    
+    const lowStockCount = (medStockData || []).filter(m => {
+      const total = (m.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
+      return total < 10 && (m.batches || []).length > 0
+    }).length
 
-    // Expiring soon: batches expiring within 30 days with stock > 0
-    const expiringSoonCount = await db.batch.count({
-      where: {
-        isActive: true,
-        quantity: { gt: 0 },
-        expiryDate: { gte: now, lte: thirtyDaysFromNow },
-      },
-    })
+    // 6. Expiring soon
+    const { count: expiringSoonCount } = await supabase
+      .from('batches')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
+      .gt('quantity', 0)
+      .gte('expiry_date', nowIso)
+      .lte('expiry_date', thirtyDaysFromNow)
 
-    // Expired: batches already expired with stock > 0
-    const expiredCount = await db.batch.count({
-      where: {
-        isActive: true,
-        quantity: { gt: 0 },
-        expiryDate: { lt: now },
-      },
-    })
+    // 7. Expired
+    const { count: expiredCount } = await supabase
+      .from('batches')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('isActive', true)
+      .gt('quantity', 0)
+      .lt('expiry_date', nowIso)
 
-    // Recent sales (last 5)
-    const recentSales = await db.sale.findMany({
-      take: 5,
-      orderBy: { saleDate: 'desc' },
-      include: {
-        customer: {
-          select: { name: true },
-        },
-      },
-    })
+    // 8. Recent sales (last 5)
+    const { data: recentSales } = await supabase
+      .from('Sale')
+      .select('*, Customer(name)')
+      .eq('tenantId', tenantId)
+      .order('saleDate', { ascending: false })
+      .limit(5)
 
     return NextResponse.json({
-      totalMedicines,
-      totalStock,
-      todaySales,
-      monthSales,
-      lowStockCount,
-      expiringSoonCount,
-      expiredCount,
-      recentSales: recentSales.map((s) => ({
+      totalMedicines: totalMedicines || 0,
+      totalStock: totalStock || 0,
+      todaySales: todaySales || 0,
+      monthSales: monthSales || 0,
+      lowStockCount: lowStockCount || 0,
+      expiringSoonCount: expiringSoonCount || 0,
+      expiredCount: expiredCount || 0,
+      recentSales: (recentSales || []).map((s: any) => ({
         id: s.id,
         invoiceNo: s.invoiceNo,
-        customerName: s.customer?.name ?? 'Walk-in',
-        saleDate: s.saleDate.toISOString(),
+        customerName: s.Customer?.name ?? 'Walk-in',
+        saleDate: s.saleDate,
         totalAmount: s.totalAmount,
         paymentMode: s.paymentMode,
       })),

@@ -1,8 +1,14 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
 
@@ -21,66 +27,49 @@ export async function GET(request: NextRequest) {
     const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate())
     const dayEnd = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1)
 
-    // Aggregate totals
-    const totals = await db.sale.aggregate({
-      _sum: {
-        totalAmount: true,
-        totalGst: true,
-        totalDiscount: true,
-      },
-      _count: {
-        id: true,
-      },
-      where: {
-        saleDate: { gte: dayStart, lt: dayEnd },
-      },
-    })
+    const { data: sales, error } = await supabase
+      .from('Sale')
+      .select('*, customer:Customer(name), items:SaleItem(quantity)')
+      .eq('tenantId', tenantId)
+      .gte('saleDate', dayStart.toISOString())
+      .lt('saleDate', dayEnd.toISOString())
+      .order('saleDate', { ascending: false })
 
-    // Total items sold
-    const itemsAgg = await db.saleItem.aggregate({
-      _sum: { quantity: true },
-      where: {
-        sale: {
-          saleDate: { gte: dayStart, lt: dayEnd },
-        },
-      },
-    })
+    if (error) throw error
 
-    // Individual sales
-    const sales = await db.sale.findMany({
-      where: {
-        saleDate: { gte: dayStart, lt: dayEnd },
-      },
-      include: {
-        customer: {
-          select: { name: true },
-        },
-        items: {
-          select: { quantity: true },
-        },
-      },
-      orderBy: { saleDate: 'desc' },
-    })
+    let totalSales = 0
+    let totalGst = 0
+    let totalDiscount = 0
+    let totalItems = 0
 
-    const totalItems = sales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + i.quantity, 0), 0)
+    const formattedSales = (sales || []).map((s: any) => {
+      const saleTotalItems = (s.items || []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0)
+      
+      totalSales += s.totalAmount || 0
+      totalGst += s.totalGst || 0
+      totalDiscount += s.totalDiscount || 0
+      totalItems += saleTotalItems
 
-    return NextResponse.json({
-      date: dayStart.toISOString().split('T')[0],
-      totalSales: totals._sum.totalAmount ?? 0,
-      totalGst: totals._sum.totalGst ?? 0,
-      totalDiscount: totals._sum.totalDiscount ?? 0,
-      totalItems,
-      sales: sales.map((s) => ({
+      return {
         id: s.id,
         invoiceNo: s.invoiceNo,
-        customerName: s.customer?.name ?? 'Walk-in',
-        saleDate: s.saleDate.toISOString(),
+        customerName: (s.customer as any)?.name ?? 'Walk-in',
+        saleDate: s.saleDate,
         totalAmount: s.totalAmount,
         totalGst: s.totalGst,
         totalDiscount: s.totalDiscount,
         paymentMode: s.paymentMode,
-        itemCount: s.items.reduce((sum, i) => sum + i.quantity, 0),
-      })),
+        itemCount: saleTotalItems,
+      }
+    })
+
+    return NextResponse.json({
+      date: dayStart.toISOString().split('T')[0],
+      totalSales,
+      totalGst,
+      totalDiscount,
+      totalItems,
+      sales: formattedSales,
     })
   } catch (error) {
     console.error('Daily sales report error:', error)

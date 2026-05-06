@@ -18,16 +18,17 @@ export async function GET(request: NextRequest) {
     }
 
     let query = supabase
-      .from('medicines')
-      .select('*, batches(*)', { count: 'exact' })
-      .eq('tenant_id', tenantId)
+      .from('Medicine')
+      .select('*, batches:Batch(*)', { count: 'exact' })
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,composition.ilike.%${search}%,company_name.ilike.%${search}%,generic_name.ilike.%${search}%`)
+      query = query.or(`name.ilike.%${search}%,composition.ilike.%${search}%,companyName.ilike.%${search}%,genericName.ilike.%${search}%`)
     }
 
     if (unitType) {
-      query = query.eq('unit_type', unitType)
+      query = query.eq('unitType', unitType)
     }
 
     if (category) {
@@ -40,27 +41,27 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    const formattedMedicines = (medicines || []).map((med) => {
-      const activeBatches = (med.batches || []).filter((b: any) => b.is_active && b.quantity > 0)
+    const formattedMedicines = (medicines || []).map((med: any) => {
+      const activeBatches = (med.batches || []).filter((b: any) => b.isActive && b.quantity > 0)
       const totalStock = activeBatches.reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
       const earliestExpiry = activeBatches.length > 0
         ? activeBatches.reduce((earliest: string, b: any) =>
-            new Date(b.expiry_date) < new Date(earliest) ? b.expiry_date : earliest,
-            activeBatches[0].expiry_date
+            new Date(b.expiryDate) < new Date(earliest) ? b.expiryDate : earliest,
+            activeBatches[0].expiryDate
           )
         : null
 
       return {
         id: med.id,
         name: med.name,
-        genericName: med.generic_name,
-        companyName: med.company_name,
+        genericName: med.genericName,
+        companyName: med.companyName,
         composition: med.composition,
         strength: med.strength,
         category: med.category,
-        unitType: med.unit_type,
-        gstPercent: med.gst_percent,
-        sellingPrice: med.selling_price,
+        unitType: med.unitType,
+        gstPercent: med.gstPercent,
+        sellingPrice: med.sellingPrice,
         totalStock,
         earliestExpiry,
         batchCount: (med.batches || []).length,
@@ -105,18 +106,19 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: medicine, error } = await supabase
-      .from('medicines')
+      .from('Medicine')
       .insert({
-        tenant_id: tenantId,
+        tenantId,
         name: name.trim(),
-        generic_name: genericName?.trim() || null,
-        company_name: companyName?.trim() || null,
+        genericName: genericName?.trim() || null,
+        companyName: companyName?.trim() || null,
         composition: composition?.trim() || null,
         strength: strength?.trim() || null,
         category: category?.trim() || null,
-        unit_type: unitType || 'tablet',
-        gst_percent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,
-        selling_price: sellingPrice !== undefined ? parseFloat(sellingPrice) : 0,
+        unitType: unitType || 'tablet',
+        gstPercent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,
+        sellingPrice: sellingPrice !== undefined ? parseFloat(sellingPrice) : 0,
+        isActive: true,
       })
       .select()
       .single()

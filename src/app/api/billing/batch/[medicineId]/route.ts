@@ -1,5 +1,6 @@
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTenantId } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -7,31 +8,21 @@ export async function GET(
 ) {
   try {
     const { medicineId } = await params
+    const tenantId = await getTenantId(request)
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const batches = await db.batch.findMany({
-      where: {
-        medicineId,
-        isActive: true,
-        quantity: { gt: 0 },
-      },
-      orderBy: { expiryDate: 'asc' },
-      select: {
-        id: true,
-        batchNumber: true,
-        quantity: true,
-        purchasePrice: true,
-        mrp: true,
-        expiryDate: true,
-        medicine: {
-          select: {
-            name: true,
-            gstPercent: true,
-            unitType: true,
-            strength: true,
-          },
-        },
-      },
-    })
+    const { data: batches, error } = await supabase
+      .from('Batch')
+      .select('id, batchNumber, quantity, purchasePrice, mrp, expiryDate, medicine:Medicine(name, gstPercent, unitType, strength)')
+      .eq('medicineId', medicineId)
+      .eq('tenantId', tenantId)
+      .eq('isActive', true)
+      .gt('quantity', 0)
+      .order('expiryDate', { ascending: true })
+
+    if (error) throw error
 
     return NextResponse.json(batches)
   } catch (error) {

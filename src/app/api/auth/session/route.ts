@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/server'
-import { db } from '@/lib/db'
 
 // Verify a Supabase access token and return the associated tenant/admin info
 export async function POST(request: NextRequest) {
@@ -18,7 +17,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
     }
 
-    const tenant = await db.tenant.findUnique({ where: { email: user.email! } })
+    // Try to find tenant in Supabase 'Tenant' table
+    const { data: tenant } = await supabase
+      .from('Tenant')
+      .select('*')
+      .eq('email', user.email!)
+      .single()
+      
     if (tenant) {
       return NextResponse.json({
         type: 'tenant', id: tenant.id, name: tenant.name, email: tenant.email,
@@ -26,14 +31,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const admin = await db.admin.findUnique({ where: { email: user.email! } })
+    // Try to find admin in Supabase 'Admin' table
+    const { data: admin } = await supabase
+      .from('Admin')
+      .select('*')
+      .eq('email', user.email!)
+      .single()
+      
     if (admin) {
       return NextResponse.json({ type: 'admin', id: admin.id, name: admin.name, email: admin.email, role: admin.role })
     }
 
     return NextResponse.json({
       type: 'unregistered', email: user.email,
-      message: 'User exists in Supabase but not linked to a local account',
+      message: 'User exists in Supabase but not linked to a database account',
     })
   } catch (error) {
     console.error('POST /api/auth/session error:', error)
