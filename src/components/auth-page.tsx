@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   X,
@@ -390,7 +390,7 @@ function CountdownTimer({ seconds, onExpire }: { seconds: number; onExpire: () =
 
 function ForgotPasswordForm({ onBack, initialStep = 'enter-email' }: { onBack: () => void; initialStep?: ForgotStep }) {
   const [step, setStep] = useState<ForgotStep>(initialStep)
-  const supabase = createClient()
+  const supabase = createBrowserClient()
   const [email, setEmail] = useState('')
   const [maskedEmail, setMaskedEmail] = useState('')
   const [userName, setUserName] = useState('')
