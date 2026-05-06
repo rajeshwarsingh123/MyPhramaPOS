@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/server'
+import { getAdminId } from '@/lib/auth'
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const adminId = await getAdminId(request)
+    if (!adminId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)

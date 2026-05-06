@@ -156,14 +156,19 @@ export function AdminUsers() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-tenants', search, planFilter, page],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams({
         search,
         page: String(page),
         limit: String(limit),
       })
       if (planFilter !== 'all') params.set('plan', planFilter)
-      return fetch(`/api/admin/tenants?${params}`).then((r) => r.json())
+      const res = await fetch(`/api/admin/tenants?${params}`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to fetch tenants')
+      }
+      return res.json()
     },
     enabled: activeTab === 'tenants'
   })
@@ -439,7 +444,7 @@ export function AdminUsers() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
-        <p className="text-white/70">Failed to load users</p>
+        <p className="text-white/70">{(error as Error)?.message || 'Failed to load users'}</p>
         <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
           Try Again
         </Button>

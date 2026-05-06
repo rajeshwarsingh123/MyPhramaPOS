@@ -50,10 +50,18 @@ export async function POST(request: NextRequest) {
             .update({ password: `supabase:${newUserData.user.id}`, lastLogin: new Date().toISOString() })
             .eq('id', admin.id)
 
-          return NextResponse.json({
+          const response = NextResponse.json({
             id: admin.id, name: admin.name, email: admin.email,
             role: admin.role, lastLogin: new Date(), authProvider: 'supabase',
           })
+          response.cookies.set('adminId', admin.id, {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7,
+          })
+          return response
         }
 
         return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
@@ -79,10 +87,18 @@ export async function POST(request: NextRequest) {
         .update({ password: `supabase:${userId}`, lastLogin: new Date().toISOString() })
         .eq('id', admin.id)
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         id: admin.id, name: admin.name, email: admin.email,
         role: admin.role, lastLogin: new Date(), authProvider: 'supabase',
       })
+      response.cookies.set('adminId', admin.id, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+      })
+      return response
     }
 
     // ── Local Fallback Path (if Supabase Auth not used for this account) ──
@@ -99,10 +115,21 @@ export async function POST(request: NextRequest) {
       .update({ lastLogin: new Date().toISOString() })
       .eq('id', admin.id)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: admin.id, name: admin.name, email: admin.email,
-      role: admin.role, lastLogin: new Date(), authProvider: 'local',
+      role: admin.role, lastLogin: new Date(), authProvider: admin.password.startsWith('supabase:') ? 'supabase' : 'local',
     })
+
+    // Set adminId cookie for session persistence
+    response.cookies.set('adminId', admin.id, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+    })
+
+    return response
   } catch (error) {
     console.error('POST /api/admin/auth error:', error)
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
