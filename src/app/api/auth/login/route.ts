@@ -20,36 +20,33 @@ export async function POST(request: NextRequest) {
       })
 
       if (!authError && data.user) {
-        // Check if this user exists in the Admin table regardless of Supabase metadata
+        // Only allow tenants in this login route
         const { data: adminRecord } = await supabase
           .from('Admin')
-          .select('*')
+          .select('id')
           .eq('email', normalizedEmail)
           .single()
 
-        const isUserAdmin = !!adminRecord || data.user.user_metadata?.role === 'admin'
-        const role = adminRecord?.role || data.user.user_metadata?.role || 'tenant'
+        if (adminRecord) {
+          return NextResponse.json({ error: 'Admin accounts must use the Admin Panel' }, { status: 403 })
+        }
 
-        // Success! Return user data
+        // Success! Return tenant data
         const response = NextResponse.json({
-          id: adminRecord?.id || data.user.id,
-          name: adminRecord?.name || data.user.user_metadata?.name || 'User',
+          id: data.user.id,
+          name: data.user.user_metadata?.name || 'User',
           email: data.user.email,
           businessName: data.user.user_metadata?.businessName || 'Pharmacy',
           phone: data.user.user_metadata?.phone || '',
-          role: role,
-          userType: isUserAdmin ? 'admin' : 'tenant',
+          role: data.user.user_metadata?.role || 'tenant',
+          userType: 'tenant',
           authProvider: 'supabase',
           status: 'active',
           plan: 'pro',
         })
 
-        // Set cookie for session persistence
-        if (isUserAdmin) {
-          response.cookies.set('adminId', adminRecord?.id || data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
-        } else {
-          response.cookies.set('tenantId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
-        }
+        // Set tenantId cookie
+        response.cookies.set('tenantId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
 
         return response
       }
@@ -60,24 +57,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Local Fallback (Using Supabase 'Admin' and 'Tenant' tables instead of Prisma) ──
-    // Check Admin table
-    const { data: admin } = await supabase
-      .from('Admin')
-      .select('*')
-      .eq('email', normalizedEmail)
-      .single()
-
-    if (admin && admin.password === password) {
-       const response = NextResponse.json({
-        id: admin.id, name: admin.name, email: admin.email,
-        role: admin.role, lastLogin: new Date(), authProvider: 'local',
-        userType: 'admin',
-      })
-      response.cookies.set('adminId', admin.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
-      return response
-    }
-
+    // ── Local Fallback (Tenants Only) ──
     // Check Tenant table
     const { data: tenant } = await supabase
       .from('Tenant')
