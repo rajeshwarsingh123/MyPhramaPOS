@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
       .from('Medicine')
       .select('id, batches:Batch(quantity)')
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
 
     if (medError) throw medError
 

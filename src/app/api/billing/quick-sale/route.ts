@@ -10,11 +10,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Fetch sales items to aggregate top selling medicines
-    // Since Supabase doesn't support groupBy directly, we fetch all sale items and aggregate in JS
     const { data: saleItems, error: itemsError } = await supabase
       .from('SaleItem')
-      .select('medicineId, medicineName, quantity')
-      .eq('tenantId', tenantId)
+      .select('medicineId, medicineName, quantity, sale:Sale!inner(tenantId)')
+      .eq('sale.tenantId', tenantId)
     
     if (itemsError) throw itemsError
 
@@ -41,7 +40,6 @@ export async function GET(request: NextRequest) {
       .select('id, name, composition, strength, unitType, batches:Batch(quantity, mrp, isActive)')
       .in('id', medIds)
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
 
     if (medError) throw medError
 

@@ -303,6 +303,7 @@ export function MedicinesPage() {
   const [deletingMedicineId, setDeletingMedicineId] = useState<string | null>(null)
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null)
   const [showInitialBatch, setShowInitialBatch] = useState(false)
+  const [showBatchDialog, setShowBatchDialog] = useState(false)
   const [batchFormMode, setBatchFormMode] = useState<'add' | 'edit'>('add')
   const [editingBatch, setEditingBatch] = useState<BatchInfo | null>(null)
 

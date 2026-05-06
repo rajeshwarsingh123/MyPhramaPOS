@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
     // Fetch all sale items in the date range with batch info
     const { data: saleItems, error } = await supabase
       .from('SaleItem')
-      .select('*, batch:Batch(purchasePrice), sale:Sale!inner(saleDate)')
-      .eq('tenantId', tenantId)
-      .gte('sale!inner.saleDate', fromDate.toISOString())
-      .lt('sale!inner.saleDate', toDate.toISOString())
+      .select('*, batch:Batch(purchasePrice), sale:Sale!inner(saleDate, tenantId)')
+      .eq('sale.tenantId', tenantId)
+      .gte('sale.saleDate', fromDate.toISOString())
+      .lt('sale.saleDate', toDate.toISOString())
 
     if (error) throw error
 

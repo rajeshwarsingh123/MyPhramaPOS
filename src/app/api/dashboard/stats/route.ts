@@ -17,16 +17,15 @@ export async function GET(request: NextRequest) {
 
     // 1. Total active medicines
     const { count: totalMedicines } = await supabase
-      .from('medicines')
+      .from('Medicine')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
-      .eq('isActive', true)
+      .eq('tenantId', tenantId)
 
     // 2. Total stock across all active batches
     const { data: batches } = await supabase
-      .from('batches')
+      .from('Batch')
       .select('quantity')
-      .eq('tenant_id', tenantId)
+      .eq('tenantId', tenantId)
       .eq('isActive', true)
     const totalStock = (batches || []).reduce((sum, b) => sum + (b.quantity || 0), 0)
 
@@ -47,41 +46,39 @@ export async function GET(request: NextRequest) {
     const monthSales = (monthSalesData || []).reduce((sum, s) => sum + (s.totalAmount || 0), 0)
 
     // 5. Low stock Count
-    // Fetch medicines and their batches to calculate total stock per medicine
     const { data: medStockData } = await supabase
-      .from('medicines')
-      .select('id, batches(quantity)')
-      .eq('tenant_id', tenantId)
-      .eq('isActive', true)
+      .from('Medicine')
+      .select('id, batches:Batch(quantity)')
+      .eq('tenantId', tenantId)
     
     const lowStockCount = (medStockData || []).filter(m => {
       const total = (m.batches || []).reduce((sum: number, b: any) => sum + (b.quantity || 0), 0)
-      return total < 10 && (m.batches || []).length > 0
+      return total < 10
     }).length
 
-    // 6. Expiring soon
+    // 6. Expiring soon (next 30 days)
     const { count: expiringSoonCount } = await supabase
-      .from('batches')
+      .from('Batch')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
+      .eq('tenantId', tenantId)
       .eq('isActive', true)
       .gt('quantity', 0)
-      .gte('expiry_date', nowIso)
-      .lte('expiry_date', thirtyDaysFromNow)
+      .gte('expiryDate', nowIso)
+      .lte('expiryDate', thirtyDaysFromNow)
 
     // 7. Expired
     const { count: expiredCount } = await supabase
-      .from('batches')
+      .from('Batch')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
+      .eq('tenantId', tenantId)
       .eq('isActive', true)
       .gt('quantity', 0)
-      .lt('expiry_date', nowIso)
+      .lt('expiryDate', nowIso)
 
     // 8. Recent sales (last 5)
     const { data: recentSales } = await supabase
       .from('Sale')
-      .select('*, Customer(name)')
+      .select('*, customer:Customer(name)')
       .eq('tenantId', tenantId)
       .order('saleDate', { ascending: false })
       .limit(5)
@@ -97,7 +94,7 @@ export async function GET(request: NextRequest) {
       recentSales: (recentSales || []).map((s: any) => ({
         id: s.id,
         invoiceNo: s.invoiceNo,
-        customerName: s.Customer?.name ?? 'Walk-in',
+        customerName: s.customer?.name ?? 'Walk-in',
         saleDate: s.saleDate,
         totalAmount: s.totalAmount,
         paymentMode: s.paymentMode,
