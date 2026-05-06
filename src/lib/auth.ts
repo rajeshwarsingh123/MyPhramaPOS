@@ -69,3 +69,57 @@ export async function getAdminId(req: NextRequest): Promise<string | null> {
 
   return null
 }
+
+/**
+ * Checks if a tenant has exceeded their plan limits based on platform settings.
+ */
+export async function checkLimit(tenantId: string, type: 'medicines' | 'bills' | 'staff'): Promise<{ allowed: boolean; error?: string }> {
+  // 1. Get tenant plan
+  const { data: tenant } = await supabase
+    .from('Tenant')
+    .select('plan')
+    .eq('id', tenantId)
+    .single()
+
+  if (!tenant) return { allowed: false, error: 'Tenant not found' }
+  if (tenant.plan === 'pro') return { allowed: true } // Pro plan has no limits
+
+  // 2. Get platform settings
+  const { data: settingsData } = await supabase
+    .from('PlatformSetting')
+    .select('key, value')
+
+  const settings: Record<string, string> = {}
+  settingsData?.forEach(s => { settings[s.key] = s.value })
+
+  // 3. Check specific limits
+  if (type === 'medicines') {
+    const limit = parseInt(settings['max_free_medicines'] || '50')
+    const { count } = await supabase
+      .from('Medicine')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+
+    if ((count || 0) >= limit) {
+      return { allowed: false, error: `Medicine limit reached (${limit}). Please upgrade to Pro.` }
+    }
+  }
+
+  if (type === 'bills') {
+    const limit = parseInt(settings['max_free_bills_per_day'] || '100')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const { count } = await supabase
+      .from('Sale')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .gte('saleDate', today.toISOString())
+
+    if ((count || 0) >= limit) {
+      return { allowed: false, error: `Daily billing limit reached (${limit}). Please upgrade to Pro.` }
+    }
+  }
+
+  return { allowed: true }
+}

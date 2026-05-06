@@ -514,16 +514,17 @@ export function BillingPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert(data.error || 'Failed to complete sale')
+        toast.error(data.error || 'Failed to complete sale')
         return
       }
 
+      toast.success('Sale completed successfully!')
       setCompletedSale(data)
       setShowConfirmDialog(false)
       setShowInvoiceDialog(true)
       setCartItems([])
     } catch {
-      alert('Failed to complete sale. Please try again.')
+      toast.error('Failed to complete sale. Please try again.')
     } finally {
       setIsCompletingSale(false)
     }

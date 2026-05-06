@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantId } from '@/lib/auth'
+import { getTenantId, checkLimit } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +10,12 @@ export async function POST(request: NextRequest) {
     const tenantId = await getTenantId(request)
     if (!tenantId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check limits
+    const limitCheck = await checkLimit(tenantId, 'bills')
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.error }, { status: 403 })
     }
 
     if (!items || items.length === 0) {
