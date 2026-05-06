@@ -301,30 +301,6 @@ export function BillingPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      // F2 = New Bill
-      if (e.key === 'F2') {
-        e.preventDefault()
-        clearCart()
-      }
-      // F4 = Focus Search
-      if (e.key === 'F4') {
-        e.preventDefault()
-        searchInputRef.current?.focus()
-      }
-      // F8 = Complete Sale
-      if (e.key === 'F8') {
-        e.preventDefault()
-        if (cartItems.length > 0) {
-          setShowConfirmDialog(true)
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cartItems])
 
   // Close dropdowns on outside click
   useEffect(() => {

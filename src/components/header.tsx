@@ -12,9 +12,7 @@ import {
   Moon, 
   Sun,
   ArrowRight,
-  Keyboard,
   ShieldCheck,
-  Zap,
   AlertTriangle,
   Package,
   XCircle,
@@ -72,13 +70,6 @@ function useTimeGreeting() {
   return 'Good Evening'
 }
 
-const shortcuts = [
-  { key: 'F2', label: 'New Bill', desc: 'Clear cart and start fresh' },
-  { key: 'F4', label: 'Focus Search', desc: 'Jump to medicine search' },
-  { key: 'F8', label: 'Complete Sale', desc: 'Finalize current bill' },
-  { key: '?', label: 'Show Shortcuts', desc: 'This help panel' },
-  { key: 'Esc', label: 'Close / Cancel', desc: 'Close dialog or cancel' },
-]
 
 const navPages = [
   { key: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
@@ -330,19 +321,6 @@ export function Header() {
     settings: 'Settings',
   }
 
-  // Keyboard shortcuts dialog
-  const [showShortcuts, setShowShortcuts] = useState(false)
-
-  useEffect(() => {
-    function handleGlobalKeyDown(e: KeyboardEvent) {
-      if (e.key === '?' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
-        e.preventDefault()
-        setShowShortcuts((v) => !v)
-      }
-    }
-    window.addEventListener('keydown', handleGlobalKeyDown)
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [])
 
   const { currentPage } = useAppStore()
 
@@ -603,15 +581,6 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 hover:bg-accent/50"
-              onClick={() => setShowShortcuts(true)}
-              title="Keyboard Shortcuts"
-            >
-              <Keyboard className="h-[18px] w-[18px]" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               className="h-9 w-9 hover:bg-accent/50 transition-transform duration-200"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
@@ -657,37 +626,6 @@ export function Header() {
         </Popover>
       </div>
 
-      {/* Keyboard Shortcuts Dialog */}
-      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Keyboard className="h-5 w-5 text-primary" />
-              Keyboard Shortcuts
-            </DialogTitle>
-            <DialogDescription>Quick shortcuts for faster billing</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-1 pt-2">
-            {shortcuts.map((s) => (
-              <div key={s.key} className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <kbd className="min-w-[48px] text-center px-2 py-1 rounded-md border bg-muted font-mono text-xs font-semibold shadow-sm">
-                    {s.key}
-                  </kbd>
-                  <div>
-                    <p className="text-sm font-medium">{s.label}</p>
-                    <p className="text-xs text-muted-foreground">{s.desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
-            <Zap className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-xs text-muted-foreground">Press <kbd className="px-1 py-0.5 rounded border bg-background font-mono text-[10px]">?</kbd> anytime to show this panel</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </header>
   )
 }

@@ -60,24 +60,6 @@ export function AdminNavbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Keyboard shortcut Cmd+K / Ctrl+K for search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setSearchOpen((prev) => !prev)
-        if (!searchOpen) {
-          setTimeout(() => searchInputRef.current?.focus(), 100)
-        }
-      }
-      if (e.key === 'Escape' && searchOpen) {
-        setSearchOpen(false)
-        setSearchQuery('')
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [searchOpen])
 
   const handleLogout = () => {
     setAdminAuth({
@@ -148,9 +130,6 @@ export function AdminNavbar() {
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="flex-1 text-left">Search pages...</span>
-            <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-white/30 bg-white/[0.06] rounded border border-white/10">
-              ⌘K
-            </kbd>
           </button>
         </div>
 
@@ -295,17 +274,6 @@ export function AdminNavbar() {
                 )}
               </ScrollArea>
 
-              {/* Footer hint */}
-              <div className="flex items-center gap-4 px-4 py-2 border-t border-white/10 text-[10px] text-white/25">
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-white/[0.06] rounded border border-white/10 text-[9px]">↑↓</kbd>
-                  Navigate
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-white/[0.06] rounded border border-white/10 text-[9px]">↵</kbd>
-                  Open
-                </span>
-              </div>
             </div>
           </div>
         </div>
