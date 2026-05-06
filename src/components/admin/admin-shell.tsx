@@ -4,6 +4,7 @@ import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminNavbar } from '@/components/admin/admin-navbar'
+import { AnnouncementBanner } from '@/components/announcement-banner'
 import { AdminLogin } from '@/components/admin/admin-login'
 import { AdminDashboard } from '@/components/admin/admin-dashboard'
 import { AdminUsers } from '@/components/admin/admin-users'
@@ -58,6 +59,7 @@ export function AdminShell() {
         )}
       >
         {/* Top Navbar */}
+        <AnnouncementBanner />
         <AdminNavbar />
 
         {/* Page content */}

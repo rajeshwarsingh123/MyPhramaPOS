@@ -329,11 +329,11 @@ export function AdminAnnouncements() {
                 <SelectTrigger className="bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                  <SelectItem value="info">Info</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="promotion">Promotion</SelectItem>
+                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+                  <SelectItem value="info" className="focus:bg-white/10 focus:text-white text-white">Info</SelectItem>
+                  <SelectItem value="warning" className="focus:bg-white/10 focus:text-white text-white">Warning</SelectItem>
+                  <SelectItem value="maintenance" className="focus:bg-white/10 focus:text-white text-white">Maintenance</SelectItem>
+                  <SelectItem value="promotion" className="focus:bg-white/10 focus:text-white text-white">Promotion</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
+import { AnnouncementBanner } from '@/components/announcement-banner'
 import { useAppStore } from '@/lib/store'
 import { DashboardPage } from '@/components/pages/dashboard'
 import { BillingPage } from '@/components/pages/billing'
@@ -47,6 +48,7 @@ export function AppShell() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <AnnouncementBanner />
         <Header />
         <main className="flex-1 overflow-y-auto scroll-smooth">
           {mounted && PageComponent && (
