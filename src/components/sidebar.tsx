@@ -61,6 +61,7 @@ export function Sidebar() {
     setSidebarOpen,
     sidebarCollapsed,
     toggleSidebarCollapse,
+    currentTenant,
   } = useAppStore()
   const isMobile = useIsMobile()
   const collapsed = isMobile ? false : sidebarCollapsed
@@ -293,7 +294,7 @@ export function Sidebar() {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                Admin · admin@pharmacy.com
+                {currentTenant?.name || 'Admin'} · {currentTenant?.email || 'admin@pharmacy.com'}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -304,8 +305,8 @@ export function Sidebar() {
                 </div>
               </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">{tenantInfo?.name || 'Administrator'}</span>
-                <span className="text-[10px] text-sidebar-foreground/50 truncate">rajeshwarsinghrana16@gmail.com</span>
+                <span className="text-sm font-medium text-sidebar-foreground truncate">{currentTenant?.name || 'Administrator'}</span>
+                <span className="text-[10px] text-sidebar-foreground/50 truncate">{currentTenant?.email || 'admin@pharmacy.com'}</span>
               </div>
             </div>
           )}
