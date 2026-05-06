@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import {
   X,
   Mail,
@@ -386,8 +388,9 @@ function CountdownTimer({ seconds, onExpire }: { seconds: number; onExpire: () =
   )
 }
 
-function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
-  const [step, setStep] = useState<ForgotStep>('enter-email')
+function ForgotPasswordForm({ onBack, initialStep = 'enter-email' }: { onBack: () => void; initialStep?: ForgotStep }) {
+  const [step, setStep] = useState<ForgotStep>(initialStep)
+  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [maskedEmail, setMaskedEmail] = useState('')
   const [userName, setUserName] = useState('')
@@ -530,6 +533,42 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       }
 
       setStep('success')
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle reset via Supabase Recovery Link (no OTP needed)
+  const handleResetPasswordSupabase = async () => {
+    if (!newPassword) {
+      setError('Please enter a new password')
+      return
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    setError('')
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) {
+        setError(error.message || 'Password reset failed')
+        setLoading(false)
+        return
+      }
+
+      setStep('success')
+      toast.success('Password updated successfully!')
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -792,7 +831,11 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(v) => { setConfirmPassword(v); setError('') }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleResetPassword() }}
+                  onKeyDown={(e) => { 
+                    if (e.key === 'Enter') {
+                      initialStep === 'enter-password' ? handleResetPasswordSupabase() : handleResetPassword()
+                    }
+                  }}
                   rightElement={
                     <button
                       type="button"
@@ -850,7 +893,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
               <motion.button
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleResetPassword}
+                onClick={initialStep === 'enter-password' ? handleResetPasswordSupabase : handleResetPassword}
                 disabled={loading || !passwordsMatch || newPassword.length < 6}
                 className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-primary via-emerald-500 to-teal-400 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
               >
@@ -1451,6 +1494,19 @@ type AuthMode = 'login' | 'signup' | 'forgot-password'
 export function AuthPage() {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
   const [mode, setMode] = useState<AuthMode>('login')
+  const [initialForgotStep, setInitialForgotStep] = useState<ForgotStep>('enter-email')
+
+  useEffect(() => {
+    // Detect password reset link from Supabase
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash && (hash.includes('access_token') && hash.includes('type=recovery'))) {
+        setMode('forgot-password')
+        setInitialForgotStep('enter-password')
+        setShowAuth(true)
+      }
+    }
+  }, [setShowAuth])
 
   const isForgotPassword = mode === 'forgot-password'
 
@@ -1546,7 +1602,8 @@ export function AuthPage() {
                 {mode === 'forgot-password' && (
                   <ForgotPasswordForm
                     key="forgot-form"
-                    onBack={() => setMode('login')}
+                    onBack={() => { setMode('login'); setInitialForgotStep('enter-email'); }}
+                    initialStep={initialForgotStep}
                   />
                 )}
               </AnimatePresence>
