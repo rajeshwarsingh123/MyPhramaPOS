@@ -200,7 +200,10 @@ export function AdminDashboard() {
     queryKey: ['admin-dashboard'],
     queryFn: async () => {
       const res = await fetch('/api/admin/dashboard')
-      if (!res.ok) throw new Error('Failed to fetch')
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to fetch dashboard data')
+      }
       return res.json()
     },
     refetchInterval: 30000,
@@ -230,10 +233,22 @@ export function AdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
-        <p className="text-white/70">Failed to load dashboard data</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
-          Try Again
-        </Button>
+        <p className="text-white/70">{(error as Error)?.message || 'Failed to load dashboard data'}</p>
+        {(error as Error)?.message === 'Unauthorized' ? (
+          <Button 
+            onClick={() => {
+              const { setAdminAuth } = useAppStore.getState()
+              setAdminAuth({ isAuthenticated: false, adminId: null, adminName: null, adminEmail: null, adminRole: null, loginTime: null })
+            }} 
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            Login Again
+          </Button>
+        ) : (
+          <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+            Try Again
+          </Button>
+        )}
       </div>
     )
   }

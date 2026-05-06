@@ -445,9 +445,23 @@ export function AdminUsers() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">{(error as Error)?.message || 'Failed to load users'}</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
-          Try Again
-        </Button>
+        <div className="flex gap-3">
+          {(error as Error)?.message === 'Unauthorized' ? (
+            <Button 
+              onClick={() => {
+                const { setAdminAuth } = useAppStore.getState()
+                setAdminAuth({ isAuthenticated: false, adminId: null, adminName: null, adminEmail: null, adminRole: null, loginTime: null })
+              }} 
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              Login Again
+            </Button>
+          ) : (
+            <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+              Try Again
+            </Button>
+          )}
+        </div>
       </div>
     )
   }
