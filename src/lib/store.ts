@@ -134,6 +134,7 @@ export const useAppStore = create<AppState>()(
         currentTenant: state.currentTenant,
         launchedApp: state.launchedApp,
         adminPage: state.adminPage,
+        currentPage: state.currentPage,
       }),
     }
   )
