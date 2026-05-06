@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
       .from('Medicine')
       .select('category')
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
       .not('category', 'is', null)
 
     if (error) throw error

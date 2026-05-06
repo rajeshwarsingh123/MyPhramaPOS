@@ -20,6 +20,8 @@ import {
   LayoutList,
   CalendarDays,
   RotateCcw,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 

@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
       .from('Medicine')
       .select('*, batches:Batch(*)', { count: 'exact' })
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,composition.ilike.%${search}%,companyName.ilike.%${search}%,genericName.ilike.%${search}%`)
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
         unitType: unitType || 'tablet',
         gstPercent: gstPercent !== undefined ? parseFloat(gstPercent) : 5,
         sellingPrice: sellingPrice !== undefined ? parseFloat(sellingPrice) : 0,
-        isActive: true,
       })
       .select()
       .single()

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       const { data: newSetting, error: createError } = await supabase
         .from('StoreSetting')
         .insert({
+          id: `ss_${tenantId}`, // deterministic ID for store setting
           tenantId,
           storeName: 'My Pharmacy',
           dailySalesTarget: 10000,
@@ -89,6 +90,7 @@ export async function PUT(request: NextRequest) {
     const { data: setting, error: upsertError } = await supabase
       .from('StoreSetting')
       .upsert({
+        id: `ss_${tenantId}`,
         tenantId,
         dailySalesTarget: target,
         updatedAt: new Date().toISOString()

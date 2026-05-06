@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
       .from('Medicine')
       .select('id, name, batches:Batch(quantity, expiryDate)')
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
 
     const lowStockAlerts = (medicines || [])
       .map((med: any) => ({
