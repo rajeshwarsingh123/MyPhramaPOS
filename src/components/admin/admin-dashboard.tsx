@@ -183,20 +183,7 @@ export function AdminDashboard() {
   const setAdminPage = useAppStore((s) => s.setAdminPage)
   const [chartPeriod, setChartPeriod] = useState<'12M' | '6M' | '3M'>('12M')
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [supabaseStatus, setSupabaseStatus] = useState<{ configured: boolean; connected: boolean } | null>(null)
 
-  useEffect(() => {
-    const checkSupabase = async () => {
-      try {
-        const res = await fetch('/api/auth/setup-supabase')
-        const data = await res.json()
-        setSupabaseStatus(data)
-      } catch {
-        // ignore
-      }
-    }
-    checkSupabase()
-  }, [])
 
   // Use useSyncExternalStore for a reactive clock (avoids setState-in-effect lint error)
   const subscribe = useCallback((cb: () => void) => {
@@ -276,21 +263,6 @@ export function AdminDashboard() {
           <p className="text-white/50 mt-1">Platform overview and system health</p>
         </div>
         <div className="flex items-center gap-3">
-          {supabaseStatus && (
-            <Badge
-              variant="outline"
-              className={cn(
-                'text-[10px] px-2 py-0.5 flex items-center gap-1.5 cursor-pointer hover:bg-white/5 transition-colors',
-                supabaseStatus.configured 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-              )}
-              onClick={() => setAdminPage('admin-supabase')}
-            >
-              <Database className="h-3 w-3" />
-              {supabaseStatus.configured ? 'Supabase Connected' : 'Connect Supabase'}
-            </Badge>
-          )}
           {lastUpdated && (
             <Badge
               variant="secondary"

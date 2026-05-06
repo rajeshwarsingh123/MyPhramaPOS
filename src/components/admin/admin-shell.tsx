@@ -16,7 +16,6 @@ import { AdminTickets } from '@/components/admin/admin-tickets'
 import { AdminAnnouncements } from '@/components/admin/admin-announcements'
 import { AdminSettings } from '@/components/admin/admin-settings'
 import { AdminPharmacyMonitor } from '@/components/admin/admin-pharmacy-monitor'
-import { SupabaseSetupPage } from '@/components/pages/supabase-setup'
 
 
 const adminPages: Record<string, React.ComponentType> = {
@@ -31,7 +30,6 @@ const adminPages: Record<string, React.ComponentType> = {
   'admin-announcements': AdminAnnouncements,
   'admin-settings': AdminSettings,
   'admin-pharmacy-monitor': AdminPharmacyMonitor,
-  'admin-supabase': SupabaseSetupPage,
 }
 
 export function AdminShell() {
