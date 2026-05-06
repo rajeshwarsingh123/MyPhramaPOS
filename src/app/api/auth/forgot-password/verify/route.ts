@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, isSupabaseConfigured, adminSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
+import { supabase, isSupabaseConfigured, adminSupabase, anonSupabase, hasServiceRoleKey } from '@/lib/supabase/server'
 
 function generateOTP(): string {
   const array = new Uint32Array(1)
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 2. Trigger the reset email
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      const { error: resetError } = await (anonSupabase || supabase).auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo: `${new URL(request.url).origin}/`,
       })
       if (resetError) {
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       .from('PasswordResetToken')
       .select('createdAt')
       .eq('email', normalizedEmail)
-      .gte('createdAt', new Date(Date.now() - 60 * 1000).toISOString())
+      .gte('createdAt', new Date(Date.now() - 10 * 1000).toISOString())
       .order('createdAt', { ascending: false })
       .limit(1)
       .maybeSingle()

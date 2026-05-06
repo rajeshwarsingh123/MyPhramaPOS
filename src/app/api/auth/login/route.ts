@@ -20,26 +20,33 @@ export async function POST(request: NextRequest) {
       })
 
       if (!authError && data.user) {
-        const userMetadata = data.user.user_metadata || {}
-        const isUserAdmin = userMetadata.role === 'admin'
+        // Check if this user exists in the Admin table regardless of Supabase metadata
+        const { data: adminRecord } = await supabase
+          .from('Admin')
+          .select('*')
+          .eq('email', normalizedEmail)
+          .single()
 
-        // Success! Return user data from Supabase session
+        const isUserAdmin = !!adminRecord || data.user.user_metadata?.role === 'admin'
+        const role = adminRecord?.role || data.user.user_metadata?.role || 'tenant'
+
+        // Success! Return user data
         const response = NextResponse.json({
-          id: data.user.id,
-          name: userMetadata.name || 'User',
+          id: adminRecord?.id || data.user.id,
+          name: adminRecord?.name || data.user.user_metadata?.name || 'User',
           email: data.user.email,
-          businessName: userMetadata.businessName || 'Pharmacy',
-          phone: userMetadata.phone || '',
-          role: userMetadata.role || 'tenant',
+          businessName: data.user.user_metadata?.businessName || 'Pharmacy',
+          phone: data.user.user_metadata?.phone || '',
+          role: role,
           userType: isUserAdmin ? 'admin' : 'tenant',
           authProvider: 'supabase',
           status: 'active',
-          plan: 'free',
+          plan: 'pro',
         })
 
-        // Set cookie for session persistence in API routes
+        // Set cookie for session persistence
         if (isUserAdmin) {
-          response.cookies.set('adminId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
+          response.cookies.set('adminId', adminRecord?.id || data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
         } else {
           response.cookies.set('tenantId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
         }
