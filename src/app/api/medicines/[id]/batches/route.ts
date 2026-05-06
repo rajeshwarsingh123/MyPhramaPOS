@@ -18,7 +18,6 @@ export async function POST(
       .select('*')
       .eq('id', medicineId)
       .eq('tenantId', tenantId)
-      .eq('isActive', true)
       .single()
 
     if (medError || !medicine) {
@@ -56,6 +55,7 @@ export async function POST(
     const { data: batch, error: batchError } = await supabase
       .from('Batch')
       .insert({
+        id: crypto.randomUUID(),
         tenantId,
         medicineId,
         batchNumber: batchNumber?.trim() || `BATCH-${Date.now()}`,

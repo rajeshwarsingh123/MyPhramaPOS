@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
     const { data: newSale, error: saleError } = await supabase
       .from('Sale')
       .insert({
+        id: crypto.randomUUID(),
         tenantId,
         customerId: customerId || null,
         doctorName: doctorName || null,
@@ -138,7 +139,12 @@ export async function POST(request: NextRequest) {
     // 5. Create SaleItems
     const { error: itemsError } = await supabase
       .from('SaleItem')
-      .insert(saleItemsData.map(item => ({ ...item, saleId: newSale.id, tenantId })))
+      .insert(saleItemsData.map(item => ({ 
+        ...item, 
+        id: crypto.randomUUID(),
+        saleId: newSale.id, 
+        tenantId 
+      })))
 
     if (itemsError) throw itemsError
 

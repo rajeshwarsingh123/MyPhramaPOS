@@ -90,15 +90,19 @@ export async function POST(request: NextRequest) {
     let totalGst = 0
 
     // 1. Create the Purchase Bill
+    const billId = crypto.randomUUID()
     const { data: bill, error: billErr } = await supabase
       .from('purchase_bills')
       .insert({
+        id: billId,
         tenant_id: tenantId,
         supplier_id: supplierId,
         invoice_no: invoiceNo,
         invoice_date: invoiceDate || new Date().toISOString(),
         payment_type: paymentType || 'cash',
         notes: notes || null,
+        total_amount: 0, // Will update after processing items
+        total_gst: 0,
       })
       .select()
       .single()
@@ -119,7 +123,7 @@ export async function POST(request: NextRequest) {
       totalAmount += itemTotal
       totalGst += itemGst
 
-      // Find or Create Batch (Using PascalCase Batch)
+      // Find or Create Batch (Note: Batch table is PascalCase and uses camelCase columns)
       let batchId: string
       const { data: existingBatch } = await supabase
         .from('Batch')
@@ -145,6 +149,7 @@ export async function POST(request: NextRequest) {
         const { data: newBatch, error: batchErr } = await supabase
           .from('Batch')
           .insert({
+            id: crypto.randomUUID(),
             tenantId: tenantId,
             medicineId: item.medicineId,
             batchNumber: item.batchNumber,
@@ -162,10 +167,11 @@ export async function POST(request: NextRequest) {
         batchId = newBatch.id
       }
 
-      // Create Purchase Item
+      // Create Purchase Item (Note: purchase_items is snake_case)
       const { error: itemErr } = await supabase
         .from('purchase_items')
         .insert({
+          id: crypto.randomUUID(),
           tenant_id: tenantId,
           bill_id: bill.id,
           medicine_id: item.medicineId,
@@ -178,11 +184,6 @@ export async function POST(request: NextRequest) {
         })
       
       if (itemErr) throw itemErr
-
-      // Update Medicine total_stock (Using PascalCase Medicine)
-      // Note: Medicine doesn't have total_stock in schema.prisma!
-      // I'll skip it or check if it exists.
-      // Since schema.prisma doesn't have it, I'll assume we compute it or it's missing.
     }
 
     // 3. Update Bill with totals

@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       const { data: newSettings, error: createError } = await supabase
         .from('StoreSetting')
         .insert({
+          id: `ss_${tenantId}`,
           tenantId,
           storeName: 'My Pharmacy',
           invoicePrefix: 'INV',
@@ -66,6 +67,7 @@ export async function PUT(request: NextRequest) {
     const { data: settings, error } = await supabase
       .from('StoreSetting')
       .upsert({
+        id: `ss_${tenantId}`,
         tenantId,
         storeName: storeName !== undefined ? storeName.trim() : 'My Pharmacy',
         phone: phone?.trim() || null,
