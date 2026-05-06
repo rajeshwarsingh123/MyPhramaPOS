@@ -132,6 +132,8 @@ export const useAppStore = create<AppState>()(
         adminAuth: state.adminAuth,
         adminSidebarCollapsed: state.adminSidebarCollapsed,
         currentTenant: state.currentTenant,
+        launchedApp: state.launchedApp,
+        adminPage: state.adminPage,
       }),
     }
   )

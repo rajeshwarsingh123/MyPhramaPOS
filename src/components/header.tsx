@@ -20,6 +20,8 @@ import {
   XCircle,
   TrendingDown,
   Check,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Badge } from '@/components/ui/badge'
@@ -130,7 +132,7 @@ function formatNotificationTime(timestamp: string): string {
 }
 
 export function Header() {
-  const { toggleSidebar, setCurrentPage, setPendingSearchQuery } = useAppStore()
+  const { toggleSidebar, setCurrentPage, setPendingSearchQuery, setLaunchedApp, currentTenant, setCurrentTenant } = useAppStore()
   const isMobile = useIsMobile()
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
@@ -271,6 +273,19 @@ export function Header() {
     setMatchedPages([])
     setCurrentPage(pageKey as 'dashboard' | 'billing' | 'medicines' | 'stock' | 'purchases' | 'reports' | 'customers' | 'settings')
   }, [setCurrentPage])
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setCurrentTenant(null)
+      setLaunchedApp(false)
+      window.location.reload() // Full reload to clear any remaining state
+    } catch {
+      // Fallback if API fails
+      setCurrentTenant(null)
+      setLaunchedApp(false)
+    }
+  }, [setCurrentTenant, setLaunchedApp])
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -606,6 +621,40 @@ export function Header() {
             </Button>
           </>
         )}
+
+        {/* User Profile Dropdown */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-accent/50 rounded-full ml-1">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-xs font-bold text-primary">
+                  {currentTenant?.name?.[0]?.toUpperCase() || 'U'}
+                </span>
+              </div>
+              {!isMobile && (
+                <div className="flex flex-col items-start text-left">
+                  <span className="text-xs font-semibold max-w-[80px] truncate leading-none">
+                    {currentTenant?.name || 'User'}
+                  </span>
+                </div>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="end">
+            <div className="px-2 py-1.5 mb-1 border-b">
+              <p className="text-xs font-medium text-muted-foreground">Signed in as</p>
+              <p className="text-sm font-semibold truncate">{currentTenant?.email || 'admin@pharmacy.com'}</p>
+            </div>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Keyboard Shortcuts Dialog */}
