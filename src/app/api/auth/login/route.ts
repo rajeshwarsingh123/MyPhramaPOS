@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         const isUserAdmin = userMetadata.role === 'admin'
 
         // Success! Return user data from Supabase session
-        return NextResponse.json({
+        const response = NextResponse.json({
           id: data.user.id,
           name: userMetadata.name || 'User',
           email: data.user.email,
@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
           status: 'active',
           plan: 'free',
         })
+
+        // Set cookie for session persistence in API routes
+        if (isUserAdmin) {
+          response.cookies.set('adminId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
+        } else {
+          response.cookies.set('tenantId', data.user.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
+        }
+
+        return response
       }
 
       // If Supabase auth failed with "Invalid login credentials", stop here
@@ -53,11 +62,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (admin && admin.password === password) {
-       return NextResponse.json({
+       const response = NextResponse.json({
         id: admin.id, name: admin.name, email: admin.email,
         role: admin.role, lastLogin: new Date(), authProvider: 'local',
         userType: 'admin',
       })
+      response.cookies.set('adminId', admin.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
+      return response
     }
 
     // Check Tenant table
@@ -68,13 +79,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (tenant && tenant.passwordHash === password) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         id: tenant.id, name: tenant.name, email: tenant.email,
         businessName: tenant.businessName, phone: tenant.phone,
         plan: tenant.plan, status: tenant.status,
         authProvider: 'local',
         userType: 'tenant',
       })
+      response.cookies.set('tenantId', tenant.id, { path: '/', httpOnly: false, maxAge: 60 * 60 * 24 * 7 })
+      return response
     }
 
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })

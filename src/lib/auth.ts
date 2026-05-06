@@ -37,9 +37,13 @@ export async function getTenantId(req: NextRequest): Promise<string | null> {
       
     if (tenant) return tenant.id
   }
+  // 4. Fallback: Check for tenantId in cookies
+  const tenantIdCookie = req.cookies.get('tenantId')?.value
+  if (tenantIdCookie) return tenantIdCookie
 
   return null
 }
+
 
 /**
  * Gets the current admin info from the request.
@@ -59,5 +63,9 @@ export async function getAdminId(req: NextRequest): Promise<string | null> {
       if (admin) return admin.id
     }
   }
+  // 2. Fallback: Check for adminId in cookies
+  const adminIdCookie = req.cookies.get('adminId')?.value
+  if (adminIdCookie) return adminIdCookie
+
   return null
 }
