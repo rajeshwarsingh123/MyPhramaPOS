@@ -840,22 +840,113 @@ function FinalCTA() {
    ═══════════════════════════════════════════════ */
 
 function LandingFooter() {
+  const footerLinks = [
+    {
+      title: 'Product',
+      links: [
+        { label: 'Features', href: '#features' },
+        { label: 'Live Demo', href: '#demo' },
+        { label: 'Pricing', href: '#pricing' },
+        { label: 'AI Scanning', href: '#features' },
+        { label: 'Mobile App', href: '#usps' },
+      ],
+    },
+    {
+      title: 'Company',
+      links: [
+        { label: 'About Us', href: '#' },
+        { label: 'Careers', href: '#' },
+        { label: 'Contact', href: '#' },
+        { label: 'Blog', href: '#' },
+      ],
+    },
+    {
+      title: 'Resources',
+      links: [
+        { label: 'Documentation', href: '#' },
+        { label: 'Help Center', href: '#' },
+        { label: 'Community', href: '#' },
+        { label: 'Partner Program', href: '#' },
+      ],
+    },
+    {
+      title: 'Legal',
+      links: [
+        { label: 'Privacy Policy', href: '#' },
+        { label: 'Terms of Service', href: '#' },
+        { label: 'Cookie Policy', href: '#' },
+        { label: 'Refund Policy', href: '#' },
+      ],
+    },
+  ]
+
   return (
-    <footer className="border-t border-white/10 py-12">
+    <footer className="relative bg-landing-bg pt-20 pb-10 overflow-hidden">
+      {/* Decorative background glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 rounded-full blur-[120px] -z-10" />
+      
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center ring-1 ring-primary/20">
-              <Cross className="w-4 h-4 text-primary" />
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
+          {/* Brand Column */}
+          <div className="col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 shadow-lg shadow-primary/10">
+                <Cross className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-xl font-bold text-landing-foreground tracking-tight">PharmPOS</span>
             </div>
-            <span className="text-base font-bold text-landing-foreground">PharmPOS</span>
+            <p className="text-sm text-landing-muted leading-relaxed mb-6 max-w-xs">
+              Smart AI-powered pharmacy management for the modern era. Simplify your billing, stock, and reports today.
+            </p>
+            {/* Social Icons Placeholder */}
+            <div className="flex items-center gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="w-8 h-8 rounded-lg glass-landing-card flex items-center justify-center text-white/40 hover:text-primary hover:scale-110 transition-all cursor-pointer">
+                  <div className="w-3.5 h-3.5 bg-current rounded-full opacity-20" />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-6 text-sm text-landing-muted">
-            <a href="#features" className="hover:text-landing-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-landing-foreground transition-colors">Pricing</a>
-            <a href="#testimonials" className="hover:text-landing-foreground transition-colors">Reviews</a>
+
+          {/* Link Columns */}
+          {footerLinks.map((section) => (
+            <div key={section.title} className="space-y-6">
+              <h4 className="text-sm font-bold text-landing-foreground uppercase tracking-wider">
+                {section.title}
+              </h4>
+              <ul className="space-y-4">
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      className="text-sm text-landing-muted hover:text-primary transition-colors duration-200"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <p className="text-xs text-landing-muted/60">
+              © 2026 PharmPOS. All rights reserved.
+            </p>
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] text-emerald-500 font-medium uppercase tracking-widest">Systems Operational</span>
+            </div>
           </div>
-          <p className="text-xs text-landing-muted/60">© 2026 PharmPOS. All rights reserved.</p>
+          
+          <div className="flex items-center gap-4 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all">
+            <div className="px-2 py-1 rounded border border-white/10 text-[10px] font-bold text-white tracking-tighter">VISA</div>
+            <div className="px-2 py-1 rounded border border-white/10 text-[10px] font-bold text-white tracking-tighter">MASTERCARD</div>
+            <div className="px-2 py-1 rounded border border-white/10 text-[10px] font-bold text-white tracking-tighter">UPI</div>
+          </div>
         </div>
       </div>
     </footer>
