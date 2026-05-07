@@ -223,11 +223,11 @@ export function AdminPayments() {
             <Filter className="h-4 w-4 mr-2 text-white/40" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Status</SelectItem>
+            <SelectItem value="active" className="focus:bg-white/10 focus:text-white text-white">Active</SelectItem>
+            <SelectItem value="expired" className="focus:bg-white/10 focus:text-white text-white">Expired</SelectItem>
+            <SelectItem value="cancelled" className="focus:bg-white/10 focus:text-white text-white">Cancelled</SelectItem>
           </SelectContent>
         </Select>
 
@@ -235,10 +235,10 @@ export function AdminPayments() {
           <SelectTrigger className="w-36 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
             <SelectValue placeholder="Plan" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Plans</SelectItem>
-            <SelectItem value="free">Free</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Plans</SelectItem>
+            <SelectItem value="free" className="focus:bg-white/10 focus:text-white text-white">Free</SelectItem>
+            <SelectItem value="pro" className="focus:bg-white/10 focus:text-white text-white">Pro</SelectItem>
           </SelectContent>
         </Select>
 

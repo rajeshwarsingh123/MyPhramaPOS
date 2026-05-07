@@ -808,9 +808,9 @@ export function AdminSettings() {
                   <Timer className="h-4 w-4 mr-2 text-white/40" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
+                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
                   {SESSION_TIMEOUT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
+                    <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white text-white">
                       {opt.label}
                     </SelectItem>
                   ))}

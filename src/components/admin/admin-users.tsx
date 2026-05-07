@@ -628,9 +628,9 @@ export function AdminUsers() {
               <Label>Status</Label>
               <Select value={editForm.status} onValueChange={v => setEditForm({...editForm, status: v})}>
                 <SelectTrigger className="bg-transparent"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-white/10 text-white">
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
+                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+                  <SelectItem value="active" className="focus:bg-white/10 focus:text-white text-white">Active</SelectItem>
+                  <SelectItem value="suspended" className="focus:bg-white/10 focus:text-white text-white">Suspended</SelectItem>
                 </SelectContent>
               </Select>
             </div>

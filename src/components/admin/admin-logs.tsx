@@ -221,13 +221,13 @@ export function AdminLogs() {
             <Filter className="h-4 w-4 mr-2 text-white/40" />
             <SelectValue placeholder="Action" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Actions</SelectItem>
-            <SelectItem value="login">Login</SelectItem>
-            <SelectItem value="error">Error</SelectItem>
-            <SelectItem value="warning">Warning</SelectItem>
-            <SelectItem value="update">Update</SelectItem>
-            <SelectItem value="create">Create</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Actions</SelectItem>
+            <SelectItem value="login" className="focus:bg-white/10 focus:text-white text-white">Login</SelectItem>
+            <SelectItem value="error" className="focus:bg-white/10 focus:text-white text-white">Error</SelectItem>
+            <SelectItem value="warning" className="focus:bg-white/10 focus:text-white text-white">Warning</SelectItem>
+            <SelectItem value="update" className="focus:bg-white/10 focus:text-white text-white">Update</SelectItem>
+            <SelectItem value="create" className="focus:bg-white/10 focus:text-white text-white">Create</SelectItem>
           </SelectContent>
         </Select>
 

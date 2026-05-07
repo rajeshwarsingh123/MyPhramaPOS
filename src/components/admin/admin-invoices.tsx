@@ -207,12 +207,12 @@ export function AdminInvoices() {
           <SelectTrigger className="w-40 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
             <SelectValue placeholder="Payment Mode" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Modes</SelectItem>
-            <SelectItem value="cash">Cash</SelectItem>
-            <SelectItem value="card">Card</SelectItem>
-            <SelectItem value="upi">UPI</SelectItem>
-            <SelectItem value="credit">Credit</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Modes</SelectItem>
+            <SelectItem value="cash" className="focus:bg-white/10 focus:text-white text-white">Cash</SelectItem>
+            <SelectItem value="card" className="focus:bg-white/10 focus:text-white text-white">Card</SelectItem>
+            <SelectItem value="upi" className="focus:bg-white/10 focus:text-white text-white">UPI</SelectItem>
+            <SelectItem value="credit" className="focus:bg-white/10 focus:text-white text-white">Credit</SelectItem>
           </SelectContent>
         </Select>
 

@@ -179,11 +179,11 @@ export function AdminNavbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="text-white/70 focus:text-white focus:bg-white/5 cursor-pointer">
+              <DropdownMenuItem className="text-white focus:bg-white/5 cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-white/70 focus:text-white focus:bg-white/5 cursor-pointer">
+              <DropdownMenuItem className="text-white focus:bg-white/5 cursor-pointer">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Role: {adminAuth.adminRole || 'super_admin'}
               </DropdownMenuItem>

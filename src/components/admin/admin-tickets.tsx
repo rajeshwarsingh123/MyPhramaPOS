@@ -224,12 +224,12 @@ export function AdminTickets() {
             <Filter className="h-4 w-4 mr-2 text-white/40" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Status</SelectItem>
+            <SelectItem value="open" className="focus:bg-white/10 focus:text-white text-white">Open</SelectItem>
+            <SelectItem value="in_progress" className="focus:bg-white/10 focus:text-white text-white">In Progress</SelectItem>
+            <SelectItem value="resolved" className="focus:bg-white/10 focus:text-white text-white">Resolved</SelectItem>
+            <SelectItem value="closed" className="focus:bg-white/10 focus:text-white text-white">Closed</SelectItem>
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -237,12 +237,12 @@ export function AdminTickets() {
             <Filter className="h-4 w-4 mr-2 text-white/40" />
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-            <SelectItem value="all">All Priority</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="urgent">Urgent</SelectItem>
+          <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+            <SelectItem value="all" className="focus:bg-white/10 focus:text-white text-white">All Priority</SelectItem>
+            <SelectItem value="low" className="focus:bg-white/10 focus:text-white text-white">Low</SelectItem>
+            <SelectItem value="medium" className="focus:bg-white/10 focus:text-white text-white">Medium</SelectItem>
+            <SelectItem value="high" className="focus:bg-white/10 focus:text-white text-white">High</SelectItem>
+            <SelectItem value="urgent" className="focus:bg-white/10 focus:text-white text-white">Urgent</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -389,11 +389,11 @@ export function AdminTickets() {
                 <SelectTrigger className="w-40 h-8 text-xs bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
                   <SelectValue placeholder="Change status..." />
                 </SelectTrigger>
-                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
+                  <SelectItem value="open" className="focus:bg-white/10 focus:text-white text-white">Open</SelectItem>
+                  <SelectItem value="in_progress" className="focus:bg-white/10 focus:text-white text-white">In Progress</SelectItem>
+                  <SelectItem value="resolved" className="focus:bg-white/10 focus:text-white text-white">Resolved</SelectItem>
+                  <SelectItem value="closed" className="focus:bg-white/10 focus:text-white text-white">Closed</SelectItem>
                 </SelectContent>
               </Select>
               <Button
