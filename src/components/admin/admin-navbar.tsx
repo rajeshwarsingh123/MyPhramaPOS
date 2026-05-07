@@ -103,10 +103,10 @@ export function AdminNavbar() {
     <>
       <header
         className={cn(
-          'fixed top-0 right-0 z-40 h-14 flex items-center gap-3 px-4 border-b',
+          'fixed top-0 left-0 right-0 z-40 h-14 flex items-center gap-3 px-4 border-b',
           'bg-[oklch(0.12_0.015_250)]/80 backdrop-blur-xl border-[oklch(0.25_0.03_250)]',
-          'transition-[margin-left] duration-200',
-          adminSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
+          'transition-[left] duration-200',
+          adminSidebarCollapsed ? 'lg:left-16' : 'lg:left-64',
         )}
       >
         {/* Mobile hamburger */}
