@@ -39,18 +39,28 @@ const SETTINGS_DEFAULTS: Record<string, string> = {
 
 export async function GET(_request: NextRequest) {
   try {
-    const { data: settings, error } = await supabase
-      .from('PlatformSetting')
-      .select('*')
-      .order('key', { ascending: true })
+    let settings: any[] = []
+    
+    try {
+      const { data, error } = await supabase
+        .from('PlatformSetting')
+        .select('*')
+        .order('key', { ascending: true })
 
-    if (error) throw error
-
-    // Convert to key-value map for easier frontend consumption
-    const settingsMap: Record<string, string> = {}
-    for (const s of settings || []) {
-      settingsMap[s.key] = s.value
+      if (error) {
+        console.warn('PlatformSetting table fetch failed (might not exist):', error.message)
+      } else {
+        settings = data || []
+      }
+    } catch (e) {
+      console.warn('PlatformSetting fetch error:', e)
     }
+
+    // Convert to key-value map
+    const settingsMap: Record<string, string> = {}
+    settings.forEach((s) => {
+      settingsMap[s.key] = s.value
+    })
 
     // Ensure all defaults are present
     for (const [key, defaultValue] of Object.entries(SETTINGS_DEFAULTS)) {
@@ -90,19 +100,44 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Upsert settings one by one (Supabase upsert handles this)
-    const upsertData = Object.entries(settings).map(([key, value]) => ({
-      key,
-      value: String(value),
-      updatedAt: new Date().toISOString()
-    }))
+    // 1. Fetch existing settings to get their IDs
+    const { data: existingSettings } = await supabase
+      .from('PlatformSetting')
+      .select('id, key')
+
+    const idMap: Record<string, string> = {}
+    existingSettings?.forEach(s => {
+      idMap[s.key] = s.id
+    })
+
+    // 2. Prepare upsert data with IDs
+    const upsertData = Object.entries(settings).map(([key, value]) => {
+      const data: any = {
+        key,
+        value: String(value),
+        updatedAt: new Date().toISOString()
+      }
+      
+      // If we have an existing ID, use it. Otherwise, let the DB handle it or provide a new one.
+      // Since the DB might not have a default for cuid(), we generate a UUID-like string.
+      if (idMap[key]) {
+        data.id = idMap[key]
+      } else {
+        data.id = `ps_${key}_${Math.random().toString(36).substring(2, 9)}`
+      }
+      
+      return data
+    })
 
     const { data: updatedSettings, error } = await supabase
       .from('PlatformSetting')
       .upsert(upsertData, { onConflict: 'key' })
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('Settings upsert error:', error)
+      throw error
+    }
 
     return NextResponse.json({
       success: true,
