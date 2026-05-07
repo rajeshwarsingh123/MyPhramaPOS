@@ -89,7 +89,6 @@ interface DashboardData {
     expiringSubscriptions: number
   }
   recentActivity: { type: string; description: string; time: string }[]
-  planDistribution: { free: number; pro: number }
 }
 
 interface TenantAlert {
@@ -168,16 +167,16 @@ function computeAlerts(tenants: TenantRecord[]): TenantAlert[] {
     // Expiring subscription within 7 days
     const activeSub = t.subscriptions.find((s) => s.status === 'active')
     if (activeSub) {
-      const endDate = new Date(activeSub.endDate)
-      if (endDate <= sevenDays && endDate >= now) {
+      const expiryDate = new Date(activeSub.expiryDate)
+      if (expiryDate <= sevenDays && expiryDate >= now) {
         alerts.push({
           id: `sub-${t.id}`,
           businessName: t.businessName,
           type: 'subscription',
           severity: 'warning',
-          message: `Subscription expiring in ${Math.ceil((endDate.getTime() - now.getTime()) / 86400000)} days`,
+          message: `Subscription expiring in ${Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000)} days`,
         })
-      } else if (endDate < now) {
+      } else if (expiryDate < now) {
         alerts.push({
           id: `sub-${t.id}`,
           businessName: t.businessName,
@@ -233,9 +232,9 @@ function getTenantStatus(t: TenantRecord): 'active' | 'warning' | 'offline' {
   if (t.status !== 'active') return 'offline'
   const activeSub = t.subscriptions.find((s) => s.status === 'active')
   if (!activeSub) return 'warning'
-  const endDate = new Date(activeSub.endDate)
-  if (endDate < new Date()) return 'offline'
-  if (endDate <= new Date(Date.now() + 7 * 86400000)) return 'warning'
+  const expiryDate = new Date(activeSub.expiryDate)
+  if (expiryDate < new Date()) return 'offline'
+  if (expiryDate <= new Date(Date.now() + 7 * 86400000)) return 'warning'
   if (new Date(t.updatedAt) < thirtyDaysAgo) return 'warning'
   return 'active'
 }
@@ -513,14 +512,9 @@ export function AdminPharmacyMonitor() {
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <Badge
                             variant="secondary"
-                            className={cn(
-                              'text-[10px] font-medium px-2 py-0',
-                              t.plan === 'pro'
-                                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20'
-                                : 'bg-white/5 text-white/50 border border-white/10',
-                            )}
+                            className="text-[10px] font-medium px-2 py-0 bg-purple-500/15 text-purple-400 border border-purple-500/20"
                           >
-                            {t.plan.toUpperCase()}
+                            YEARLY
                           </Badge>
                           <Badge
                             variant="secondary"
@@ -544,9 +538,9 @@ export function AdminPharmacyMonitor() {
                         </div>
                         <div>
                           <p className="text-white/30 mb-0.5">Plan Expires</p>
-                          <p className={cn('font-medium', activeSub ? (new Date(activeSub.endDate) < new Date(Date.now() + 7 * 86400000) ? 'text-amber-400' : 'text-white/70') : 'text-red-400')}>
+                          <p className={cn('font-medium', activeSub ? (new Date(activeSub.expiryDate) < new Date(Date.now() + 7 * 86400000) ? 'text-amber-400' : 'text-white/70') : 'text-red-400')}>
                             {activeSub
-                              ? new Date(activeSub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+                              ? new Date(activeSub.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
                               : 'No active sub'}
                           </p>
                         </div>

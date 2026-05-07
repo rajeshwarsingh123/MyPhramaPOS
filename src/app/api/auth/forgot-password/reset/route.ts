@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
 
     // Supabase: Admin API (service role key) — direct password update
     if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase) {
-      const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
-        filters: { email: normalizedEmail },
-      })
+      const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers()
 
-      if (!listError && usersData?.users && usersData.users.length > 0) {
-        const userId = usersData.users[0].id
+      const authUser = usersData?.users?.find(u => u.email?.toLowerCase() === normalizedEmail)
+
+      if (!listError && authUser) {
+        const userId = authUser.id
         const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, { password: newPassword })
 
         if (!updateError) {

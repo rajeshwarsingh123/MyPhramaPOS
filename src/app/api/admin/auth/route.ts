@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
     // ── Supabase Auth Path (using admin API) ──
     if (isSupabaseConfigured && hasServiceRoleKey && adminSupabase) {
       // Find user in Supabase Auth
-      const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
-        filters: { email: normalizedEmail },
-      })
+      const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers()
 
-      if (listError || !usersData?.users?.length) {
+      const authUser = usersData?.users?.find(u => u.email?.toLowerCase() === normalizedEmail)
+
+      if (listError || !authUser) {
         // User not in Supabase Auth — auto-create with admin API
         const { data: newUserData, error: createError } = await adminSupabase.auth.admin.createUser({
           email: normalizedEmail,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       }
 
       // User exists in Supabase Auth — update password
-      const userId = usersData.users[0].id
+      const userId = authUser.id
 
       const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, {
         password: password,

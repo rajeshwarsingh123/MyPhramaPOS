@@ -46,8 +46,9 @@ interface Subscription {
   amount: number
   status: string
   startDate: string
-  endDate: string
-  paymentMode: string | null
+  expiryDate: string
+  renewalCount: number
+  paymentStatus: string
   createdAt: string
   updatedAt: string
 }
@@ -56,38 +57,12 @@ function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; label: string }> = {
     active: { color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', label: 'Active' },
     expired: { color: 'bg-red-500/20 text-red-300 border-red-500/30', label: 'Expired' },
-    cancelled: { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', label: 'Cancelled' },
+    suspended: { color: 'bg-amber-500/20 text-amber-300 border-amber-500/30', label: 'Suspended' },
   }
   const c = config[status] ?? { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', label: status }
   return (
     <Badge className={cn(c.color, 'hover:opacity-80')}>{c.label}</Badge>
   )
-}
-
-function PlanBadge({ plan }: { plan: string }) {
-  if (plan === 'pro') {
-    return (
-      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30">
-        Pro
-      </Badge>
-    )
-  }
-  return (
-    <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 hover:bg-gray-500/30">
-      Free
-    </Badge>
-  )
-}
-
-function PaymentModeBadge({ mode }: { mode: string | null }) {
-  if (!mode) return <span className="text-white/30 text-xs">—</span>
-  const config: Record<string, { color: string; label: string }> = {
-    upi: { color: 'text-violet-300', label: 'UPI' },
-    card: { color: 'text-blue-300', label: 'Card' },
-    bank_transfer: { color: 'text-amber-300', label: 'Bank Transfer' },
-  }
-  const c = config[mode] ?? { color: 'text-white/60', label: mode }
-  return <span className={cn('text-xs font-medium', c.color)}>{c.label}</span>
 }
 
 const PAGE_SIZE = 10
@@ -96,8 +71,6 @@ export function AdminSubscriptions() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [planChangeId, setPlanChangeId] = useState<string | null>(null)
-  const [newPlan, setNewPlan] = useState<string>('free')
   const [page, setPage] = useState(1)
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -109,28 +82,42 @@ export function AdminSubscriptions() {
     },
   })
 
-  const changePlanMutation = useMutation({
-    mutationFn: async ({ id, plan }: { id: string; plan: string }) => {
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const res = await fetch(`/api/admin/subscriptions/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ status }),
       })
-      if (!res.ok) throw new Error('Plan change failed')
+      if (!res.ok) throw new Error('Status update failed')
       return res.json()
     },
     onSuccess: () => {
-      toast.success('Plan updated successfully')
+      toast.success('Status updated successfully')
       queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] })
-      setPlanChangeId(null)
-      setNewPlan('free')
     },
-    onError: () => toast.error('Failed to update plan'),
+    onError: () => toast.error('Failed to update status'),
+  })
+
+  const extendMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/subscriptions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extend' }),
+      })
+      if (!res.ok) throw new Error('Extension failed')
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Subscription extended by 1 year')
+      queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] })
+    },
+    onError: () => toast.error('Failed to extend subscription'),
   })
 
   const subscriptions: Subscription[] = data?.subscriptions ?? []
 
-  // Client-side search + pagination
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return subscriptions
     const q = searchQuery.toLowerCase()
@@ -138,8 +125,7 @@ export function AdminSubscriptions() {
       (s) =>
         s.tenant?.name?.toLowerCase().includes(q) ||
         s.tenant?.businessName?.toLowerCase().includes(q) ||
-        s.tenant?.email?.toLowerCase().includes(q) ||
-        s.plan?.toLowerCase().includes(q)
+        s.tenant?.email?.toLowerCase().includes(q)
     )
   }, [subscriptions, searchQuery])
 
@@ -147,48 +133,19 @@ export function AdminSubscriptions() {
   const currentPage = Math.min(page, totalPages)
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  // Summary metrics from ALL subscriptions (not just current page)
-  const totalCount = subscriptions.length
   const activeCount = subscriptions.filter((s) => s.status === 'active').length
   const expiredCount = subscriptions.filter((s) => s.status === 'expired').length
-  const totalRevenue = subscriptions.reduce((sum, s) => sum + (s.amount || 0), 0)
-  const proRevenue = subscriptions
-    .filter((s) => s.plan === 'pro' && s.status === 'active')
-    .reduce((sum, s) => sum + (s.amount || 0), 0)
-
-  // Expiring soon: active subscriptions ending within 30 days
-  const expiringSoon = useMemo(() => {
-    const now = new Date()
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000
-    return subscriptions.filter((s) => {
-      if (s.status !== 'active') return false
-      const end = new Date(s.endDate)
-      return end.getTime() - now.getTime() > 0 && end.getTime() - now.getTime() < thirtyDays
-    })
-  }, [subscriptions])
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <AlertTriangle className="h-12 w-12 text-red-400" />
-        <p className="text-white/70">Failed to load subscriptions</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
-          Try Again
-        </Button>
-      </div>
-    )
-  }
+  const suspendedCount = subscriptions.filter((s) => s.status === 'suspended').length
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <CreditCard className="h-7 w-7 text-purple-400" />
-            Subscriptions
+            Subscription Management
           </h1>
-          <p className="text-white/50 mt-1">Manage all tenant subscriptions and plans</p>
+          <p className="text-white/50 mt-1">Single yearly plan tracking and renewals</p>
         </div>
         <Button onClick={() => refetch()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -196,274 +153,121 @@ export function AdminSubscriptions() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
-              <CreditCard className="h-4 w-4 text-purple-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-white">{totalCount}</p>
-          <p className="text-xs text-white/40 mt-0.5">Total</p>
+          <p className="text-2xl font-bold text-white">{subscriptions.length}</p>
+          <p className="text-xs text-white/40 mt-0.5">Total Users</p>
         </div>
-        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
-            </div>
-          </div>
+        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4 border-emerald-500/20">
           <p className="text-2xl font-bold text-emerald-400">{activeCount}</p>
           <p className="text-xs text-white/40 mt-0.5">Active</p>
         </div>
-        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
-              <AlertTriangle className="h-4 w-4 text-red-400" />
-            </div>
-          </div>
+        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4 border-red-500/20">
           <p className="text-2xl font-bold text-red-400">{expiredCount}</p>
           <p className="text-xs text-white/40 mt-0.5">Expired</p>
         </div>
-        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
-              <Clock className="h-4 w-4 text-amber-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-amber-400">{expiringSoon.length}</p>
-          <p className="text-xs text-white/40 mt-0.5">Expiring Soon</p>
-        </div>
-        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4 col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-              <Users className="h-4 w-4 text-violet-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-violet-400">₹{proRevenue.toLocaleString('en-IN')}</p>
-          <p className="text-xs text-white/40 mt-0.5">Pro MRR</p>
+        <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4 border-amber-500/20">
+          <p className="text-2xl font-bold text-amber-400">{suspendedCount}</p>
+          <p className="text-xs text-white/40 mt-0.5">Suspended</p>
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 max-w-xs w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
           <Input
-            placeholder="Search by name, business, email..."
+            placeholder="Search pharmacies..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-sm text-white placeholder:text-white/25"
+            className="pl-9 h-10 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-sm text-white"
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
-
-        {/* Status Filter */}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 h-9 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white text-sm">
-            <Filter className="h-4 w-4 mr-2 text-white/40" />
+          <SelectTrigger className="w-40 h-10 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="expired">Expired</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
           </SelectContent>
         </Select>
-
-        {/* Expiring Soon Filter */}
-        {expiringSoon.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
-            onClick={() => {
-              setStatusFilter('active')
-              setSearchQuery('')
-            }}
-          >
-            <Clock className="h-3.5 w-3.5 mr-1.5" />
-            {expiringSoon.length} expiring soon
-          </Button>
-        )}
-
-        {statusFilter !== 'all' && (
-          <Button variant="ghost" size="sm" onClick={() => setStatusFilter('all')} className="text-white/40 hover:text-white/70 h-9">
-            <X className="h-4 w-4 mr-1" />
-            Clear
-          </Button>
-        )}
       </div>
 
-      {/* Table */}
-      <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl overflow-hidden">
+      <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl overflow-hidden shadow-2xl">
         <CardContent className="p-0">
           {isLoading ? (
-            <SubscriptionsSkeleton />
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-white/30">
-              <CreditCard className="h-10 w-10 mb-3" />
-              <p className="text-sm font-medium">No subscriptions found</p>
-              <p className="text-xs mt-1">
-                {searchQuery ? 'Try a different search term' : 'Adjust the filter to see more results'}
-              </p>
-            </div>
+            <div className="p-12 flex justify-center"><RefreshCw className="h-8 w-8 text-purple-500 animate-spin" /></div>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-white/5 hover:bg-transparent">
-                      <TableHead className="text-white/40 text-xs font-medium">Tenant</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium">Plan</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium">Amount</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium">Status</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium hidden md:table-cell">Period</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium hidden lg:table-cell">Payment</TableHead>
-                      <TableHead className="text-white/40 text-xs font-medium text-right">Actions</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableHead className="text-white/40 text-xs py-4">Pharmacy Details</TableHead>
+                  <TableHead className="text-white/40 text-xs">Status</TableHead>
+                  <TableHead className="text-white/40 text-xs">Dates</TableHead>
+                  <TableHead className="text-white/40 text-xs text-center">Remaining Days</TableHead>
+                  <TableHead className="text-white/40 text-xs text-center">Renewals</TableHead>
+                  <TableHead className="text-white/40 text-xs text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginated.map((sub) => {
+                  const daysLeft = Math.ceil((new Date(sub.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  return (
+                    <TableRow key={sub.id} className="border-white/5 hover:bg-white/5">
+                      <TableCell>
+                        <p className="text-white font-semibold">{sub.tenant?.businessName || sub.tenant?.name}</p>
+                        <p className="text-xs text-white/40">{sub.tenant?.email}</p>
+                      </TableCell>
+                      <TableCell><StatusBadge status={sub.status} /></TableCell>
+                      <TableCell className="text-xs text-white/50">
+                        <p>S: {new Date(sub.startDate).toLocaleDateString()}</p>
+                        <p>E: {new Date(sub.expiryDate).toLocaleDateString()}</p>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={cn(
+                          "px-2 py-1 rounded text-xs font-bold",
+                          daysLeft <= 0 ? "text-red-400 bg-red-400/10" : 
+                          daysLeft <= 30 ? "text-amber-400 bg-amber-400/10" : 
+                          "text-emerald-400 bg-emerald-400/10"
+                        )}>
+                          {daysLeft > 0 ? `${daysLeft} days` : 'Expired'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center text-white font-medium">{sub.renewalCount || 0}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 text-[10px] bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
+                          onClick={() => extendMutation.mutate(sub.id)}
+                          disabled={extendMutation.isPending}
+                        >
+                          Extend +1y
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className={cn(
+                            "h-8 text-[10px]",
+                            sub.status === 'suspended' 
+                              ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" 
+                              : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          )}
+                          onClick={() => updateStatusMutation.mutate({ 
+                            id: sub.id, 
+                            status: sub.status === 'suspended' ? 'active' : 'suspended' 
+                          })}
+                        >
+                          {sub.status === 'suspended' ? 'Activate' : 'Suspend'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginated.map((sub) => {
-                      const isExpiring = expiringSoon.some((e) => e.id === sub.id)
-                      return (
-                        <TableRow key={sub.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                          <TableCell>
-                            <div>
-                              <p className="text-white font-medium text-sm">{sub.tenant?.name ?? 'Unknown'}</p>
-                              <p className="text-white/40 text-xs">{sub.tenant?.businessName ?? sub.tenant?.email ?? ''}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {planChangeId === sub.id ? (
-                              <Select value={newPlan} onValueChange={setNewPlan}>
-                                <SelectTrigger className="w-24 h-7 text-xs bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                                  <SelectItem value="free">Free</SelectItem>
-                                  <SelectItem value="pro">Pro</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <PlanBadge plan={sub.plan} />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-white font-medium">
-                            {sub.amount > 0 ? `₹${sub.amount.toLocaleString('en-IN')}` : 'Free'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <StatusBadge status={sub.status} />
-                              {isExpiring && (
-                                <span className="text-[10px] text-amber-400 flex items-center gap-0.5">
-                                  <Clock className="h-3 w-3" />
-                                  Soon
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <div className="text-white/50 text-xs">
-                              <p>{new Date(sub.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                              <p className="text-white/30">to {new Date(sub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <PaymentModeBadge mode={sub.paymentMode} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {planChangeId === sub.id ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white"
-                                  onClick={() => changePlanMutation.mutate({ id: sub.id, plan: newPlan })}
-                                  disabled={changePlanMutation.isPending}
-                                >
-                                  {changePlanMutation.isPending ? 'Saving...' : 'Save'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs text-white/40 hover:text-white/70"
-                                  onClick={() => { setPlanChangeId(null); setNewPlan('free') }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                                onClick={() => { setPlanChangeId(sub.id); setNewPlan(sub.plan) }}
-                              >
-                                Change
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-                  <p className="text-xs text-white/40">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-30"
-                      disabled={currentPage <= 1}
-                      onClick={() => setPage(currentPage - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <Button
-                        key={p}
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'h-8 w-8 text-xs',
-                          p === currentPage
-                            ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30'
-                            : 'text-white/40 hover:text-white hover:bg-white/5'
-                        )}
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
-                      </Button>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-30"
-                      disabled={currentPage >= totalPages}
-                      onClick={() => setPage(currentPage + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
+                  )
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

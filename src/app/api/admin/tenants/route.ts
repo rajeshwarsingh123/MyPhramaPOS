@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       .from('Tenant')
       .select(`
         *,
-        subscriptions:Subscription(id, plan, amount, status, startDate, endDate)
+        subscriptions:Subscription(id, plan, amount, status, startDate, expiryDate)
       `, { count: 'exact' })
 
     if (search) {
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         businessPhone: businessPhone?.trim() || null,
         businessAddress: businessAddress?.trim() || null,
         gstNumber: gstNumber?.trim() || null,
-        plan: plan || 'free',
+        plan: plan || 'yearly',
         status: 'active',
         passwordHash: password, // Note: In a real app, this should be hashed if not using Supabase Auth
       })

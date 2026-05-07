@@ -14,6 +14,7 @@ export type Page =
   | 'invoice-history'
   | 'sales-history'
   | 'settings'
+  | 'subscription'
 
 export type AdminPage =
   | 'admin-dashboard'

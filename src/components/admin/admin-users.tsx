@@ -118,17 +118,10 @@ function getPasswordStrength(password: string): { label: string; color: string; 
   return { label: 'Strong', color: 'bg-emerald-500', width: 'w-full' }
 }
 
-function PlanBadge({ plan }: { plan: string }) {
-  if (plan === 'pro') {
-    return (
-      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30">
-        Pro
-      </Badge>
-    )
-  }
+function PlanBadge() {
   return (
-    <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 hover:bg-gray-500/30">
-      Free
+    <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+      Yearly
     </Badge>
   )
 }
@@ -533,17 +526,6 @@ export function AdminUsers() {
                 </button>
               )}
             </div>
-            <Select value={planFilter} onValueChange={(v) => { setPlanFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-40 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white">
-                <Filter className="h-4 w-4 mr-2 text-white/40" />
-                <SelectValue placeholder="Plan Filter" />
-              </SelectTrigger>
-              <SelectContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)]">
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="pro">Pro</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Table */}
@@ -575,7 +557,7 @@ export function AdminUsers() {
                           <TableCell className="text-white font-medium">{user.name}</TableCell>
                           <TableCell className="text-white/60">{user.email}</TableCell>
                           <TableCell className="text-white/60 hidden md:table-cell">{user.businessName}</TableCell>
-                          <TableCell><PlanBadge plan={user.plan} /></TableCell>
+                          <TableCell><PlanBadge /></TableCell>
                           <TableCell><StatusBadge status={user.status} /></TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
@@ -628,7 +610,6 @@ export function AdminUsers() {
               </div>
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" size="sm" onClick={() => handleResetPassword(selectedUser)} className="text-amber-400">Reset Password</Button>
-                <Button variant="outline" size="sm" onClick={() => handleLimits(selectedUser)} className="text-blue-400">Set Limits</Button>
                 <Button variant="outline" size="sm" onClick={() => handleDelete(selectedUser)} className="text-red-400">Delete</Button>
               </div>
             </div>

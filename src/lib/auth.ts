@@ -71,55 +71,28 @@ export async function getAdminId(req: NextRequest): Promise<string | null> {
 }
 
 /**
- * Checks if a tenant has exceeded their plan limits based on platform settings.
+ * Checks if a tenant's subscription is active and not expired.
  */
-export async function checkLimit(tenantId: string, type: 'medicines' | 'bills' | 'staff'): Promise<{ allowed: boolean; error?: string }> {
-  // 1. Get tenant plan
-  const { data: tenant } = await supabase
-    .from('Tenant')
-    .select('plan')
-    .eq('id', tenantId)
+export async function checkSubscription(tenantId: string): Promise<{ allowed: boolean; status: string; daysLeft: number; error?: string }> {
+  const { data: sub } = await supabase
+    .from('Subscription')
+    .select('status, expiryDate')
+    .eq('tenantId', tenantId)
     .single()
 
-  if (!tenant) return { allowed: false, error: 'Tenant not found' }
-  if (tenant.plan === 'pro') return { allowed: true } // Pro plan has no limits
+  if (!sub) return { allowed: false, status: 'none', daysLeft: 0, error: 'Subscription not found' }
 
-  // 2. Get platform settings
-  const { data: settingsData } = await supabase
-    .from('PlatformSetting')
-    .select('key, value')
+  const expiry = new Date(sub.expiryDate)
+  const now = new Date()
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-  const settings: Record<string, string> = {}
-  settingsData?.forEach(s => { settings[s.key] = s.value })
-
-  // 3. Check specific limits
-  if (type === 'medicines') {
-    const limit = parseInt(settings['max_free_medicines'] || '50')
-    const { count } = await supabase
-      .from('Medicine')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenantId', tenantId)
-
-    if ((count || 0) >= limit) {
-      return { allowed: false, error: `Medicine limit reached (${limit}). Please upgrade to Pro.` }
-    }
+  if (sub.status === 'suspended') {
+    return { allowed: false, status: 'suspended', daysLeft, error: 'Your account has been suspended. Please contact support.' }
   }
 
-  if (type === 'bills') {
-    const limit = parseInt(settings['max_free_bills_per_day'] || '100')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const { count } = await supabase
-      .from('Sale')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenantId', tenantId)
-      .gte('saleDate', today.toISOString())
-
-    if ((count || 0) >= limit) {
-      return { allowed: false, error: `Daily billing limit reached (${limit}). Please upgrade to Pro.` }
-    }
+  if (now > expiry) {
+    return { allowed: false, status: 'expired', daysLeft, error: 'Your subscription has expired. Please renew to continue.' }
   }
 
-  return { allowed: true }
+  return { allowed: true, status: sub.status, daysLeft }
 }

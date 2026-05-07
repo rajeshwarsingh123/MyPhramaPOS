@@ -41,16 +41,7 @@ export async function POST(request: NextRequest) {
 
     // ── Supabase Auth Path ──
     if (isSupabaseConfigured && adminSupabase && hasServiceRoleKey) {
-      // 1. Check if user already exists in Supabase
-      const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
-        filters: { email: normalizedEmail },
-      })
-      
-      if (!listError && usersData?.users?.length > 0) {
-        return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
-      }
-
-      // 2. Create new user using admin API
+      // 1. Create new user using admin API
       // Note: Database records (Tenant, Subscription, etc.) are created automatically 
       // by the 'on_auth_user_created' SQL trigger we added to Supabase.
       const { data: newUser, error: createError } = await adminSupabase.auth.admin.createUser({
@@ -66,6 +57,9 @@ export async function POST(request: NextRequest) {
       })
 
       if (createError) {
+        if (createError.message.includes('already registered') || createError.message.includes('already exists')) {
+          return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
+        }
         console.error('Supabase admin create error:', createError)
         return NextResponse.json({ error: createError.message }, { status: 400 })
       }

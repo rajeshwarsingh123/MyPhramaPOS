@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       supabase.from('Sale').select('*', { count: 'exact', head: true }),
       supabase.from('Medicine').select('*', { count: 'exact', head: true }),
       supabase.from('SupportTicket').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-      supabase.from('Subscription').select('*', { count: 'exact', head: true }).eq('status', 'active').lte('endDate', thirtyDaysFromNow.toISOString()).gte('endDate', today.toISOString())
+      supabase.from('Subscription').select('*', { count: 'exact', head: true }).eq('status', 'active').lte('expiryDate', thirtyDaysFromNow.toISOString()).gte('expiryDate', today.toISOString())
     ])
 
     const totalRevenue = (allSubscriptions || []).reduce((sum, s) => sum + (s.amount || 0), 0)
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     for (const s of (recentSubscriptions || [])) {
       activities.push({
         type: 'subscription',
-        description: `${(s.tenant as any).businessName} subscribed to ${s.plan?.toUpperCase()} plan`,
+        description: `${(s.tenant as any).businessName} renewed yearly subscription`,
         time: formatTimeAgo(s.createdAt),
       })
     }
@@ -106,12 +106,6 @@ export async function GET(request: NextRequest) {
       .order('createdAt', { ascending: false })
       .limit(10)
 
-    // ─── Plan Distribution ──────────────────────────────
-    const { data: tenantsForPlans } = await supabase.from('Tenant').select('plan')
-    const planDistribution = {
-      free: (tenantsForPlans || []).filter(t => t.plan === 'free').length,
-      pro: (tenantsForPlans || []).filter(t => t.plan === 'pro').length,
-    }
 
     return NextResponse.json({
       stats: {
@@ -130,7 +124,6 @@ export async function GET(request: NextRequest) {
       recentActivity,
       revenueTrend, // Simplified for now
       recentLogs: recentLogs || [],
-      planDistribution,
     })
   } catch (error) {
     console.error('GET /api/admin/dashboard error:', error)

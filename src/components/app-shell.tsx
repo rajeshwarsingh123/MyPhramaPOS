@@ -17,6 +17,10 @@ import { SalesReturnsPage } from '@/components/pages/sales-returns'
 import { SettingsPage } from '@/components/pages/settings'
 import { InvoiceHistoryPage } from '@/components/pages/invoice-history'
 import { SalesHistoryPage } from '@/components/pages/sales-history'
+import { SubscriptionPage } from '@/components/pages/subscription'
+import { SubscriptionLock } from '@/components/subscription-lock'
+import { SubscriptionBanner } from '@/components/subscription-banner'
+import { useQuery } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 
 const pages: Record<string, React.ComponentType> = {
@@ -32,11 +36,19 @@ const pages: Record<string, React.ComponentType> = {
   'invoice-history': InvoiceHistoryPage,
   'sales-history': SalesHistoryPage,
   settings: SettingsPage,
+  subscription: SubscriptionPage,
 }
 
 export function AppShell() {
-  const { currentPage } = useAppStore()
+  const { currentPage, currentTenant } = useAppStore()
   const PageComponent = pages[currentPage]
+
+  const { data: sub } = useQuery({
+    queryKey: ['subscription', currentTenant?.id],
+    queryFn: () => fetch('/api/subscription/status').then(res => res.json()),
+    enabled: !!currentTenant?.id,
+    staleTime: 1000 * 60 * 5 // 5 mins
+  })
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -44,13 +56,20 @@ export function AppShell() {
     () => false
   )
 
+  const isExpired = sub?.status === 'expired' || (sub?.expiryDate && new Date(sub.expiryDate) < new Date())
+  const isSuspended = sub?.status === 'suspended'
+  const isLocked = (isExpired || isSuspended) && !['subscription', 'dashboard', 'settings'].includes(currentPage)
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <SubscriptionBanner />
         <AnnouncementBanner />
         <Header />
-        <main className="flex-1 overflow-y-auto scroll-smooth">
+        <main className="flex-1 overflow-y-auto scroll-smooth relative">
+          {isLocked && <SubscriptionLock />}
+          
           {mounted && PageComponent && (
             <div key={currentPage} className="page-transition animate-in fade-in-0 duration-300">
               <PageComponent />

@@ -26,7 +26,14 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     }
 
-    // 2. Iterate and sync
+    // 2. Fetch all existing users from Supabase Auth once (up to 1000)
+    const { data: usersData, error: listError } = await adminSupabase.auth.admin.listUsers({
+      perPage: 1000
+    })
+    if (listError) throw listError
+    const allAuthUsers = usersData?.users || []
+
+    // 3. Iterate and sync
     for (const tenant of (tenants || [])) {
       if (tenant.passwordHash?.startsWith('supabase:')) {
         results.alreadySynced++
@@ -36,12 +43,8 @@ export async function POST(request: NextRequest) {
       try {
         const normalizedEmail = tenant.email.trim().toLowerCase()
 
-        // Check if user already exists in Supabase Auth by email
-        const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
-
-        if (listError) throw listError
-
-        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === normalizedEmail)
+        // Check if user already exists in Supabase Auth by email from our pre-fetched list
+        const existingUser = allAuthUsers.find(u => u.email?.toLowerCase() === normalizedEmail)
 
         let supabaseUserId: string
 

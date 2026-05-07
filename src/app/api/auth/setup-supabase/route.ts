@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
 
     // Strategy 1: Admin API (service role key) — auto-confirmed, no email needed
     if (hasServiceRoleKey && adminSupabase) {
-      const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers({
-        filters: { email: normalizedEmail },
-      })
+      const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
 
-      if (!listError && existingUsers?.users?.length > 0) {
-        const userId = existingUsers.users[0].id
+      const authUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === normalizedEmail)
+
+      if (!listError && authUser) {
+        const userId = authUser.id
         const { error: updateError } = await adminSupabase.auth.admin.updateUserById(userId, {
           password: password,
           email_confirm: true,

@@ -48,11 +48,10 @@ export async function POST(request: NextRequest) {
     if (isSupabaseConfigured) {
       // 1. Ensure user exists in Supabase Auth (Auto-sync if missing)
       if (adminSupabase && hasServiceRoleKey) {
-        const { data: usersData } = await adminSupabase.auth.admin.listUsers({
-          filters: { email: normalizedEmail },
-        })
+        const { data: usersData } = await adminSupabase.auth.admin.listUsers()
+        const authUser = usersData?.users?.find(u => u.email?.toLowerCase() === normalizedEmail)
 
-        if (!usersData?.users || usersData.users.length === 0) {
+        if (!authUser) {
           // User missing in Supabase, create them now so reset link works
           const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'
           await adminSupabase.auth.admin.createUser({

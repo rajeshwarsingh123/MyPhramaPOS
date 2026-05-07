@@ -22,15 +22,32 @@ export async function PUT(
       )
     }
 
-    const { plan, status, amount, startDate, endDate, paymentMode } = body
+    const { action, status, amount, expiryDate } = body
 
     const updateData: any = {}
-    if (plan !== undefined) updateData.plan = plan
+    
+    if (action === 'extend') {
+      const currentExpiry = new Date(existing.expiryDate || existing.endDate)
+      const newExpiry = new Date(currentExpiry)
+      newExpiry.setFullYear(newExpiry.getFullYear() + 1)
+      
+      updateData.expiryDate = newExpiry.toISOString()
+      updateData.status = 'active'
+      updateData.renewalCount = (existing.renewalCount || 0) + 1
+      
+      // Log history
+      await supabase.from('SubscriptionHistory').insert({
+        tenantId: existing.tenantId,
+        startDate: currentExpiry.toISOString(),
+        expiryDate: newExpiry.toISOString(),
+        amount: amount || 0,
+        paymentMode: 'admin_manual',
+      })
+    }
+
     if (status !== undefined) updateData.status = status
-    if (amount !== undefined) updateData.amount = parseFloat(amount)
-    if (startDate !== undefined) updateData.startDate = new Date(startDate).toISOString()
-    if (endDate !== undefined) updateData.endDate = new Date(endDate).toISOString()
-    if (paymentMode !== undefined) updateData.paymentMode = paymentMode
+    if (expiryDate !== undefined) updateData.expiryDate = new Date(expiryDate).toISOString()
+    
     updateData.updatedAt = new Date().toISOString()
 
     const { data: subscription, error: updateError } = await supabase
@@ -41,20 +58,6 @@ export async function PUT(
       .single()
 
     if (updateError) throw updateError
-
-    // If plan changed, update tenant plan too
-    if (plan !== undefined && plan !== existing.plan) {
-      await supabase
-        .from('Tenant')
-        .update({ plan })
-        .eq('id', existing.tenantId)
-
-      await supabase.from('SystemLog').insert({
-        tenantId: existing.tenantId,
-        action: 'Plan changed',
-        details: `Subscription plan changed from ${existing.plan} to ${plan}`,
-      })
-    }
 
     return NextResponse.json(subscription)
   } catch (error) {

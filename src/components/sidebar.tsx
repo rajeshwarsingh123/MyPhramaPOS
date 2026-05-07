@@ -50,6 +50,7 @@ const secondaryNavItems: { id: Page; label: string; icon: React.ElementType; bad
 ]
 
 const settingsNavItems: { id: Page; label: string; icon: React.ElementType; badge?: string }[] = [
+  { id: 'subscription', label: 'Subscription', icon: CreditCard },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 

@@ -217,7 +217,7 @@ model Tenant {
   businessPhone   String?
   businessAddress String?
   gstNumber       String?
-  plan            String          @default("free")
+  plan            String          @default("yearly")
   status          String          @default("active")
   passwordHash    String
   createdAt       DateTime        @default(now())
@@ -230,26 +230,42 @@ model Tenant {
   sales           Sale[]
   storeSetting    StoreSetting?
   subscriptions   Subscription[]
+  subscriptionHistory SubscriptionHistory[]
   suppliers       Supplier[]
   supportTickets  SupportTicket[]
   systemLogs      SystemLog[]
 }
 
 model Subscription {
-  id          String   @id @default(cuid())
-  tenantId    String
-  plan        String   @default("free")
-  amount      Float    @default(0)
-  status      String   @default("active")
-  startDate   DateTime @default(now())
-  endDate     DateTime
-  paymentMode String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  plan          String   @default("yearly")
+  amount        Float    @default(0)
+  status        String   @default("active") // active, expired, suspended
+  startDate     DateTime @default(now())
+  expiryDate    DateTime
+  paymentStatus String   @default("paid") // paid, pending
+  renewalCount  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([status])
+}
+
+model SubscriptionHistory {
+  id            String   @id @default(cuid())
+  tenantId      String
+  startDate     DateTime
+  expiryDate    DateTime
+  amount        Float
+  paymentMode   String?
+  transactionId String?
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 model SupportTicket {
