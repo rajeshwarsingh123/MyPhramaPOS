@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
 import {
   Table,
   TableBody,
@@ -34,8 +37,13 @@ import {
   Clock,
   TrendingUp,
   Users,
+  Crown,
+  Save,
+  RotateCcw,
+  Info,
+  Loader2,
 } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 
 interface Subscription {
@@ -67,11 +75,98 @@ function StatusBadge({ status }: { status: string }) {
 
 const PAGE_SIZE = 10
 
+const PRO_FEATURE_OPTIONS = [
+  { id: 'billing', label: 'Billing & POS' },
+  { id: 'inventory', label: 'Inventory Management' },
+  { id: 'advanced_reports', label: 'Advanced Reports & Analytics' },
+  { id: 'ai_scan', label: 'AI Prescription Scan' },
+  { id: 'bulk_import', label: 'Bulk Import' },
+  { id: 'export_reports', label: 'Export Reports (PDF/Excel)' },
+  { id: 'custom_branding', label: 'Custom Branding' },
+  { id: 'api_access', label: 'API Access' },
+  { id: 'multi_user', label: 'Multi User (Unlimited)' },
+  { id: 'priority_support', label: 'Priority Support' },
+]
+
+function parseFeaturesList(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 export function AdminSubscriptions() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
+
+  // --- Plan Configuration State ---
+  const [planPrice, setPlanPrice] = useState('4999')
+  const [proFeatures, setProFeatures] = useState<string[]>([])
+  const [isPlanDirty, setIsPlanDirty] = useState(false)
+
+  // Fetch all settings to get the plan configuration
+  const { data: settingsData, isLoading: isSettingsLoading } = useQuery({
+    queryKey: ['platform-settings'],
+    queryFn: () => fetch('/api/admin/settings').then((r) => r.json()),
+  })
+
+  useEffect(() => {
+    if (settingsData?.settings) {
+      const s = settingsData.settings
+      setPlanPrice(s.pro_plan_price_yearly || '4999')
+      setProFeatures(parseFeaturesList(s.pro_plan_features || '[]'))
+      setIsPlanDirty(false)
+    }
+  }, [settingsData])
+
+  const savePlanMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            pro_plan_price_yearly: planPrice,
+            pro_plan_features: JSON.stringify(proFeatures),
+          },
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save plan')
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Subscription plan updated successfully')
+      setIsPlanDirty(false)
+      queryClient.invalidateQueries({ queryKey: ['platform-settings'] })
+    },
+    onError: () => toast.error('Failed to update plan configuration'),
+  })
+
+  const toggleFeature = useCallback((id: string) => {
+    setProFeatures((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      setIsPlanDirty(true)
+      return next
+    })
+  }, [])
+
+  const handlePriceChange = (v: string) => {
+    setPlanPrice(v)
+    setIsPlanDirty(true)
+  }
+
+  const resetPlan = () => {
+    if (settingsData?.settings) {
+      const s = settingsData.settings
+      setPlanPrice(s.pro_plan_price_yearly || '4999')
+      setProFeatures(parseFeaturesList(s.pro_plan_features || '[]'))
+      setIsPlanDirty(false)
+    }
+  }
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-subscriptions', statusFilter],
@@ -147,11 +242,125 @@ export function AdminSubscriptions() {
           </h1>
           <p className="text-white/50 mt-1">Single yearly plan tracking and renewals</p>
         </div>
-        <Button onClick={() => refetch()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => refetch()} variant="outline" className="border-white/10 text-white/70 hover:bg-white/5">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh List
+          </Button>
+        </div>
       </div>
+
+      {/* ========== GLOBAL PLAN CONFIGURATION ========== */}
+      <Card className="bg-[oklch(0.18_0.02_250)] border border-purple-500/20 rounded-xl overflow-hidden shadow-2xl relative">
+        <div className="absolute top-0 left-0 w-1 h-full bg-purple-500" />
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-purple-400" />
+                <h2 className="text-lg font-bold text-white">Yearly Professional Plan</h2>
+                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px] uppercase tracking-wider px-2">
+                  Active Plan
+                </Badge>
+              </div>
+              <p className="text-sm text-white/40">Configure the price and features for all pharmacies</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isPlanDirty && (
+                <Button 
+                  onClick={resetPlan} 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white/40 hover:text-white/60"
+                  disabled={savePlanMutation.isPending}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Discard
+                </Button>
+              )}
+              <Button 
+                onClick={() => savePlanMutation.mutate()} 
+                disabled={!isPlanDirty || savePlanMutation.isPending}
+                className={cn(
+                  "h-10 px-6 font-bold transition-all",
+                  isPlanDirty 
+                    ? "bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-500/20" 
+                    : "bg-white/5 text-white/40 cursor-not-allowed"
+                )}
+              >
+                {savePlanMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {isPlanDirty ? 'Save Plan Changes' : 'Plan is Up-to-date'}
+              </Button>
+            </div>
+          </div>
+
+          <Separator className="bg-white/5 my-6" />
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Price Setting */}
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-white/70 text-sm font-medium">Yearly Subscription Price</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                    ₹
+                  </span>
+                  <Input
+                    type="number"
+                    value={planPrice}
+                    onChange={(e) => handlePriceChange(e.target.value)}
+                    className="pl-7 h-11 bg-[oklch(0.14_0.02_250)] border-[oklch(0.28_0.03_250)] text-white text-lg font-bold"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 text-xs">
+                    per year
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/30 flex items-center gap-1.5 pt-1">
+                  <Info className="h-3 w-3" />
+                  This price will be shown on the landing page and tenant portal.
+                </p>
+              </div>
+            </div>
+
+            {/* Features Selection */}
+            <div className="lg:col-span-2 space-y-4">
+              <Label className="text-white/70 text-sm font-medium">Included Features</Label>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {PRO_FEATURE_OPTIONS.map((feat) => (
+                  <label
+                    key={feat.id}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                      proFeatures.includes(feat.id)
+                        ? 'bg-purple-500/10 border-purple-500/30 ring-1 ring-purple-500/20'
+                        : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]',
+                    )}
+                  >
+                    <Checkbox
+                      checked={proFeatures.includes(feat.id)}
+                      onCheckedChange={() => toggleFeature(feat.id)}
+                      className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <span
+                      className={cn(
+                        'text-xs font-medium',
+                        proFeatures.includes(feat.id) ? 'text-white' : 'text-white/40',
+                      )}
+                    >
+                      {feat.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">

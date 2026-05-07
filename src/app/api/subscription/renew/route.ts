@@ -38,12 +38,21 @@ export async function POST(req: NextRequest) {
 
     if (updateError) throw updateError
 
-    // 4. Record History
+    // 4. Fetch current price for history
+    const { data: priceSetting } = await supabase
+      .from('PlatformSetting')
+      .select('value')
+      .eq('key', 'pro_plan_price_yearly')
+      .single()
+    
+    const amount = parseInt(priceSetting?.value || '4999', 10)
+
+    // 5. Record History
     await supabase.from('SubscriptionHistory').insert({
       tenantId,
       startDate: baseDate.toISOString(),
       expiryDate: newExpiry.toISOString(),
-      amount: 4999,
+      amount,
       paymentMode: 'upi_mock', // Simulated payment
     })
 

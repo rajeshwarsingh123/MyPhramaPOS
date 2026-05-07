@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion'
 import { useRef, useState, useEffect, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import {
   Receipt,
@@ -716,6 +717,21 @@ const plans = [
 
 function PricingSection() {
   const setShowAuth = useAppStore((s) => s.setShowAuth)
+  const { data: planData, isLoading } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => fetch('/api/public-settings').then(res => res.json())
+  })
+
+  const displayPrice = planData?.price || '4,999'
+  const displayFeatures = planData?.features?.length > 0 ? planData.features : [
+    'Unlimited billing & medicines',
+    'AI-powered bill scanning',
+    'Advanced GST reports & analytics',
+    'Multi-device cloud sync',
+    'Real-time inventory alerts',
+    'Priority support & data backup',
+    'Customer & supplier management'
+  ]
 
   return (
     <Section className="py-24 lg:py-32 relative" id="pricing">
@@ -731,48 +747,39 @@ function PricingSection() {
         </div>
 
         <motion.div variants={staggerContainer} className="flex justify-center max-w-lg mx-auto">
-          {plans.map((plan) => (
-            <motion.div
-              key={plan.name}
-              variants={fadeUp}
-              whileHover={{ y: -6 }}
-              className={`relative rounded-2xl p-8 ${plan.popular ? 'glass-landing-card-primary' : 'glass-landing-card'}`}
+          <motion.div
+            variants={fadeUp}
+            whileHover={{ y: -6 }}
+            className="relative rounded-2xl p-8 glass-landing-card-primary w-full"
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary to-emerald-400 text-xs font-bold text-white shadow-lg shadow-primary/30">
+              Professional Plan
+            </div>
+            <h3 className="text-xl font-bold text-landing-foreground mb-1">Professional</h3>
+            <p className="text-sm text-landing-muted mb-6">Complete pharmacy management solution</p>
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-4xl font-extrabold text-landing-foreground">₹{displayPrice}</span>
+              <span className="text-sm text-landing-muted">/year</span>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowAuth(true)}
+              className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 bg-gradient-to-r from-primary to-emerald-400 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
             >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary to-emerald-400 text-xs font-bold text-white shadow-lg shadow-primary/30">
-                  Most Popular
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-landing-foreground mb-1">{plan.name}</h3>
-              <p className="text-sm text-landing-muted mb-6">{plan.desc}</p>
-              <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-4xl font-extrabold text-landing-foreground">₹{plan.price}</span>
-                {plan.period && <span className="text-sm text-landing-muted">{plan.period}</span>}
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setShowAuth(true)}
-                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                  plan.popular
-                    ? 'bg-gradient-to-r from-primary to-emerald-400 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40'
-                    : 'glass-landing-card text-white/90 hover:text-white'
-                }`}
-              >
-                {plan.cta}
-              </motion.button>
-              <ul className="mt-6 space-y-3">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-landing-muted">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                      <Check className="w-2.5 h-2.5 text-emerald-400" />
-                    </div>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+              Get Started Now
+            </motion.button>
+            <ul className="mt-6 space-y-3">
+              {displayFeatures.map((f: string) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-landing-muted">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                  </div>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         </motion.div>
       </div>
     </Section>

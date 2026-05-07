@@ -19,6 +19,11 @@ export function SubscriptionPage() {
     enabled: !!currentTenant?.id
   })
 
+  const { data: planData } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => fetch('/api/public-settings').then(res => res.json())
+  })
+
   const renewMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/subscription/renew', { method: 'POST' })
@@ -136,9 +141,9 @@ export function SubscriptionPage() {
             <CardDescription className="text-white/60">Everything included</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-3xl font-black text-white">₹4,999<span className="text-sm font-normal text-white/40">/year</span></div>
+            <div className="text-3xl font-black text-white">₹{planData?.price || '4,999'}<span className="text-sm font-normal text-white/40">/year</span></div>
             <div className="space-y-3">
-              {[
+              {(planData?.features?.length > 0 ? planData.features : [
                 'Unlimited Billing',
                 'Unlimited Medicines',
                 'Full GST Reports',
@@ -146,7 +151,7 @@ export function SubscriptionPage() {
                 'Stock Management',
                 'Priority Support',
                 'Cloud Backup'
-              ].map(feat => (
+              ]).map((feat: string) => (
                 <div key={feat} className="flex items-center gap-2 text-xs text-white/70">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                   {feat}
