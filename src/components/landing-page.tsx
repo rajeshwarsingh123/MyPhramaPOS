@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'fra
 import { useRef, useState, useEffect, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
+import Link from 'next/link'
 import {
   Receipt,
   Package,
@@ -872,10 +873,10 @@ function LandingFooter() {
     {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
-        { label: 'Refund Policy', href: '#' },
+        { label: 'Privacy Policy', href: '/privacy' },
+        { label: 'Terms of Service', href: '/terms' },
+        { label: 'Cookie Policy', href: '/cookies' },
+        { label: 'Refund Policy', href: '/refund' },
       ],
     },
   ]
@@ -917,12 +918,12 @@ function LandingFooter() {
               <ul className="space-y-4">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <a
+                    <Link
                       href={link.href}
                       className="text-sm text-landing-muted hover:text-primary transition-colors duration-200"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
