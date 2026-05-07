@@ -696,20 +696,20 @@ function TestimonialSection() {
 
 const plans = [
   {
-    name: 'Free',
-    price: '0',
-    desc: 'Perfect for small pharmacies getting started',
-    features: ['Up to 500 medicines', 'Basic billing', 'Stock tracking', 'Expiry alerts', 'Single device'],
-    cta: 'Get Started',
-    popular: false,
-  },
-  {
-    name: 'Pro',
-    price: '499',
-    period: '/month',
-    desc: 'For growing pharmacies that need more power',
-    features: ['Unlimited medicines', 'AI Bill Scanning', 'GST Reports', 'Multi-device', 'Priority support', 'Data backup', 'Customer management'],
-    cta: 'Start Pro Trial',
+    name: 'Professional',
+    price: '4,999',
+    period: '/year',
+    desc: 'Complete pharmacy management solution',
+    features: [
+      'Unlimited billing & medicines',
+      'AI-powered bill scanning',
+      'Advanced GST reports & analytics',
+      'Multi-device cloud sync',
+      'Real-time inventory alerts',
+      'Priority support & data backup',
+      'Customer & supplier management'
+    ],
+    cta: 'Get Started Now',
     popular: true,
   },
 ]
@@ -730,7 +730,7 @@ function PricingSection() {
           </motion.p>
         </div>
 
-        <motion.div variants={staggerContainer} className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+        <motion.div variants={staggerContainer} className="flex justify-center max-w-lg mx-auto">
           {plans.map((plan) => (
             <motion.div
               key={plan.name}
