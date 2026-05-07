@@ -173,7 +173,7 @@ export function AdminTickets() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load tickets</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -186,7 +186,7 @@ export function AdminTickets() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <MessageSquare className="h-7 w-7 text-purple-400" />
+            <MessageSquare className="h-7 w-7 text-primary" />
             Support Tickets
           </h1>
           <p className="text-white/50 mt-1">{tickets.length} tickets • {openCount} open • {inProgressCount} in progress</p>
@@ -362,11 +362,11 @@ export function AdminTickets() {
                       key={idx}
                       className={cn(
                         'p-3 rounded-lg border border-white/5',
-                        reply.author === 'admin' ? 'bg-purple-500/5 border-purple-500/10' : 'bg-white/[0.02]'
+                        reply.author === 'admin' ? 'bg-primary/5 border-primary/10' : 'bg-white/[0.02]'
                       )}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className={cn('text-xs font-medium', reply.author === 'admin' ? 'text-purple-400' : 'text-white/60')}>
+                        <span className={cn('text-xs font-medium', reply.author === 'admin' ? 'text-primary' : 'text-white/60')}>
                           {reply.author === 'admin' ? '🛡 Admin' : reply.author}
                         </span>
                         <span className="text-[10px] text-white/30">{reply.time}</span>
@@ -419,7 +419,7 @@ export function AdminTickets() {
               <Button
                 onClick={handleSendReply}
                 disabled={!replyText.trim() || replyMutation.isPending}
-                className="bg-purple-600 hover:bg-purple-700 text-white self-end"
+                className="bg-primary hover:bg-primary/80 text-white self-end"
               >
                 <Send className="h-4 w-4 mr-1" />
                 {replyMutation.isPending ? 'Sending...' : 'Send'}

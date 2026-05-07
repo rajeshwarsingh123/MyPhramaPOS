@@ -237,7 +237,7 @@ export function AdminSubscriptions() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <CreditCard className="h-7 w-7 text-purple-400" />
+            <CreditCard className="h-7 w-7 text-primary" />
             Subscription Management
           </h1>
           <p className="text-white/50 mt-1">Single yearly plan tracking and renewals</p>
@@ -251,15 +251,15 @@ export function AdminSubscriptions() {
       </div>
 
       {/* ========== GLOBAL PLAN CONFIGURATION ========== */}
-      <Card className="bg-[oklch(0.18_0.02_250)] border border-purple-500/20 rounded-xl overflow-hidden shadow-2xl relative">
-        <div className="absolute top-0 left-0 w-1 h-full bg-purple-500" />
+      <Card className="bg-[oklch(0.18_0.02_250)] border border-primary/20 rounded-xl overflow-hidden shadow-2xl relative">
+        <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-purple-400" />
+                <Crown className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold text-white">Yearly Professional Plan</h2>
-                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px] uppercase tracking-wider px-2">
+                <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase tracking-wider px-2">
                   Active Plan
                 </Badge>
               </div>
@@ -285,7 +285,7 @@ export function AdminSubscriptions() {
                 className={cn(
                   "h-10 px-6 font-bold transition-all",
                   isPlanDirty 
-                    ? "bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-500/20" 
+                    ? "bg-primary text-white hover:bg-primary/80 shadow-lg shadow-primary/20" 
                     : "bg-white/5 text-white/40 cursor-not-allowed"
                 )}
               >
@@ -337,14 +337,14 @@ export function AdminSubscriptions() {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
                       proFeatures.includes(feat.id)
-                        ? 'bg-purple-500/10 border-purple-500/30 ring-1 ring-purple-500/20'
+                        ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20'
                         : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]',
                     )}
                   >
                     <Checkbox
                       checked={proFeatures.includes(feat.id)}
                       onCheckedChange={() => toggleFeature(feat.id)}
-                      className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                     />
                     <span
                       className={cn(
@@ -407,7 +407,7 @@ export function AdminSubscriptions() {
       <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl overflow-hidden shadow-2xl">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-12 flex justify-center"><RefreshCw className="h-8 w-8 text-purple-500 animate-spin" /></div>
+            <div className="p-12 flex justify-center"><RefreshCw className="h-8 w-8 text-primary animate-spin" /></div>
           ) : (
             <Table>
               <TableHeader>
@@ -449,7 +449,7 @@ export function AdminSubscriptions() {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-8 text-[10px] bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
+                          className="h-8 text-[10px] bg-primary/10 text-primary hover:bg-primary/20"
                           onClick={() => extendMutation.mutate(sub.id)}
                           disabled={extendMutation.isPending}
                         >

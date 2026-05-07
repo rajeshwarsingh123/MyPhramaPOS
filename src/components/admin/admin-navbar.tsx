@@ -151,7 +151,7 @@ export function AdminNavbar() {
                 variant="ghost"
                 className="flex items-center gap-2.5 px-2 h-9 hover:bg-white/5 rounded-lg"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center ring-2 ring-purple-500/20">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center ring-2 ring-primary/20">
                   <span className="text-[10px] font-bold text-white">{initials}</span>
                 </div>
                 <div className="hidden md:flex flex-col items-start">

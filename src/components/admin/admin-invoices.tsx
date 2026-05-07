@@ -60,7 +60,7 @@ function PaymentModeBadge({ mode }: { mode: string }) {
   const config: Record<string, { color: string; label: string }> = {
     cash: { color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', label: 'Cash' },
     card: { color: 'bg-blue-500/20 text-blue-300 border-blue-500/30', label: 'Card' },
-    upi: { color: 'bg-violet-500/20 text-violet-300 border-violet-500/30', label: 'UPI' },
+    upi: { color: 'bg-primary/20 text-primary border-primary/30', label: 'UPI' },
     credit: { color: 'bg-amber-500/20 text-amber-300 border-amber-500/30', label: 'Credit' },
   }
   const c = config[mode] ?? { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', label: mode }
@@ -125,7 +125,7 @@ export function AdminInvoices() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load invoices</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -138,7 +138,7 @@ export function AdminInvoices() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Receipt className="h-7 w-7 text-purple-400" />
+            <Receipt className="h-7 w-7 text-primary" />
             Invoice Monitoring
           </h1>
           <p className="text-white/50 mt-1">
@@ -155,8 +155,8 @@ export function AdminInvoices() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-purple-400" />
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
             <p className="text-xs text-white/40">Total Invoices</p>
           </div>
@@ -283,7 +283,7 @@ export function AdminInvoices() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                          className="h-7 text-xs text-primary hover:text-primary/80 hover:bg-primary/10"
                           onClick={() => setSelectedInvoice(inv)}
                         >
                           View
@@ -333,7 +333,7 @@ export function AdminInvoices() {
       <Dialog open={!!selectedInvoice} onOpenChange={(open) => { if (!open) setSelectedInvoice(null) }}>
         <DialogContent className="bg-[oklch(0.18_0.02_250)] border-[oklch(0.28_0.03_250)] text-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-purple-300">
+            <DialogTitle className="flex items-center gap-2 text-primary">
               <Receipt className="h-5 w-5" />
               Invoice Details
             </DialogTitle>

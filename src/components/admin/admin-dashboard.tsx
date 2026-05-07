@@ -89,9 +89,9 @@ const statCardsConfig: StatCardConfig[] = [
     key: 'totalUsers',
     label: 'Total Users',
     icon: Users,
-    color: 'text-purple-400',
-    bg: 'bg-purple-500/15',
-    ring: 'ring-purple-500/20',
+    color: 'text-primary',
+    bg: 'bg-primary/15',
+    ring: 'ring-primary/20',
     trend: () => ({ value: 12, direction: 'up' }),
   },
   {
@@ -155,7 +155,7 @@ function RevenueTooltip({ active, payload, label }: { active?: boolean; payload?
     <div className="bg-[oklch(0.15_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-lg p-3 shadow-xl">
       <p className="text-xs text-white/50 mb-1">{label}</p>
       {revenueItem && (
-        <p className="text-sm font-semibold text-purple-400">
+        <p className="text-sm font-semibold text-primary">
           ₹{revenueItem.value.toLocaleString('en-IN')}
         </p>
       )}
@@ -170,7 +170,7 @@ function UserGrowthTooltip({ active, payload, label }: { active?: boolean; paylo
     <div className="bg-[oklch(0.15_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-lg p-3 shadow-xl">
       <p className="text-xs text-white/50 mb-1">{label}</p>
       {userItem && (
-        <p className="text-sm font-semibold text-purple-400">
+        <p className="text-sm font-semibold text-primary">
           {userItem.value} new users
         </p>
       )}
@@ -240,12 +240,12 @@ export function AdminDashboard() {
               const { setAdminAuth } = useAppStore.getState()
               setAdminAuth({ isAuthenticated: false, adminId: null, adminName: null, adminEmail: null, adminRole: null, loginTime: null })
             }} 
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            className="bg-primary hover:bg-primary/80 text-white"
           >
             Login Again
           </Button>
         ) : (
-          <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+          <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
             Try Again
           </Button>
         )}
@@ -272,7 +272,7 @@ export function AdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <ShieldCheck className="h-7 w-7 text-purple-400" />
+            <ShieldCheck className="h-7 w-7 text-primary" />
             Admin Dashboard
           </h1>
           <p className="text-white/50 mt-1">Platform overview and system health</p>
@@ -310,7 +310,7 @@ export function AdminDashboard() {
               key={card.key}
               className={cn(
                 'bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4',
-                'hover:bg-white/5 hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/5',
+                'hover:bg-white/5 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/5',
                 'transition-all duration-200 cursor-default',
               )}
             >
@@ -368,7 +368,7 @@ export function AdminDashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-purple-400" />
+                <TrendingUp className="h-4 w-4 text-primary" />
                 Revenue Trend
               </CardTitle>
               <div className="flex items-center gap-1">
@@ -379,7 +379,7 @@ export function AdminDashboard() {
                     className={cn(
                       'text-[10px] px-2 py-0.5 rounded-md transition-colors',
                       chartPeriod === period
-                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        ? 'bg-primary/20 text-primary border border-primary/30'
                         : 'text-white/30 hover:text-white/50 hover:bg-white/5',
                     )}
                   >
@@ -395,8 +395,8 @@ export function AdminDashboard() {
                 <AreaChart data={filteredRevenueTrend} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#a855f7" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -416,11 +416,11 @@ export function AdminDashboard() {
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#a855f7"
+                    stroke="var(--primary)"
                     strokeWidth={2}
                     fill="url(#revenueGradient)"
                     dot={false}
-                    activeDot={{ r: 4, fill: '#a855f7', stroke: '#1e1b4b', strokeWidth: 2 }}
+                    activeDot={{ r: 4, fill: 'var(--primary)', stroke: '#1e1b4b', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -432,7 +432,7 @@ export function AdminDashboard() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-400" />
+              <Users className="h-4 w-4 text-primary" />
               User Growth
             </CardTitle>
           </CardHeader>
@@ -442,8 +442,8 @@ export function AdminDashboard() {
                 <BarChart data={filteredUserTrend} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#a855f7" />
-                      <stop offset="100%" stopColor="#7c3aed" />
+                      <stop offset="0%" stopColor="var(--primary)" />
+                      <stop offset="100%" stopColor="var(--primary)" />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -479,7 +479,7 @@ export function AdminDashboard() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-purple-400" />
+              <CreditCard className="h-4 w-4 text-primary" />
               Plan Distribution
             </CardTitle>
           </CardHeader>
@@ -515,7 +515,7 @@ export function AdminDashboard() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                   <span className="text-sm text-white/70">Pro Plan</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -530,7 +530,7 @@ export function AdminDashboard() {
               </div>
               <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all duration-700"
+                  className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all duration-700"
                   style={{
                     width: `${totalTenants > 0 ? (planDistribution.pro / totalTenants) * 100 : 50}%`,
                   }}
@@ -546,7 +546,7 @@ export function AdminDashboard() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-white/40">Pro Conversion</span>
-                <span className="text-purple-400 font-medium">{conversionRate}%</span>
+                <span className="text-primary font-medium">{conversionRate}%</span>
               </div>
             </div>
           </CardContent>
@@ -557,7 +557,7 @@ export function AdminDashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-purple-400" />
+                <Activity className="h-4 w-4 text-primary" />
                 Recent Activity
               </CardTitle>
               <Badge
@@ -587,7 +587,7 @@ export function AdminDashboard() {
                         activity.type === 'signup'
                           ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20'
                           : activity.type === 'subscription'
-                            ? 'bg-purple-500/15 ring-1 ring-purple-500/20'
+                            ? 'bg-primary/15 ring-1 ring-primary/20'
                             : activity.type === 'ticket'
                               ? 'bg-amber-500/15 ring-1 ring-amber-500/20'
                               : 'bg-blue-500/15 ring-1 ring-blue-500/20',
@@ -596,7 +596,7 @@ export function AdminDashboard() {
                       {activity.type === 'signup' ? (
                         <UserPlus className="h-3.5 w-3.5 text-emerald-400" />
                       ) : activity.type === 'subscription' ? (
-                        <CreditCard className="h-3.5 w-3.5 text-purple-400" />
+                        <CreditCard className="h-3.5 w-3.5 text-primary" />
                       ) : activity.type === 'ticket' ? (
                         <TicketCheck className="h-3.5 w-3.5 text-amber-400" />
                       ) : (
@@ -618,7 +618,7 @@ export function AdminDashboard() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-purple-400" />
+              <Zap className="h-4 w-4 text-primary" />
               Quick Stats
             </CardTitle>
           </CardHeader>
@@ -635,8 +635,8 @@ export function AdminDashboard() {
                 icon={Pill}
                 label="Medicines"
                 value={String((stats.totalMedicinesAdded ?? 0).toLocaleString('en-IN'))}
-                color="text-violet-400"
-                bg="bg-violet-500/10"
+                color="text-primary"
+                bg="bg-primary/10"
               />
               <QuickStatTile
                 icon={CalendarClock}
@@ -651,8 +651,8 @@ export function AdminDashboard() {
                 label="Conversion"
                 value={`${conversionRate}%`}
                 sublabel="Free→Pro"
-                color="text-purple-400"
-                bg="bg-purple-500/10"
+                color="text-primary"
+                bg="bg-primary/10"
               />
               <QuickStatTile
                 icon={DollarSign}
@@ -679,7 +679,7 @@ export function AdminDashboard() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <Server className="h-4 w-4 text-purple-400" />
+              <Server className="h-4 w-4 text-primary" />
               Recent System Logs
               <Badge
                 variant="secondary"
@@ -692,7 +692,7 @@ export function AdminDashboard() {
               variant="ghost"
               size="sm"
               onClick={() => setAdminPage('admin-logs')}
-              className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 text-xs gap-1 h-7"
+              className="text-primary hover:text-primary/80 hover:bg-primary/10 text-xs gap-1 h-7"
             >
               View All
               <ArrowRight className="h-3 w-3" />
@@ -732,7 +732,7 @@ export function AdminDashboard() {
                   </div>
                   <div className="text-right shrink-0">
                     {log.tenant && (
-                      <p className="text-xs text-purple-400/80 mb-0.5">
+                      <p className="text-xs text-primary/80 mb-0.5">
                         {typeof log.tenant === 'object' && log.tenant !== null && 'businessName' in log.tenant
                           ? String((log.tenant as { businessName: string }).businessName)
                           : String(log.tenant)}

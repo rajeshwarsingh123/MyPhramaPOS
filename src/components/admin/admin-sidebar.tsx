@@ -73,11 +73,11 @@ function NavItem({
               className={cn(
                 'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 mx-auto relative',
                 isActive
-                  ? 'bg-purple-500/20 text-purple-300'
+                  ? 'bg-primary/20 text-primary'
                   : 'text-white/60 hover:bg-white/5 hover:text-white/90',
               )}
             >
-              <Icon className={cn('h-[18px] w-[18px]', isActive && 'text-purple-400')} />
+              <Icon className={cn('h-[18px] w-[18px]', isActive && 'text-primary')} />
               {showBadge && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
                   <span className="relative inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
@@ -105,11 +105,11 @@ function NavItem({
       className={cn(
         'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full text-left',
         isActive
-          ? 'bg-purple-500/20 text-purple-300 shadow-sm'
+          ? 'bg-primary/20 text-primary shadow-sm'
           : 'text-white/60 hover:bg-white/5 hover:text-white/90',
       )}
     >
-      <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-purple-400')} />
+      <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-primary')} />
       <span>{item.label}</span>
       {showBadge && (
         <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px] bg-red-500/20 text-red-400">
@@ -201,8 +201,8 @@ export function AdminSidebar() {
           'flex items-center border-b border-[oklch(0.25_0.03_250)] shrink-0 h-16',
           collapsed ? 'justify-center px-0' : 'gap-2.5 px-5',
         )}>
-          <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center ring-1 ring-purple-500/20 shrink-0">
-            <ShieldCheck className="w-5 h-5 text-purple-400" />
+          <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 shrink-0">
+            <ShieldCheck className="w-5 h-5 text-primary" />
           </div>
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
@@ -299,8 +299,8 @@ export function AdminSidebar() {
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center ring-1 ring-purple-500/20 mx-auto mt-1">
-                    <span className="text-xs font-bold text-purple-400">{initials}</span>
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 mx-auto mt-1">
+                    <span className="text-xs font-bold text-primary">{initials}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent
@@ -315,8 +315,8 @@ export function AdminSidebar() {
             </TooltipProvider>
           ) : (
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center ring-1 ring-purple-500/20 shrink-0">
-                <span className="text-xs font-bold text-purple-400">{initials}</span>
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 shrink-0">
+                <span className="text-xs font-bold text-primary">{initials}</span>
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-medium text-white truncate">

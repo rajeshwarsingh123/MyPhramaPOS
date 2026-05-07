@@ -237,7 +237,7 @@ function SettingsSectionCard({
                 onClick={onSave}
                 disabled={isSaving}
                 size="sm"
-                className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+                className="h-7 text-xs bg-primary hover:bg-primary/80 text-white disabled:opacity-50"
               >
                 {isSaving ? (
                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -308,7 +308,7 @@ function ToggleRow({
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className={switchColor ?? 'data-[state=checked]:bg-purple-600'}
+        className={switchColor ?? 'data-[state=checked]:bg-primary'}
       />
     </div>
   )
@@ -497,7 +497,7 @@ export function AdminSettings() {
         <p className="text-white/70">Failed to load settings</p>
         <Button
           onClick={() => refetch()}
-          className="bg-purple-600 hover:bg-purple-700 text-white"
+          className="bg-primary hover:bg-primary/80 text-white"
         >
           Try Again
         </Button>
@@ -511,7 +511,7 @@ export function AdminSettings() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Settings className="h-7 w-7 text-purple-400" />
+            <Settings className="h-7 w-7 text-primary" />
             Platform Settings
           </h1>
           <p className="text-white/50 mt-1">
@@ -534,7 +534,7 @@ export function AdminSettings() {
               <Button
                 onClick={() => saveAllMutation.mutate()}
                 disabled={saveAllMutation.isPending}
-                className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+                className="bg-primary hover:bg-primary/80 text-white disabled:opacity-50"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {saveAllMutation.isPending ? 'Saving...' : 'Save All'}
@@ -552,8 +552,8 @@ export function AdminSettings() {
           <SettingsSectionCard
             sectionKey="platform"
             title="Platform Settings"
-            icon={<Globe className="h-4 w-4 text-purple-400" />}
-            iconBg="bg-purple-500/15"
+            icon={<Globe className="h-4 w-4 text-primary" />}
+            iconBg="bg-primary/15"
             isLoading={isLoading}
             hasChanges={sectionHasChanges('platform')}
             isSaving={saveSectionMutation.isPending}
@@ -676,8 +676,8 @@ export function AdminSettings() {
           <SettingsSectionCard
             sectionKey="email"
             title="Email & Notifications"
-            icon={<Bell className="h-4 w-4 text-purple-400" />}
-            iconBg="bg-purple-500/15"
+            icon={<Bell className="h-4 w-4 text-primary" />}
+            iconBg="bg-primary/15"
             isLoading={isLoading}
             hasChanges={sectionHasChanges('email')}
             isSaving={saveSectionMutation.isPending}
@@ -686,8 +686,8 @@ export function AdminSettings() {
           >
             {/* SMTP Toggle */}
             <ToggleRow
-              icon={<Mail className="h-4 w-4 text-purple-400" />}
-              iconBg="bg-purple-500/10"
+              icon={<Mail className="h-4 w-4 text-primary" />}
+              iconBg="bg-primary/10"
               label="SMTP Email Service"
               description="Enable email delivery for notifications, invoices, and alerts"
               checked={s.smtp_enabled === 'true'}
@@ -736,8 +736,8 @@ export function AdminSettings() {
                 <Separator className="bg-white/5" />
 
                 <ToggleRow
-                  icon={<Mail className="h-4 w-4 text-violet-400" />}
-                  iconBg="bg-violet-500/10"
+                  icon={<Mail className="h-4 w-4 text-primary" />}
+                  iconBg="bg-primary/10"
                   label="Support Ticket Creation"
                   description="Notify admins when a new support ticket is raised by a tenant"
                   checked={s.notification_ticket_creation === 'true'}

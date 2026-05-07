@@ -65,7 +65,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function PlanBadge({ plan }: { plan: string }) {
   if (plan === 'pro') {
-    return <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30">Pro</Badge>
+    return <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/30">Pro</Badge>
   }
   return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 hover:bg-gray-500/30">Free</Badge>
 }
@@ -144,7 +144,7 @@ export function AdminPayments() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load payments data</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -157,7 +157,7 @@ export function AdminPayments() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Wallet className="h-7 w-7 text-purple-400" />
+            <Wallet className="h-7 w-7 text-primary" />
             Payments
           </h1>
           <p className="text-white/50 mt-1">
@@ -180,8 +180,8 @@ export function AdminPayments() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <IndianRupee className="h-5 w-5 text-purple-400" />
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <IndianRupee className="h-5 w-5 text-primary" />
             </div>
             <p className="text-xs text-white/40">Total Payments</p>
           </div>

@@ -63,7 +63,7 @@ function LevelDot({ level }: { level: string }) {
     warning: 'bg-amber-400',
     login: 'bg-blue-400',
     create: 'bg-emerald-400',
-    update: 'bg-violet-400',
+    update: 'bg-primary/80',
     info: 'bg-gray-400',
   }
   return (
@@ -148,7 +148,7 @@ export function AdminLogs() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load system logs</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -161,7 +161,7 @@ export function AdminLogs() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <ScrollText className="h-7 w-7 text-purple-400" />
+            <ScrollText className="h-7 w-7 text-primary" />
             System Logs
           </h1>
           <p className="text-white/50 mt-1">
@@ -178,8 +178,8 @@ export function AdminLogs() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-purple-400" />
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
             <p className="text-xs text-white/40">Total Logs</p>
           </div>
@@ -294,7 +294,7 @@ export function AdminLogs() {
                             )}
                             <div className="flex items-center gap-2 mt-1.5">
                               {log.tenant && (
-                                <Badge variant="secondary" className="text-[10px] bg-purple-500/10 text-purple-300 border-purple-500/20">
+                                <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
                                   {log.tenant.businessName || log.tenant.name}
                                 </Badge>
                               )}
@@ -306,7 +306,7 @@ export function AdminLogs() {
                                   log.level === 'warning' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' :
                                   log.level === 'login' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' :
                                   log.level === 'create' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                                  log.level === 'update' ? 'bg-violet-500/10 text-violet-300 border-violet-500/20' :
+                                  log.level === 'update' ? 'bg-primary/10 text-primary border-primary/20' :
                                   'bg-gray-500/10 text-gray-300 border-gray-500/20'
                                 )}
                               >

@@ -39,7 +39,7 @@ export function AdminReports() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load report data</p>
-        <Button onClick={() => dashRefetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => dashRefetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -85,7 +85,7 @@ export function AdminReports() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <BarChart3 className="h-7 w-7 text-purple-400" />
+            <BarChart3 className="h-7 w-7 text-primary" />
             Platform Reports
           </h1>
           <p className="text-white/50 mt-1">Comprehensive platform analytics and metrics</p>
@@ -111,8 +111,8 @@ export function AdminReports() {
 
         <div className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-purple-400" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-primary" />
             </div>
             <p className="text-xs text-white/40">Pro Subscribers</p>
           </div>
@@ -156,7 +156,7 @@ export function AdminReports() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-purple-400" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               User Growth by Month
             </CardTitle>
           </CardHeader>
@@ -172,11 +172,11 @@ export function AdminReports() {
                   const height = (growthValues[idx] / maxGrowth) * 100
                   return (
                     <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-purple-300 font-medium">
+                      <span className="text-primary font-medium">
                         {growthValues[idx]}
                       </span>
                       <div
-                        className="w-full rounded-t-md bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500 min-h-[4px]"
+                        className="w-full rounded-t-md bg-gradient-to-t from-primary to-primary/60 transition-all duration-500 min-h-[4px]"
                         style={{ height: `${height}%` }}
                       />
                       <span className="text-[10px] text-white/40 text-center leading-tight">
@@ -194,7 +194,7 @@ export function AdminReports() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-purple-400" />
+              <CreditCard className="h-4 w-4 text-primary" />
               Plan Distribution
             </CardTitle>
           </CardHeader>
@@ -229,14 +229,14 @@ export function AdminReports() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-400" />
+                      <div className="w-3 h-3 rounded-full bg-primary" />
                       <span className="text-sm text-white/70">Pro Plan</span>
                     </div>
                     <span className="text-sm font-semibold text-white">{planDistribution.pro ?? 0}</span>
                   </div>
                   <div className="w-full bg-white/5 rounded-full h-8 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full flex items-center justify-end pr-3 transition-all duration-700"
+                      className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full flex items-center justify-end pr-3 transition-all duration-700"
                       style={{
                         width: `${planDistribution.free + planDistribution.pro > 0 ? Math.max(((planDistribution.pro ?? 0) / ((planDistribution.free ?? 0) + (planDistribution.pro ?? 0))) * 100, 5) : 50}%`,
                       }}
@@ -281,7 +281,7 @@ export function AdminReports() {
       <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-purple-400" />
+            <Activity className="h-4 w-4 text-primary" />
             Platform Summary
           </CardTitle>
         </CardHeader>
@@ -307,7 +307,7 @@ export function AdminReports() {
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
               <span className="text-sm text-white/60">Pro Plan Users</span>
-              <span className="text-sm font-bold text-purple-400">{planDistribution.pro ?? 0}</span>
+              <span className="text-sm font-bold text-primary">{planDistribution.pro ?? 0}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
               <span className="text-sm text-white/60">New Signups Today</span>

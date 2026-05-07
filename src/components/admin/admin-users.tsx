@@ -120,7 +120,7 @@ function getPasswordStrength(password: string): { label: string; color: string; 
 
 function PlanBadge() {
   return (
-    <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+    <Badge className="bg-primary/20 text-primary border-primary/30">
       Yearly
     </Badge>
   )
@@ -445,12 +445,12 @@ export function AdminUsers() {
                 const { setAdminAuth } = useAppStore.getState()
                 setAdminAuth({ isAuthenticated: false, adminId: null, adminName: null, adminEmail: null, adminRole: null, loginTime: null })
               }} 
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-primary hover:bg-primary/80 text-white"
             >
               Login Again
             </Button>
           ) : (
-            <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+            <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
               Try Again
             </Button>
           )}
@@ -465,7 +465,7 @@ export function AdminUsers() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Users className="h-7 w-7 text-purple-400" />
+            <Users className="h-7 w-7 text-primary" />
             User Management
           </h1>
           <p className="text-white/50 mt-1">{total} total users</p>
@@ -477,7 +477,7 @@ export function AdminUsers() {
               className={cn(
                 'px-4 py-1.5 text-sm font-medium rounded-md transition-all',
                 activeTab === 'tenants'
-                  ? 'bg-purple-600 text-white shadow-lg'
+                  ? 'bg-primary text-white shadow-lg'
                   : 'text-white/40 hover:text-white/60'
               )}
             >
@@ -488,7 +488,7 @@ export function AdminUsers() {
               className={cn(
                 'px-4 py-1.5 text-sm font-medium rounded-md transition-all',
                 activeTab === 'admins'
-                  ? 'bg-purple-600 text-white shadow-lg'
+                  ? 'bg-primary text-white shadow-lg'
                   : 'text-white/40 hover:text-white/60'
               )}
             >
@@ -756,7 +756,7 @@ function AdminList({
     <div className="space-y-6">
       <div className="flex gap-3">
         <Input placeholder="Search admins..." value={search} onChange={e => onSearchChange(e.target.value)} className="bg-[oklch(0.14_0.02_250)] border-white/10" />
-        <Button onClick={() => setAddDialog(true)} className="bg-purple-600 text-white">Add Admin</Button>
+        <Button onClick={() => setAddDialog(true)} className="bg-primary text-white">Add Admin</Button>
       </div>
       <Card className="bg-[oklch(0.18_0.02_250)] border-white/10">
         <Table>

@@ -58,8 +58,8 @@ const TYPE_CONFIG: Record<string, IconConfig> = {
   },
   subscription: {
     icon: <CreditCard className="h-4 w-4" />,
-    color: 'text-purple-400',
-    bg: 'bg-purple-500/15',
+    color: 'text-primary',
+    bg: 'bg-primary/15',
   },
   ticket: {
     icon: <MessageSquare className="h-4 w-4" />,
@@ -168,7 +168,7 @@ export function AdminNotificationPanel({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-purple-400" />
+            <Bell className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-white">Notifications</span>
             {unreadCount > 0 && (
               <Badge
@@ -185,7 +185,7 @@ export function AdminNotificationPanel({
               size="sm"
               onClick={handleMarkAllRead}
               disabled={markReadMutation.isPending}
-              className="h-7 px-2 text-[11px] text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 gap-1.5"
+              className="h-7 px-2 text-[11px] text-primary hover:text-primary/80 hover:bg-primary/10 gap-1.5"
             >
               {markReadMutation.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -227,7 +227,7 @@ export function AdminNotificationPanel({
                         'hover:bg-white/[0.04]',
                         notif.isRead
                           ? 'bg-transparent'
-                          : 'bg-white/[0.02] border-l-2 border-l-purple-500/60',
+                          : 'bg-white/[0.02] border-l-2 border-l-primary/60',
                       )}
                     >
                       {/* Icon */}
@@ -252,7 +252,7 @@ export function AdminNotificationPanel({
                             {notif.title}
                           </p>
                           {!notif.isRead && (
-                            <span className="shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-purple-500" />
+                            <span className="shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-primary" />
                           )}
                         </div>
                         <p className="text-[11px] text-white/40 mt-0.5 line-clamp-2 leading-relaxed">
@@ -261,7 +261,7 @@ export function AdminNotificationPanel({
                         <div className="flex items-center gap-2 mt-1.5">
                           <span className="text-[10px] text-white/30">{notif.time}</span>
                           {notif.actionUrl && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-purple-400/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="flex items-center gap-0.5 text-[10px] text-primary/60 opacity-0 group-hover:opacity-100 transition-opacity">
                               <ExternalLink className="h-2.5 w-2.5" />
                               view
                             </span>
@@ -285,7 +285,7 @@ export function AdminNotificationPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 gap-1.5"
+              className="w-full text-xs text-primary hover:text-primary/80 hover:bg-primary/10 gap-1.5"
               onClick={handleViewAll}
             >
               <ExternalLink className="h-3 w-3" />

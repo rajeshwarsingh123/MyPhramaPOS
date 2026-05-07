@@ -256,13 +256,13 @@ function getActivityIcon(type: string) {
     case 'signup':
       return { icon: UserPlus, color: 'text-emerald-400', bg: 'bg-emerald-500/15', ring: 'ring-emerald-500/20' }
     case 'subscription':
-      return { icon: CreditCard, color: 'text-purple-400', bg: 'bg-purple-500/15', ring: 'ring-purple-500/20' }
+      return { icon: CreditCard, color: 'text-primary', bg: 'bg-primary/15', ring: 'ring-primary/20' }
     case 'ticket':
       return { icon: TicketCheck, color: 'text-amber-400', bg: 'bg-amber-500/15', ring: 'ring-amber-500/20' }
     case 'payment':
       return { icon: IndianRupee, color: 'text-teal-400', bg: 'bg-teal-500/15', ring: 'ring-teal-500/20' }
     default:
-      return { icon: Activity, color: 'text-purple-400', bg: 'bg-purple-500/15', ring: 'ring-purple-500/20' }
+      return { icon: Activity, color: 'text-primary', bg: 'bg-primary/15', ring: 'ring-primary/20' }
   }
 }
 
@@ -342,7 +342,7 @@ export function AdminPharmacyMonitor() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load pharmacy monitor data</p>
-        <Button onClick={handleRefresh} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={handleRefresh} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -381,7 +381,7 @@ export function AdminPharmacyMonitor() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Building2 className="h-7 w-7 text-purple-400" />
+            <Building2 className="h-7 w-7 text-primary" />
             Pharmacy Monitor
           </h1>
           <p className="text-white/50 mt-1">Live monitoring of all tenant pharmacies</p>
@@ -428,8 +428,8 @@ export function AdminPharmacyMonitor() {
 
             {/* Active Tenants */}
             <div className="p-4 flex flex-col items-center justify-center text-center">
-              <div className="w-10 h-10 rounded-full bg-purple-500/15 ring-1 ring-purple-500/20 flex items-center justify-center mb-2">
-                <Users className="h-5 w-5 text-purple-400" />
+              <div className="w-10 h-10 rounded-full bg-primary/15 ring-1 ring-primary/20 flex items-center justify-center mb-2">
+                <Users className="h-5 w-5 text-primary" />
               </div>
               <p className="text-2xl font-bold text-white">{activeTenantCount}</p>
               <p className="text-[11px] text-white/40 mt-0.5">Active Tenants</p>
@@ -466,7 +466,7 @@ export function AdminPharmacyMonitor() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-purple-400" />
+              <Activity className="h-4 w-4 text-primary" />
               Tenant Activity Grid
             </CardTitle>
             <Badge variant="secondary" className="text-[10px] bg-white/5 text-white/40 border border-white/10">
@@ -512,7 +512,7 @@ export function AdminPharmacyMonitor() {
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <Badge
                             variant="secondary"
-                            className="text-[10px] font-medium px-2 py-0 bg-purple-500/15 text-purple-400 border border-purple-500/20"
+                            className="text-[10px] font-medium px-2 py-0 bg-primary/15 text-primary border border-primary/20"
                           >
                             YEARLY
                           </Badge>
@@ -584,7 +584,7 @@ export function AdminPharmacyMonitor() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <HardDrive className="h-4 w-4 text-purple-400" />
+              <HardDrive className="h-4 w-4 text-primary" />
               Resource Usage
             </CardTitle>
           </CardHeader>
@@ -593,8 +593,8 @@ export function AdminPharmacyMonitor() {
             <div className="bg-white/[0.03] rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded bg-purple-500/10 flex items-center justify-center">
-                    <Pill className="h-3.5 w-3.5 text-purple-400" />
+                  <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center">
+                    <Pill className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <span className="text-xs text-white/50">Total Medicines</span>
                 </div>
@@ -620,8 +620,8 @@ export function AdminPharmacyMonitor() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded bg-violet-500/10 flex items-center justify-center">
-                    <FileText className="h-3.5 w-3.5 text-violet-400" />
+                  <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <span className="text-xs text-white/50">Total Bills</span>
                 </div>
@@ -667,7 +667,7 @@ export function AdminPharmacyMonitor() {
         <Card className="bg-[oklch(0.18_0.02_250)] border border-[oklch(0.28_0.03_250)] rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-purple-400" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               Top Pharmacies
             </CardTitle>
           </CardHeader>
@@ -694,7 +694,7 @@ export function AdminPharmacyMonitor() {
                           </div>
                           <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-700"
+                              className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-700"
                               style={{ width: `${(t._count.systemLogs / maxCalls) * 100}%` }}
                             />
                           </div>

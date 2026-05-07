@@ -56,7 +56,7 @@ function TypeBadge({ type }: { type: string }) {
     info: { color: 'bg-blue-500/20 text-blue-300 border-blue-500/30', label: 'Info', icon: <Info className="h-3 w-3" /> },
     warning: { color: 'bg-amber-500/20 text-amber-300 border-amber-500/30', label: 'Warning', icon: <AlertCircle className="h-3 w-3" /> },
     maintenance: { color: 'bg-red-500/20 text-red-300 border-red-500/30', label: 'Maintenance', icon: <Wrench className="h-3 w-3" /> },
-    promotion: { color: 'bg-purple-500/20 text-purple-300 border-purple-500/30', label: 'Promotion', icon: <Sparkles className="h-3 w-3" /> },
+    promotion: { color: 'bg-primary/20 text-primary border-primary/30', label: 'Promotion', icon: <Sparkles className="h-3 w-3" /> },
   }
   const c = config[type] ?? { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', label: type, icon: null }
   return (
@@ -72,7 +72,7 @@ function TypeIcon({ type, className }: { type: string; className?: string }) {
     info: { color: 'text-blue-400', icon: <Info className={cn('h-5 w-5', className)} /> },
     warning: { color: 'text-amber-400', icon: <AlertCircle className={cn('h-5 w-5', className)} /> },
     maintenance: { color: 'text-red-400', icon: <Wrench className={cn('h-5 w-5', className)} /> },
-    promotion: { color: 'text-purple-400', icon: <Sparkles className={cn('h-5 w-5', className)} /> },
+    promotion: { color: 'text-primary', icon: <Sparkles className={cn('h-5 w-5', className)} /> },
   }
   const c = config[type] ?? { color: 'text-gray-400', icon: <Info className={cn('h-5 w-5', className)} /> }
   return <span className={c.color}>{c.icon}</span>
@@ -162,7 +162,7 @@ export function AdminAnnouncements() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="h-12 w-12 text-red-400" />
         <p className="text-white/70">Failed to load announcements</p>
-        <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button onClick={() => refetch()} className="bg-primary hover:bg-primary/80 text-white">
           Try Again
         </Button>
       </div>
@@ -175,7 +175,7 @@ export function AdminAnnouncements() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Megaphone className="h-7 w-7 text-purple-400" />
+            <Megaphone className="h-7 w-7 text-primary" />
             Announcements
           </h1>
           <p className="text-white/50 mt-1">{announcements.length} total • {activeCount} active</p>
@@ -185,7 +185,7 @@ export function AdminAnnouncements() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white">
+          <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/80 text-white">
             <Plus className="h-4 w-4 mr-2" />
             New Announcement
           </Button>
@@ -216,7 +216,7 @@ export function AdminAnnouncements() {
           <p className="text-xs mt-1">Create one to notify all tenants</p>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
+            className="mt-4 bg-primary hover:bg-primary/80 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Announcement
@@ -354,7 +354,7 @@ export function AdminAnnouncements() {
               <Button
                 onClick={handleCreate}
                 disabled={createMutation.isPending || !createForm.title.trim() || !createForm.message.trim()}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-primary hover:bg-primary/80 text-white"
               >
                 {createMutation.isPending ? 'Creating...' : 'Create Announcement'}
               </Button>

@@ -71,9 +71,9 @@ export function AdminLogin() {
     <div className="dark relative flex min-h-screen items-center justify-center bg-[oklch(0.12_0.015_250)] overflow-hidden">
       {/* Animated background accents */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-purple-500/8 blur-3xl animate-pulse [animation-delay:1s]" />
-        <div className="absolute top-1/3 right-1/4 h-64 w-64 rounded-full bg-violet-600/5 blur-3xl animate-pulse [animation-delay:2s]" />
+        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-primary/10 blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-primary/8 blur-3xl animate-pulse [animation-delay:1s]" />
+        <div className="absolute top-1/3 right-1/4 h-64 w-64 rounded-full bg-primary/5 blur-3xl animate-pulse [animation-delay:2s]" />
         {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -92,9 +92,9 @@ export function AdminLogin() {
         className="relative z-10 w-full max-w-md mx-4"
       >
         {/* Glass-morphism card */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-purple-500/5">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-primary/5">
           {/* Gradient top accent line */}
-          <div className="h-1 w-full rounded-t-2xl bg-gradient-to-r from-purple-600 via-purple-400 to-violet-500" />
+          <div className="h-1 w-full rounded-t-2xl bg-gradient-to-r from-primary via-primary/80 to-primary/60" />
 
           <div className="p-8">
             {/* Branding */}
@@ -104,7 +104,7 @@ export function AdminLogin() {
               transition={{ delay: 0.2, duration: 0.4 }}
               className="flex flex-col items-center mb-8"
             >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/25 mb-4 ring-4 ring-purple-500/10">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25 mb-4 ring-4 ring-primary/10">
                 <ShieldCheck className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-white tracking-tight">
@@ -146,7 +146,7 @@ export function AdminLogin() {
                     placeholder="rajeshwarsinghrana16@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 rounded-lg focus:border-purple-500/50 focus:ring-purple-500/20 transition-colors"
+                    className="pl-10 h-11 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 rounded-lg focus:border-primary/50 focus:ring-primary/20 transition-colors"
                     autoComplete="email"
                     disabled={isLoading}
                   />
@@ -166,7 +166,7 @@ export function AdminLogin() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 rounded-lg focus:border-purple-500/50 focus:ring-purple-500/20 transition-colors"
+                    className="pl-10 pr-10 h-11 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 rounded-lg focus:border-primary/50 focus:ring-primary/20 transition-colors"
                     autoComplete="current-password"
                     disabled={isLoading}
                   />
@@ -191,7 +191,7 @@ export function AdminLogin() {
                   id="remember-me"
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked === true)}
-                  className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600 border-white/20"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary border-white/20"
                 />
                 <Label
                   htmlFor="remember-me"
@@ -207,9 +207,9 @@ export function AdminLogin() {
                 disabled={isLoading}
                 className={cn(
                   'w-full h-11 text-sm font-semibold rounded-lg transition-all duration-300 relative overflow-hidden',
-                  'bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600',
-                  'hover:from-purple-500 hover:via-purple-400 hover:to-violet-500',
-                  'shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40',
+                  'bg-gradient-to-r from-primary via-primary/90 to-primary/80',
+                  'hover:from-primary/90 hover:via-primary/80 hover:to-primary/70',
+                  'shadow-lg shadow-primary/25 hover:shadow-primary/40',
                   'text-white disabled:opacity-60 disabled:cursor-not-allowed',
                 )}
               >
