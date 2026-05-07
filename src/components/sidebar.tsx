@@ -30,6 +30,7 @@ import {
   History,
   ChevronsLeft,
   ChevronsRight,
+  CreditCard,
 } from 'lucide-react'
 
 const mainNavItems: { id: Page; label: string; icon: React.ElementType; badge?: string }[] = [
